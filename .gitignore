@@ -1,0 +1,8 @@
+/build
+/targets/*/images
+build.info
+
+/venv
+/.venv
+__pycache__/
+/sim_build
