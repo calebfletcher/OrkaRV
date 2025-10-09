@@ -1,27 +1,52 @@
 LIBRARY ieee;
 CONTEXT ieee.ieee_std_context;
 
+USE work.RiscVPkg.ALL;
+
 ENTITY InstructionDecoder IS
     PORT (
         clk : IN STD_LOGIC;
         reset : IN STD_LOGIC;
 
+        opcode : OUT STD_LOGIC_VECTOR(6 DOWNTO 0);
+        funct3 : OUT STD_LOGIC_VECTOR(2 DOWNTO 0);
+        funct7 : OUT STD_LOGIC_VECTOR(6 DOWNTO 0);
+        instructionType : OUT InstructionType;
+
         instruction : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
 
-        immediate : OUT STD_LOGIC_VECTOR(31 DOWNTO 0)
+        immediate : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+        rs1 : OUT STD_LOGIC_VECTOR(4 DOWNTO 0);
+        rs2 : OUT STD_LOGIC_VECTOR(4 DOWNTO 0);
+        rd : OUT STD_LOGIC_VECTOR(4 DOWNTO 0)
     );
 END ENTITY InstructionDecoder;
 
 ARCHITECTURE rtl OF InstructionDecoder IS
-    TYPE InstructionEncodingType IS (R, I, S, B, U, J);
+    SIGNAL encoding : InstructionEncodingType;
 
-    SIGNAL instructionEncoding : InstructionEncodingType;
+    SIGNAL major : MajorOpcode;
 BEGIN
 
     PROCESS (ALL)
     BEGIN
-        -- extract immediate from instruction
-        CASE instructionEncoding IS
+        -- extract operation
+        opcode <= instruction(6 DOWNTO 0);
+        funct3 <= instruction(14 DOWNTO 12);
+        funct7 <= instruction(31 DOWNTO 25);
+
+        -- map opcodes
+        major <= opcodeToMajorOpcode(opcode);
+        instructionType <= partsToInstruction(major, funct3, funct7);
+        encoding <= instructionToEncoding(instructionType);
+
+        -- extract register indexes
+        rs1 <= instruction(19 DOWNTO 15);
+        rs2 <= instruction(24 DOWNTO 20);
+        rd <= instruction(11 DOWNTO 7);
+
+        -- extract immediate
+        CASE encoding IS
             WHEN R =>
                 immediate <= (OTHERS => '0');
             WHEN I =>
