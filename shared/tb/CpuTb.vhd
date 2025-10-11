@@ -29,7 +29,7 @@ BEGIN
     reset_process : PROCESS
     BEGIN
         reset <= '1';
-        WAIT FOR 100 ns;
+        WAIT FOR 30 ns;
         reset <= '0';
         WAIT;
     END PROCESS;
@@ -48,6 +48,7 @@ BEGIN
         WAIT UNTIL halt = '1' OR NOW >= timeout;
         IF halt = '1' THEN
             REPORT "CPU halted successfully." SEVERITY NOTE;
+            std.env.stop;
         ELSE
             REPORT "Timeout: CPU did not halt within 1 ms." SEVERITY ERROR;
         END IF;
