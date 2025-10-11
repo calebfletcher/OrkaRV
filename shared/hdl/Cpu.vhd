@@ -12,6 +12,9 @@ ENTITY Cpu IS
 END ENTITY Cpu;
 
 ARCHITECTURE rtl OF Cpu IS
+    TYPE StageType IS (FETCH, DECODE, EXECUTE);
+    SIGNAL stage : StageType := FETCH;
+
     SIGNAL pc : STD_LOGIC_VECTOR(XLEN - 1 DOWNTO 0) := (OTHERS => '0');
     SIGNAL registerFile : RegistersType;
 
@@ -37,18 +40,33 @@ BEGIN
         '0';
 
     PROCESS (clk)
+        VARIABLE nextPc : STD_LOGIC_VECTOR(31 DOWNTO 0);
     BEGIN
         IF rising_edge(clk) THEN
             IF reset = '1' THEN
                 pc <= (OTHERS => '0');
+                stage <= FETCH;
             ELSE
-                pc <= STD_LOGIC_VECTOR(UNSIGNED(pc) + 4);
+                CASE stage IS
+                    WHEN FETCH =>
+                        stage <= DECODE;
+                        instruction <= ram_do;
+                    WHEN DECODE =>
+                        stage <= EXECUTE;
+                        -- todo: register decoded instruction here?
+                    WHEN EXECUTE =>
+                        stage <= FETCH;
+
+                        nextPc := STD_LOGIC_VECTOR(UNSIGNED(pc) + 4);
+                        pc <= nextPc;
+
+                        -- prepare for fetch
+                        ram_addr <= nextPc;
+                END CASE;
             END IF;
         END IF;
     END PROCESS;
 
-    -- temp ram instruction read
-    instruction <= ram_do;
     ram_addr <= pc;
 
     Registers_inst : ENTITY work.Registers
