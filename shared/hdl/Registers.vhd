@@ -13,7 +13,7 @@ ENTITY Registers IS
         reset : IN STD_LOGIC;
 
         -- program counter
-        pc : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+        pc : OUT STD_LOGIC_VECTOR(XLEN - 1 DOWNTO 0);
 
         -- registers
         registersValue : OUT RegistersType := (OTHERS => (OTHERS => '0'));

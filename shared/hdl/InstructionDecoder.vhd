@@ -12,7 +12,7 @@ ENTITY InstructionDecoder IS
 
         instruction : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
 
-        immediate : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+        immediate : OUT STD_LOGIC_VECTOR(XLEN - 1 DOWNTO 0);
         rs1 : OUT STD_LOGIC_VECTOR(4 DOWNTO 0);
         rs2 : OUT STD_LOGIC_VECTOR(4 DOWNTO 0);
         rd : OUT STD_LOGIC_VECTOR(4 DOWNTO 0)

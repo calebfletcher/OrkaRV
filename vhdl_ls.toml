@@ -1,5 +1,5 @@
 [libraries]
-xil_defaultlib.files = ['targets/**/*.vhd']
+xil_defaultlib.files = ['targets/**/*.vhd', 'shared/**/*.vhd']
 
 # Ruckus
 ruckus.files = ['build/*/*.srcs/*.vhd']
