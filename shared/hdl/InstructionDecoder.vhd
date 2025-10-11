@@ -10,9 +10,9 @@ ENTITY InstructionDecoder IS
         instruction : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
 
         immediate : OUT STD_LOGIC_VECTOR(XLEN - 1 DOWNTO 0);
-        rs1 : OUT STD_LOGIC_VECTOR(4 DOWNTO 0);
-        rs2 : OUT STD_LOGIC_VECTOR(4 DOWNTO 0);
-        rd : OUT STD_LOGIC_VECTOR(4 DOWNTO 0)
+        rs1 : OUT RegisterIndex;
+        rs2 : OUT RegisterIndex;
+        rd : OUT RegisterIndex
     );
 END ENTITY InstructionDecoder;
 
@@ -28,9 +28,9 @@ BEGIN
         encoding <= instructionToEncoding(instructionType);
 
         -- extract register indexes
-        rs1 <= instruction(19 DOWNTO 15);
-        rs2 <= instruction(24 DOWNTO 20);
-        rd <= instruction(11 DOWNTO 7);
+        rs1 <= to_integer(unsigned(instruction(19 DOWNTO 15)));
+        rs2 <= to_integer(unsigned(instruction(24 DOWNTO 20)));
+        rd <= to_integer(unsigned(instruction(11 DOWNTO 7)));
 
         -- extract immediate
         CASE encoding IS

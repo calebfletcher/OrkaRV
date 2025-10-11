@@ -4,6 +4,8 @@ CONTEXT ieee.ieee_std_context;
 PACKAGE RiscVPkg IS
     CONSTANT XLEN : INTEGER := 32;
 
+    SUBTYPE RegisterIndex IS INTEGER RANGE 0 TO 31;
+
     TYPE RegistersType IS ARRAY (0 TO 31) OF STD_LOGIC_VECTOR(XLEN - 1 DOWNTO 0);
 
     TYPE InstructionEncodingType IS (R, I, S, B, U, J);

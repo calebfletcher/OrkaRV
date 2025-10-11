@@ -18,15 +18,17 @@ ARCHITECTURE rtl OF Cpu IS
     SIGNAL pc : STD_LOGIC_VECTOR(XLEN - 1 DOWNTO 0) := (OTHERS => '0');
     SIGNAL registerFile : RegistersType;
 
-    SIGNAL rs1 : STD_LOGIC_VECTOR(4 DOWNTO 0);
-    SIGNAL rs2 : STD_LOGIC_VECTOR(4 DOWNTO 0);
-    SIGNAL rd : STD_LOGIC_VECTOR(4 DOWNTO 0);
-    SIGNAL immediate : STD_LOGIC_VECTOR(31 DOWNTO 0);
+    SIGNAL rs1 : RegisterIndex;
+    SIGNAL rs2 : RegisterIndex;
+    SIGNAL rd : RegisterIndex;
+    SIGNAL rs1Value : STD_LOGIC_VECTOR(XLEN - 1 DOWNTO 0);
+    SIGNAL rs2Value : STD_LOGIC_VECTOR(XLEN - 1 DOWNTO 0);
+    SIGNAL immediate : STD_LOGIC_VECTOR(XLEN - 1 DOWNTO 0);
 
     SIGNAL instType : InstructionType;
     SIGNAL instruction : STD_LOGIC_VECTOR(31 DOWNTO 0);
 
-    SIGNAL wr_addr : STD_LOGIC_VECTOR(4 DOWNTO 0) := (OTHERS => '0');
+    SIGNAL wr_addr : RegisterIndex := 0;
     SIGNAL wr_data : STD_LOGIC_VECTOR(XLEN - 1 DOWNTO 0);
     SIGNAL wr_strobe : STD_LOGIC;
 
@@ -38,6 +40,9 @@ BEGIN
     -- halt once we hit an ebreak
     halt <= '1' WHEN instType = EBREAK ELSE
         '0';
+
+    rs1Value <= registerFile(rs1);
+    rs2Value <= registerFile(rs2);
 
     PROCESS (clk)
         VARIABLE nextPc : STD_LOGIC_VECTOR(31 DOWNTO 0);
@@ -75,7 +80,7 @@ BEGIN
             reset => reset,
             --pc => pc,
             registersValue => registerFile,
-            wr_addr => to_integer(unsigned(wr_addr)),
+            wr_addr => wr_addr,
             wr_data => wr_data,
             wr_strobe => wr_strobe
         );
