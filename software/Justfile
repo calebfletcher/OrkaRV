@@ -18,4 +18,4 @@ simulate file: clean (assemble file)
     ghdl -a --std=08 --workdir=build/sim ../shared/hdl/Registers.vhd
     ghdl -a --std=08 --workdir=build/sim ../shared/hdl/InstructionDecoder.vhd
     ghdl -a --std=08 --workdir=build/sim ../shared/hdl/Cpu.vhd
-    ghdl -r --std=08 --workdir=build/sim cpu
+    ghdl -r --std=08 --workdir=build/sim cpu --wave=build/sim/out.ghw
