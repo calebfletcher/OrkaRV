@@ -69,6 +69,12 @@ BEGIN
                             WHEN ADDI =>
                                 wr_data <= STD_LOGIC_VECTOR(unsigned(rs1Value) + unsigned(immediate));
                                 wr_strobe <= '1';
+                            WHEN ADD =>
+                                wr_data <= STD_LOGIC_VECTOR(unsigned(rs1Value) + unsigned(rs2Value));
+                                wr_strobe <= '1';
+                            WHEN SUB =>
+                                wr_data <= STD_LOGIC_VECTOR(unsigned(rs1Value) - unsigned(rs2Value));
+                                wr_strobe <= '1';
                             WHEN OTHERS =>
                                 NULL;
                         END CASE;

@@ -9,5 +9,7 @@ _start:
     # Add them
     add x7, x5, x6     # x7 = x5 + x6 = 30
 
+    addi x8, x7, -5    # x7 = x7 - 5 = 25
+
     # Halt
     ebreak
