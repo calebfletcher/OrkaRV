@@ -38,7 +38,7 @@ ARCHITECTURE rtl OF Cpu IS
     SIGNAL ram_addr : STD_LOGIC_VECTOR(31 DOWNTO 0) := (OTHERS => '0');
 BEGIN
     -- halt once we hit an ebreak
-    halt <= '1' WHEN instType = EBREAK ELSE
+    halt <= '1' WHEN instType = EBREAK AND stage = EXECUTE ELSE
         '0';
 
     rs1Value <= registerFile(rs1);
@@ -48,6 +48,9 @@ BEGIN
         VARIABLE nextPc : STD_LOGIC_VECTOR(31 DOWNTO 0);
     BEGIN
         IF rising_edge(clk) THEN
+            -- default register write strobe to off
+            wr_strobe <= '0';
+
             IF reset = '1' THEN
                 pc <= (OTHERS => '0');
                 stage <= FETCH;
@@ -59,6 +62,19 @@ BEGIN
                     WHEN DECODE =>
                         stage <= EXECUTE;
                         -- todo: register decoded instruction here?
+
+                        wr_addr <= rd;
+
+                        CASE instType IS
+                            WHEN ADDI =>
+                                wr_data <= STD_LOGIC_VECTOR(unsigned(rs1Value) + unsigned(immediate));
+                                wr_strobe <= '1';
+                            WHEN OTHERS =>
+                                NULL;
+                        END CASE;
+
+                        -- todo: setup ram write addr
+
                     WHEN EXECUTE =>
                         stage <= FETCH;
 
@@ -71,8 +87,6 @@ BEGIN
             END IF;
         END IF;
     END PROCESS;
-
-    ram_addr <= pc;
 
     Registers_inst : ENTITY work.Registers
         PORT MAP(
