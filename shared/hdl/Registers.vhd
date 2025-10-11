@@ -1,9 +1,11 @@
 LIBRARY ieee;
 CONTEXT ieee.ieee_std_context;
 
+USE work.RiscVPkg.ALL;
+
 ENTITY Registers IS
     GENERIC (
-        XLEN : INTEGER := 32
+        XLEN : INTEGER := XLEN
     );
     PORT (
         -- common signals
@@ -13,6 +15,9 @@ ENTITY Registers IS
         -- program counter
         pc : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
 
+        -- registers
+        registersValue : OUT RegistersType := (OTHERS => (OTHERS => '0'));
+
         -- register writes
         wr_addr : IN INTEGER RANGE 0 TO 31;
         wr_data : IN STD_LOGIC_VECTOR(XLEN - 1 DOWNTO 0);
@@ -21,9 +26,7 @@ ENTITY Registers IS
 END ENTITY Registers;
 
 ARCHITECTURE rtl OF Registers IS
-    SIGNAL pc_file : STD_LOGIC_VECTOR(XLEN - 1 DOWNTO 0);
-
-    TYPE RegistersType IS ARRAY (0 TO 31) OF STD_LOGIC_VECTOR(XLEN - 1 DOWNTO 0);
+    SIGNAL pcFile : STD_LOGIC_VECTOR(XLEN - 1 DOWNTO 0);
     SIGNAL registerFile : RegistersType := (OTHERS => (OTHERS => '0'));
 BEGIN
 
@@ -40,5 +43,6 @@ BEGIN
         END IF;
     END PROCESS;
 
-    pc <= pc_file;
+    pc <= pcFile;
+    registersValue <= registerFile;
 END ARCHITECTURE;
