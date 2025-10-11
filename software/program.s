@@ -8,3 +8,6 @@ _start:
 
     # Add them
     add x7, x5, x6     # x7 = x5 + x6 = 30
+
+    # Halt
+    ebreak
