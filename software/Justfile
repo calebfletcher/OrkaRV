@@ -1,0 +1,21 @@
+_default:
+    @just --list
+
+clean:
+    rm -r build
+
+# Assemble a file for the processor
+assemble file:
+    mkdir -p build
+    riscv64-unknown-elf-as -march=rv32i -o build/program.o {{file}}
+    riscv64-unknown-elf-objcopy -O binary build/program.o build/program.bin
+    hexdump -v -e '1/4 "%08x\n"' build/program.bin > build/program.hex
+
+simulate file: clean (assemble file)
+    mkdir -p build/sim
+    ghdl -a --std=08 --workdir=build/sim ../shared/hdl/RiscVPkg.vhd
+    ghdl -a --std=08 --workdir=build/sim ../shared/hdl/Ram.vhd
+    ghdl -a --std=08 --workdir=build/sim ../shared/hdl/Registers.vhd
+    ghdl -a --std=08 --workdir=build/sim ../shared/hdl/InstructionDecoder.vhd
+    ghdl -a --std=08 --workdir=build/sim ../shared/hdl/Cpu.vhd
+    ghdl -r --std=08 --workdir=build/sim cpu
