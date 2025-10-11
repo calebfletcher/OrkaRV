@@ -12,9 +12,6 @@ ENTITY Registers IS
         clk : IN STD_LOGIC;
         reset : IN STD_LOGIC;
 
-        -- program counter
-        pc : OUT STD_LOGIC_VECTOR(XLEN - 1 DOWNTO 0);
-
         -- registers
         registersValue : OUT RegistersType := (OTHERS => (OTHERS => '0'));
 
@@ -26,7 +23,6 @@ ENTITY Registers IS
 END ENTITY Registers;
 
 ARCHITECTURE rtl OF Registers IS
-    SIGNAL pcFile : STD_LOGIC_VECTOR(XLEN - 1 DOWNTO 0);
     SIGNAL registerFile : RegistersType := (OTHERS => (OTHERS => '0'));
 BEGIN
 
@@ -43,6 +39,5 @@ BEGIN
         END IF;
     END PROCESS;
 
-    pc <= pcFile;
     registersValue <= registerFile;
 END ARCHITECTURE;
