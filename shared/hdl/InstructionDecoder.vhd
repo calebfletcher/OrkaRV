@@ -5,9 +5,6 @@ USE work.RiscVPkg.ALL;
 
 ENTITY InstructionDecoder IS
     PORT (
-        clk : IN STD_LOGIC;
-        reset : IN STD_LOGIC;
-
         opcode : OUT STD_LOGIC_VECTOR(6 DOWNTO 0);
         funct3 : OUT STD_LOGIC_VECTOR(2 DOWNTO 0);
         funct7 : OUT STD_LOGIC_VECTOR(6 DOWNTO 0);

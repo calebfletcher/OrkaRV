@@ -39,7 +39,7 @@ PACKAGE RiscVPkg IS
         LB, LH, LW, LBU, LHU, -- LOAD
         SB, SH, SW, -- STORE
         ADDI, SLTI, SLTIU, XORI, ORI, ANDI, SLLI, SRLI, SRAI, -- OP-IMM
-        ADD, SUB, SLL_, SLT, SLTU, XOR_, SRL_, SRA_, OR_, AND_, -- OP
+        ADD, SUB, \SLL\, SLT, SLTU, \XOR\, \SRL\, \SRA\, \OR\, \AND\, -- OP
         FENCE, FENCE_TSO, PAUSE, -- MISC-MEM
         ECALL, EBREAK, -- SYSTEM
 
@@ -60,7 +60,7 @@ PACKAGE BODY RiscVPkg IS
     FUNCTION opcodeToMajorOpcode (opcode : IN STD_LOGIC_VECTOR(6 DOWNTO 0)) RETURN MajorOpcode IS
         VARIABLE major : MajorOpcode;
     BEGIN
-        CASE opcode(7 DOWNTO 2) IS
+        CASE opcode(6 DOWNTO 2) IS
             WHEN "00000" => major := LOAD;
             WHEN "00001" => major := LOAD_FP;
             WHEN "00011" => major := MISC_MEM;
@@ -80,10 +80,10 @@ PACKAGE BODY RiscVPkg IS
             WHEN "10100" => major := OP_FP;
             WHEN "10101" => major := OP_V;
             WHEN "11000" => major := BRANCH;
-            WHEN "11000" => major := JALR;
-            WHEN "11000" => major := JAL;
-            WHEN "11000" => major := SYSTEM;
-            WHEN "11000" => major := OP_VE;
+            WHEN "11001" => major := JALR;
+            WHEN "11011" => major := JAL;
+            WHEN "11100" => major := SYSTEM;
+            WHEN "11101" => major := OP_VE;
 
             WHEN OTHERS =>
                 major := UNKNOWN;
@@ -112,6 +112,8 @@ PACKAGE BODY RiscVPkg IS
                         inst := LBU;
                     WHEN "101" =>
                         inst := LHU;
+                    WHEN OTHERS =>
+                        NULL;
                 END CASE;
             WHEN LOAD_FP =>
                 NULL;
@@ -119,6 +121,8 @@ PACKAGE BODY RiscVPkg IS
                 CASE funct3 IS
                     WHEN "000" =>
                         inst := FENCE;
+                    WHEN OTHERS =>
+                        NULL;
                 END CASE;
             WHEN OP_IMM =>
                 CASE funct3 IS
@@ -138,6 +142,8 @@ PACKAGE BODY RiscVPkg IS
                         CASE funct7 IS
                             WHEN "0000000" =>
                                 inst := SLLI;
+                            WHEN OTHERS =>
+                                NULL;
                         END CASE;
                     WHEN "101" =>
                         CASE funct7 IS
@@ -145,7 +151,11 @@ PACKAGE BODY RiscVPkg IS
                                 inst := SRLI;
                             WHEN "0100000" =>
                                 inst := SRAI;
+                            WHEN OTHERS =>
+                                NULL;
                         END CASE;
+                    WHEN OTHERS =>
+                        NULL;
                 END CASE;
             WHEN AUIPC =>
                 inst := AUIPC;
@@ -159,6 +169,8 @@ PACKAGE BODY RiscVPkg IS
                         inst := SH;
                     WHEN "010" =>
                         inst := SW;
+                    WHEN OTHERS =>
+                        NULL;
                 END CASE;
             WHEN STORE_FP =>
                 NULL;
@@ -172,44 +184,62 @@ PACKAGE BODY RiscVPkg IS
                                 inst := ADD;
                             WHEN "0100000" =>
                                 inst := SUB;
+                            WHEN OTHERS =>
+                                NULL;
                         END CASE;
                     WHEN "001" =>
                         CASE funct7 IS
                             WHEN "0000000" =>
-                                inst := SLL_;
+                                inst := \SLL\;
+                            WHEN OTHERS =>
+                                NULL;
                         END CASE;
                     WHEN "010" =>
                         CASE funct7 IS
                             WHEN "0000000" =>
                                 inst := SLT;
+                            WHEN OTHERS =>
+                                NULL;
                         END CASE;
                     WHEN "011" =>
                         CASE funct7 IS
                             WHEN "0000000" =>
                                 inst := SLTU;
+                            WHEN OTHERS =>
+                                NULL;
                         END CASE;
                     WHEN "100" =>
                         CASE funct7 IS
                             WHEN "0000000" =>
-                                inst := XOR_;
+                                inst := \XOR\;
+                            WHEN OTHERS =>
+                                NULL;
                         END CASE;
                     WHEN "101" =>
                         CASE funct7 IS
                             WHEN "0000000" =>
-                                inst := SRL_;
+                                inst := \SRL\;
                             WHEN "0100000" =>
-                                inst := SRA_;
+                                inst := \SRA\;
+                            WHEN OTHERS =>
+                                NULL;
                         END CASE;
                     WHEN "110" =>
                         CASE funct7 IS
                             WHEN "0000000" =>
-                                inst := OR_;
+                                inst := \OR\;
+                            WHEN OTHERS =>
+                                NULL;
                         END CASE;
                     WHEN "111" =>
                         CASE funct7 IS
                             WHEN "0000000" =>
-                                inst := AND_;
+                                inst := \AND\;
+                            WHEN OTHERS =>
+                                NULL;
                         END CASE;
+                    WHEN OTHERS =>
+                        NULL;
                 END CASE;
             WHEN LUI =>
                 inst := LUI;
@@ -241,6 +271,8 @@ PACKAGE BODY RiscVPkg IS
                         inst := BLTU;
                     WHEN "111" =>
                         inst := BGEU;
+                    WHEN OTHERS =>
+                        NULL;
                 END CASE;
             WHEN JALR =>
                 CASE funct3 IS
@@ -301,14 +333,14 @@ PACKAGE BODY RiscVPkg IS
 
             WHEN ADD => encoding := R;
             WHEN SUB => encoding := R;
-            WHEN SLL_ => encoding := R;
+            WHEN \SLL\ => encoding := R;
             WHEN SLT => encoding := R;
             WHEN SLTU => encoding := R;
-            WHEN XOR_ => encoding := R;
-            WHEN SRL_ => encoding := R;
-            WHEN SRA_ => encoding := R;
-            WHEN OR_ => encoding := R;
-            WHEN AND_ => encoding := R;
+            WHEN \XOR\ => encoding := R;
+            WHEN \SRL\ => encoding := R;
+            WHEN \SRA\ => encoding := R;
+            WHEN \OR\ => encoding := R;
+            WHEN \AND\ => encoding := R;
 
             WHEN FENCE => encoding := I;
             WHEN FENCE_TSO => encoding := I;
@@ -317,6 +349,8 @@ PACKAGE BODY RiscVPkg IS
             WHEN OTHERS =>
                 encoding := R;
         END CASE;
+
+        RETURN encoding;
     END FUNCTION;
 
 END PACKAGE BODY;
