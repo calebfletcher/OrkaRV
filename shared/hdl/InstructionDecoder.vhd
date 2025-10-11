@@ -5,9 +5,6 @@ USE work.RiscVPkg.ALL;
 
 ENTITY InstructionDecoder IS
     PORT (
-        opcode : OUT STD_LOGIC_VECTOR(6 DOWNTO 0);
-        funct3 : OUT STD_LOGIC_VECTOR(2 DOWNTO 0);
-        funct7 : OUT STD_LOGIC_VECTOR(6 DOWNTO 0);
         instructionType : OUT InstructionType;
 
         instruction : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
@@ -21,20 +18,13 @@ END ENTITY InstructionDecoder;
 
 ARCHITECTURE rtl OF InstructionDecoder IS
     SIGNAL encoding : InstructionEncodingType;
-
-    SIGNAL major : MajorOpcode;
 BEGIN
 
     PROCESS (ALL)
     BEGIN
-        -- extract operation
-        opcode <= instruction(6 DOWNTO 0);
-        funct3 <= instruction(14 DOWNTO 12);
-        funct7 <= instruction(31 DOWNTO 25);
 
         -- map opcodes
-        major <= opcodeToMajorOpcode(opcode);
-        instructionType <= partsToInstruction(major, funct3, funct7);
+        instructionType <= decodeInstruction(instruction);
         encoding <= instructionToEncoding(instructionType);
 
         -- extract register indexes

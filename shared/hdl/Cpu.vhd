@@ -74,9 +74,6 @@ BEGIN
 
     InstructionDecoder_inst : ENTITY work.InstructionDecoder
         PORT MAP(
-            opcode => OPEN,
-            funct3 => OPEN,
-            funct7 => OPEN,
             instructionType => instType,
             instruction => instruction,
             immediate => immediate,

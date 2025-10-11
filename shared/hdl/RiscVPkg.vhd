@@ -50,11 +50,8 @@ PACKAGE RiscVPkg IS
         UNKNOWN
     );
 
-    FUNCTION opcodeToMajorOpcode (opcode : IN STD_LOGIC_VECTOR(6 DOWNTO 0)) RETURN MajorOpcode;
-    FUNCTION partsToInstruction (
-        opcode : IN MajorOpcode;
-        funct3 : IN STD_LOGIC_VECTOR(2 DOWNTO 0);
-        funct7 : IN STD_LOGIC_VECTOR(6 DOWNTO 0)
+    FUNCTION decodeInstruction (
+        instruction : IN STD_LOGIC_VECTOR(31 DOWNTO 0)
     ) RETURN InstructionType;
     FUNCTION instructionToEncoding(inst : IN InstructionType) RETURN InstructionEncodingType;
 
@@ -95,14 +92,21 @@ PACKAGE BODY RiscVPkg IS
         RETURN major;
     END FUNCTION;
 
-    FUNCTION partsToInstruction (
-        opcode : IN MajorOpcode;
-        funct3 : IN STD_LOGIC_VECTOR(2 DOWNTO 0);
-        funct7 : IN STD_LOGIC_VECTOR(6 DOWNTO 0)
+    FUNCTION decodeInstruction (
+        instruction : IN STD_LOGIC_VECTOR(31 DOWNTO 0)
     ) RETURN InstructionType IS
         VARIABLE inst : InstructionType := UNKNOWN;
+
+        VARIABLE opcode : MajorOpcode;
+        VARIABLE funct3 : STD_LOGIC_VECTOR(2 DOWNTO 0);
+        VARIABLE funct7 : STD_LOGIC_VECTOR(6 DOWNTO 0);
     BEGIN
-        -- todo: fence.tso, pause, ecall, ebreak
+        -- extract parts
+        opcode := opcodeToMajorOpcode(instruction(6 DOWNTO 0));
+        funct3 := instruction(14 DOWNTO 12);
+        funct7 := instruction(31 DOWNTO 25);
+
+        -- todo: fence.tso, pause
         CASE opcode IS
             WHEN LOAD =>
                 CASE funct3 IS
@@ -288,7 +292,14 @@ PACKAGE BODY RiscVPkg IS
             WHEN JAL =>
                 inst := JAL;
             WHEN SYSTEM =>
-                NULL;
+                CASE instruction IS
+                    WHEN "00000000000000000000000001110011" =>
+                        inst := ECALL;
+                    WHEN "00000000000100000000000001110011" =>
+                        inst := EBREAK;
+                    WHEN OTHERS =>
+                        NULL;
+                END CASE;
             WHEN OP_VE =>
                 NULL;
 
