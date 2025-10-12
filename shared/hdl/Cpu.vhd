@@ -28,9 +28,9 @@ ARCHITECTURE rtl OF Cpu IS
     SIGNAL instType : InstructionType;
     SIGNAL instruction : STD_LOGIC_VECTOR(31 DOWNTO 0);
 
-    SIGNAL wr_addr : RegisterIndex := 0;
-    SIGNAL wr_data : STD_LOGIC_VECTOR(XLEN - 1 DOWNTO 0);
-    SIGNAL wr_strobe : STD_LOGIC;
+    SIGNAL reg_wr_addr : RegisterIndex := 0;
+    SIGNAL reg_wr_data : STD_LOGIC_VECTOR(XLEN - 1 DOWNTO 0);
+    SIGNAL reg_wr_strobe : STD_LOGIC;
 
     SIGNAL ram_we : STD_LOGIC;
     SIGNAL ram_di : STD_LOGIC_VECTOR(31 DOWNTO 0);
@@ -49,7 +49,7 @@ BEGIN
     BEGIN
         IF rising_edge(clk) THEN
             -- default register write strobe to off
-            wr_strobe <= '0';
+            reg_wr_strobe <= '0';
 
             IF reset = '1' THEN
                 pc <= (OTHERS => '0');
@@ -63,18 +63,18 @@ BEGIN
                         stage <= EXECUTE;
                         -- todo: register decoded instruction here?
 
-                        wr_addr <= rd;
+                        reg_wr_addr <= rd;
 
                         CASE instType IS
                             WHEN ADDI =>
-                                wr_data <= STD_LOGIC_VECTOR(unsigned(rs1Value) + unsigned(immediate));
-                                wr_strobe <= '1';
+                                reg_wr_data <= STD_LOGIC_VECTOR(unsigned(rs1Value) + unsigned(immediate));
+                                reg_wr_strobe <= '1';
                             WHEN ADD =>
-                                wr_data <= STD_LOGIC_VECTOR(unsigned(rs1Value) + unsigned(rs2Value));
-                                wr_strobe <= '1';
+                                reg_wr_data <= STD_LOGIC_VECTOR(unsigned(rs1Value) + unsigned(rs2Value));
+                                reg_wr_strobe <= '1';
                             WHEN SUB =>
-                                wr_data <= STD_LOGIC_VECTOR(unsigned(rs1Value) - unsigned(rs2Value));
-                                wr_strobe <= '1';
+                                reg_wr_data <= STD_LOGIC_VECTOR(unsigned(rs1Value) - unsigned(rs2Value));
+                                reg_wr_strobe <= '1';
                             WHEN OTHERS =>
                                 NULL;
                         END CASE;
@@ -100,9 +100,9 @@ BEGIN
             reset => reset,
             --pc => pc,
             registersValue => registerFile,
-            wr_addr => wr_addr,
-            wr_data => wr_data,
-            wr_strobe => wr_strobe
+            wr_addr => reg_wr_addr,
+            wr_data => reg_wr_data,
+            wr_strobe => reg_wr_strobe
         );
 
     Ram_inst : ENTITY work.Ram

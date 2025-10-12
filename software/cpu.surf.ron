@@ -899,6 +899,6 @@
         group_by_direction: false,
     ),
     rename_target: None,
-    sidepanel_width: Some(219.0),
+    sidepanel_width: Some(300.0),
     ui_zoom_factor: None,
 )
