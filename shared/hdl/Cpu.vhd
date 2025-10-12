@@ -12,7 +12,7 @@ ENTITY Cpu IS
 END ENTITY Cpu;
 
 ARCHITECTURE rtl OF Cpu IS
-    TYPE StageType IS (FETCH, DECODE, EXECUTE);
+    TYPE StageType IS (FETCH, DECODE, EXECUTE, MEMORY, WRITEBACK);
     SIGNAL stage : StageType := FETCH;
 
     SIGNAL pc : STD_LOGIC_VECTOR(XLEN - 1 DOWNTO 0) := (OTHERS => '0');
@@ -42,6 +42,14 @@ BEGIN
 
     PROCESS (clk)
         VARIABLE nextPc : STD_LOGIC_VECTOR(31 DOWNTO 0);
+
+        VARIABLE phase_ram_we : STD_LOGIC;
+        VARIABLE phase_ram_di : STD_LOGIC_VECTOR(31 DOWNTO 0);
+        VARIABLE phase_ram_addr : STD_LOGIC_VECTOR(31 DOWNTO 0);
+
+        VARIABLE phase_reg_addr : RegisterIndex;
+        VARIABLE phase_reg_data : STD_LOGIC_VECTOR(XLEN - 1 DOWNTO 0);
+        VARIABLE phase_reg_we : STD_LOGIC;
     BEGIN
         IF rising_edge(clk) THEN
             -- default register write strobe to off
@@ -50,6 +58,14 @@ BEGIN
             IF reset = '1' THEN
                 pc <= (OTHERS => '0');
                 stage <= FETCH;
+
+                phase_ram_we := '0';
+                phase_ram_di := (OTHERS => '0');
+                phase_ram_addr := (OTHERS => '0');
+
+                phase_reg_addr := 0;
+                phase_reg_data := (OTHERS => '0');
+                phase_reg_we := '0';
             ELSE
                 CASE stage IS
                     WHEN FETCH =>
@@ -59,21 +75,21 @@ BEGIN
                         stage <= EXECUTE;
                         -- todo: register decoded instruction here?
 
-                        reg_wr_addr <= rd;
+                        phase_reg_addr := rd;
 
                         CASE instType IS
                             WHEN LUI =>
-                                reg_wr_data <= immediate;
-                                reg_wr_strobe <= '1';
+                                phase_reg_data := immediate;
+                                phase_reg_we := '1';
                             WHEN ADDI =>
-                                reg_wr_data <= STD_LOGIC_VECTOR(unsigned(rs1Value) + unsigned(immediate));
-                                reg_wr_strobe <= '1';
+                                phase_reg_data := STD_LOGIC_VECTOR(unsigned(rs1Value) + unsigned(immediate));
+                                phase_reg_we := '1';
                             WHEN ADD =>
-                                reg_wr_data <= STD_LOGIC_VECTOR(unsigned(rs1Value) + unsigned(rs2Value));
-                                reg_wr_strobe <= '1';
+                                phase_reg_data := STD_LOGIC_VECTOR(unsigned(rs1Value) + unsigned(rs2Value));
+                                phase_reg_we := '1';
                             WHEN SUB =>
-                                reg_wr_data <= STD_LOGIC_VECTOR(unsigned(rs1Value) - unsigned(rs2Value));
-                                reg_wr_strobe <= '1';
+                                phase_reg_data := STD_LOGIC_VECTOR(unsigned(rs1Value) - unsigned(rs2Value));
+                                phase_reg_we := '1';
                             WHEN OTHERS =>
                                 -- on unknown instruction, halt
                                 halt <= '1';
@@ -83,12 +99,22 @@ BEGIN
                         -- todo: setup ram write addr
 
                     WHEN EXECUTE =>
+                        stage <= MEMORY;
+
+                        -- todo: ALU ops
+                    WHEN MEMORY =>
+                        stage <= WRITEBACK;
+                    WHEN WRITEBACK =>
                         stage <= FETCH;
 
-                        nextPc := STD_LOGIC_VECTOR(UNSIGNED(pc) + 4);
-                        pc <= nextPc;
+                        -- register writeback
+                        reg_wr_addr <= phase_reg_addr;
+                        reg_wr_data <= phase_reg_data;
+                        reg_wr_strobe <= phase_reg_we;
 
                         -- prepare for fetch
+                        nextPc := STD_LOGIC_VECTOR(UNSIGNED(pc) + 4);
+                        pc <= nextPc;
                         ram_addr <= nextPc;
                 END CASE;
             END IF;
