@@ -43,12 +43,14 @@ BEGIN
     PROCESS (clk)
         VARIABLE nextPc : STD_LOGIC_VECTOR(31 DOWNTO 0);
 
-        VARIABLE phase_ram_we : STD_LOGIC;
+        VARIABLE phase_ram_write : STD_LOGIC;
+        VARIABLE phase_ram_read : STD_LOGIC;
         VARIABLE phase_ram_di : STD_LOGIC_VECTOR(31 DOWNTO 0);
         VARIABLE phase_ram_addr : STD_LOGIC_VECTOR(31 DOWNTO 0);
 
         VARIABLE phase_reg_addr : RegisterIndex;
         VARIABLE phase_reg_data : STD_LOGIC_VECTOR(XLEN - 1 DOWNTO 0);
+        VARIABLE phase_reg_data_from_ram : STD_LOGIC := '0';
         VARIABLE phase_reg_we : STD_LOGIC;
     BEGIN
         IF rising_edge(clk) THEN
@@ -59,12 +61,14 @@ BEGIN
                 pc <= (OTHERS => '0');
                 stage <= FETCH;
 
-                phase_ram_we := '0';
+                phase_ram_write := '0';
+                phase_ram_read := '0';
                 phase_ram_di := (OTHERS => '0');
                 phase_ram_addr := (OTHERS => '0');
 
                 phase_reg_addr := 0;
                 phase_reg_data := (OTHERS => '0');
+                phase_reg_data_from_ram := '0';
                 phase_reg_we := '0';
             ELSE
                 CASE stage IS
@@ -76,6 +80,14 @@ BEGIN
                         -- todo: register decoded instruction here?
 
                         phase_reg_addr := rd;
+                        phase_reg_data := (OTHERS => '0');
+                        phase_reg_data_from_ram := '0';
+                        phase_reg_we := '0';
+
+                        phase_ram_addr := (OTHERS => '0');
+                        phase_ram_di := (OTHERS => '0');
+                        phase_ram_write := '0';
+                        phase_ram_read := '0';
 
                         CASE instType IS
                             WHEN LUI =>
@@ -90,6 +102,9 @@ BEGIN
                             WHEN SUB =>
                                 phase_reg_data := STD_LOGIC_VECTOR(unsigned(rs1Value) - unsigned(rs2Value));
                                 phase_reg_we := '1';
+                            WHEN LW =>
+                                phase_ram_addr := STD_LOGIC_VECTOR(unsigned(rs1Value) + unsigned(immediate));
+                                phase_ram_read := '1';
                             WHEN OTHERS =>
                                 -- on unknown instruction, halt
                                 halt <= '1';
@@ -104,12 +119,24 @@ BEGIN
                         -- todo: ALU ops
                     WHEN MEMORY =>
                         stage <= WRITEBACK;
+
+                        -- setup ram request
+                        ram_addr <= phase_ram_addr;
+                        ram_we <= phase_ram_write;
+                        ram_di <= phase_ram_di;
+
+                        IF phase_ram_read THEN
+                            phase_reg_data_from_ram := '1';
+                            phase_reg_we := '1';
+                        END IF;
+
                     WHEN WRITEBACK =>
                         stage <= FETCH;
 
                         -- register writeback
                         reg_wr_addr <= phase_reg_addr;
-                        reg_wr_data <= phase_reg_data;
+                        reg_wr_data <= ram_do WHEN phase_reg_data_from_ram ELSE
+                            phase_reg_data;
                         reg_wr_strobe <= phase_reg_we;
 
                         -- prepare for fetch
