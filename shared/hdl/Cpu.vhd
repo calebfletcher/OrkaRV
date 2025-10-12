@@ -37,10 +37,6 @@ ARCHITECTURE rtl OF Cpu IS
     SIGNAL ram_do : STD_LOGIC_VECTOR(31 DOWNTO 0);
     SIGNAL ram_addr : STD_LOGIC_VECTOR(31 DOWNTO 0) := (OTHERS => '0');
 BEGIN
-    -- halt once we hit an ebreak
-    halt <= '1' WHEN instType = EBREAK AND stage = EXECUTE ELSE
-        '0';
-
     rs1Value <= registerFile(rs1);
     rs2Value <= registerFile(rs2);
 
@@ -66,6 +62,9 @@ BEGIN
                         reg_wr_addr <= rd;
 
                         CASE instType IS
+                            WHEN LUI =>
+                                reg_wr_data <= immediate;
+                                reg_wr_strobe <= '1';
                             WHEN ADDI =>
                                 reg_wr_data <= STD_LOGIC_VECTOR(unsigned(rs1Value) + unsigned(immediate));
                                 reg_wr_strobe <= '1';
@@ -76,6 +75,8 @@ BEGIN
                                 reg_wr_data <= STD_LOGIC_VECTOR(unsigned(rs1Value) - unsigned(rs2Value));
                                 reg_wr_strobe <= '1';
                             WHEN OTHERS =>
+                                -- on unknown instruction, halt
+                                halt <= '1';
                                 NULL;
                         END CASE;
 
