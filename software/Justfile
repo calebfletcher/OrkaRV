@@ -22,4 +22,4 @@ simulate file: clean (assemble file)
     ghdl -r --std=08 --workdir=build/sim cputb --wave=build/sim/out.ghw
 
 gui file: (simulate file)
-    surfer build/sim/out.ghw
+    surfer -s cpu.surf.ron build/sim/out.ghw
