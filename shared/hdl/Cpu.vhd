@@ -16,7 +16,6 @@ ARCHITECTURE rtl OF Cpu IS
     SIGNAL stage : StageType := FETCH;
 
     SIGNAL pc : STD_LOGIC_VECTOR(XLEN - 1 DOWNTO 0) := (OTHERS => '0');
-    SIGNAL registerFile : RegistersType;
 
     SIGNAL rs1 : RegisterIndex;
     SIGNAL rs2 : RegisterIndex;
@@ -37,9 +36,6 @@ ARCHITECTURE rtl OF Cpu IS
     SIGNAL ram_do : STD_LOGIC_VECTOR(31 DOWNTO 0);
     SIGNAL ram_addr : STD_LOGIC_VECTOR(31 DOWNTO 0) := (OTHERS => '0');
 BEGIN
-    rs1Value <= registerFile(rs1);
-    rs2Value <= registerFile(rs2);
-
     PROCESS (clk)
         VARIABLE nextPc : STD_LOGIC_VECTOR(31 DOWNTO 0);
 
@@ -152,8 +148,10 @@ BEGIN
         PORT MAP(
             clk => clk,
             reset => reset,
-            --pc => pc,
-            registersValue => registerFile,
+            rs1 => rs1,
+            rs1Value => rs1Value,
+            rs2 => rs2,
+            rs2Value => rs2Value,
             wr_addr => reg_wr_addr,
             wr_data => reg_wr_data,
             wr_strobe => reg_wr_strobe

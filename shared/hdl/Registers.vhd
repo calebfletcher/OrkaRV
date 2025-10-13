@@ -12,8 +12,11 @@ ENTITY Registers IS
         clk : IN STD_LOGIC;
         reset : IN STD_LOGIC;
 
-        -- registers
-        registersValue : OUT RegistersType := (OTHERS => (OTHERS => '0'));
+        -- register reads
+        rs1 : IN RegisterIndex;
+        rs2 : IN RegisterIndex;
+        rs1Value : OUT STD_LOGIC_VECTOR(XLEN - 1 DOWNTO 0);
+        rs2Value : OUT STD_LOGIC_VECTOR(XLEN - 1 DOWNTO 0);
 
         -- register writes
         wr_addr : IN RegisterIndex;
@@ -39,5 +42,6 @@ BEGIN
         END IF;
     END PROCESS;
 
-    registersValue <= registerFile;
+    rs1Value <= registerFile(rs1);
+    rs2Value <= registerFile(rs2);
 END ARCHITECTURE;
