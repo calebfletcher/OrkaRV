@@ -4,6 +4,9 @@ CONTEXT ieee.ieee_std_context;
 USE work.RiscVPkg.ALL;
 
 ENTITY Cpu IS
+    GENERIC (
+        TPD_G : TIME := 1 ns
+    );
     PORT (
         clk : IN STD_LOGIC;
         reset : IN STD_LOGIC;
@@ -13,9 +16,57 @@ END ENTITY Cpu;
 
 ARCHITECTURE rtl OF Cpu IS
     TYPE StageType IS (FETCH, DECODE, EXECUTE, MEMORY, WRITEBACK);
-    SIGNAL stage : StageType := FETCH;
+    TYPE RegWriteSourceType IS (NONE_SRC, MEMORY_SRC, ALU_SRC, IMMEDIATE_SRC);
 
-    SIGNAL pc : STD_LOGIC_VECTOR(XLEN - 1 DOWNTO 0) := (OTHERS => '0');
+    TYPE RegType IS RECORD
+        stage : StageType;
+        pc : STD_LOGIC_VECTOR(XLEN - 1 DOWNTO 0);
+        instruction : STD_LOGIC_VECTOR(31 DOWNTO 0);
+
+        -- ram write control
+        ramAddr : STD_LOGIC_VECTOR(31 DOWNTO 0);
+        ramDin : STD_LOGIC_VECTOR(31 DOWNTO 0);
+        ramWe : STD_LOGIC;
+
+        -- register write control
+        regWrAddr : RegisterIndex;
+        regWrData : STD_LOGIC_VECTOR(XLEN - 1 DOWNTO 0);
+        regWrStrobe : STD_LOGIC;
+
+        -- alu
+        aluResult : STD_LOGIC_VECTOR(31 DOWNTO 0); -- todo: XLEN?
+
+        ramReadData : STD_LOGIC_VECTOR(31 DOWNTO 0);
+
+        -- control signals
+        opMemWrite : STD_LOGIC;
+        opRegWriteSource : RegWriteSourceType;
+
+        halt : STD_LOGIC;
+    END RECORD RegType;
+
+    CONSTANT REG_INIT_C : RegType := (
+        stage => FETCH,
+        pc => (OTHERS => '0'),
+        instruction => (OTHERS => '0'),
+        ramAddr => (OTHERS => '0'),
+        ramDin => (OTHERS => '0'),
+        ramWe => '0',
+        regWrAddr => 0,
+        regWrData => (OTHERS => '0'),
+        regWrStrobe => '0',
+        aluResult => (OTHERS => '0'),
+        ramReadData => (OTHERS => '0'),
+        opMemWrite => '0',
+        opRegWriteSource => NONE_SRC,
+        halt => '0'
+    );
+
+    SIGNAL r : RegType := REG_INIT_C;
+    SIGNAL rin : RegType;
+
+    -- intermediate signals
+    SIGNAL ramDout : STD_LOGIC_VECTOR(31 DOWNTO 0);
 
     SIGNAL rs1 : RegisterIndex;
     SIGNAL rs2 : RegisterIndex;
@@ -25,122 +76,99 @@ ARCHITECTURE rtl OF Cpu IS
     SIGNAL immediate : STD_LOGIC_VECTOR(XLEN - 1 DOWNTO 0);
 
     SIGNAL instType : InstructionType;
-    SIGNAL instruction : STD_LOGIC_VECTOR(31 DOWNTO 0);
-
-    SIGNAL reg_wr_addr : RegisterIndex := 0;
-    SIGNAL reg_wr_data : STD_LOGIC_VECTOR(XLEN - 1 DOWNTO 0);
-    SIGNAL reg_wr_strobe : STD_LOGIC;
-
-    SIGNAL ram_we : STD_LOGIC;
-    SIGNAL ram_di : STD_LOGIC_VECTOR(31 DOWNTO 0);
-    SIGNAL ram_do : STD_LOGIC_VECTOR(31 DOWNTO 0);
-    SIGNAL ram_addr : STD_LOGIC_VECTOR(31 DOWNTO 0) := (OTHERS => '0');
 BEGIN
+    PROCESS (ALL)
+        VARIABLE v : regType;
+    BEGIN
+        -- initialise from existing state
+        v := r;
+
+        v.regWrStrobe := '0';
+
+        CASE (r.stage) IS
+            WHEN FETCH =>
+                v.instruction := ramDout;
+                v.pc := STD_LOGIC_VECTOR(UNSIGNED(v.pc) + 4);
+
+                v.stage := DECODE;
+            WHEN DECODE =>
+                -- todo: register decoded instruction here?
+
+                v.opRegWriteSource := NONE_SRC;
+                v.opMemWrite := '0';
+
+                CASE instType IS
+                    WHEN LUI =>
+                        v.opRegWriteSource := IMMEDIATE_SRC;
+                    WHEN ADDI =>
+                        v.aluResult := STD_LOGIC_VECTOR(unsigned(rs1Value) + unsigned(immediate));
+                        v.opRegWriteSource := ALU_SRC;
+                    WHEN ADD =>
+                        v.aluResult := STD_LOGIC_VECTOR(unsigned(rs1Value) + unsigned(rs2Value));
+                        v.opRegWriteSource := ALU_SRC;
+                    WHEN SUB =>
+                        v.aluResult := STD_LOGIC_VECTOR(unsigned(rs1Value) - unsigned(rs2Value));
+                        v.opRegWriteSource := ALU_SRC;
+                    WHEN LW =>
+                        v.aluResult := STD_LOGIC_VECTOR(unsigned(rs1Value) + unsigned(immediate));
+                        v.opRegWriteSource := MEMORY_SRC;
+                    WHEN SW =>
+                        v.opMemWrite := '1';
+                    WHEN OTHERS =>
+                        -- on unknown instruction, halt
+                        v.halt := '1';
+                        NULL;
+                END CASE;
+
+                v.stage := EXECUTE;
+            WHEN EXECUTE =>
+                --v.alu_result := ;
+                v.stage := MEMORY;
+
+                -- prepare memory ops in advance due to the memory latency
+                v.ramAddr := r.aluResult; -- todo: check
+                v.ramWe := r.opMemWrite;
+                v.ramDin := rs1Value; -- todo: check if it is always this
+            WHEN MEMORY =>
+                v.ramReadData := ramDout;
+
+                -- prepare ram read for fetch in advance due to the memory latency
+                v.ramAddr := r.pc;
+                v.ramWe := '0';
+
+                v.stage := WRITEBACK;
+            WHEN WRITEBACK =>
+                -- write to register from alu, ram, or immediate
+                v.regWrStrobe := '1' WHEN r.opRegWriteSource /= NONE_SRC ELSE
+                '0';
+                v.regWrAddr := rd;
+
+                CASE r.opRegWriteSource IS
+                    WHEN MEMORY_SRC => v.regWrData := r.ramReadData;
+                    WHEN ALU_SRC => v.regWrData := r.aluResult;
+                    WHEN IMMEDIATE_SRC => v.regWrData := immediate;
+                    WHEN OTHERS =>
+                        v.regWrData := (OTHERS => '0');
+                END CASE;
+
+                v.stage := FETCH;
+        END CASE;
+
+        IF reset THEN
+            v := REG_INIT_C;
+        END IF;
+
+        -- set nextstate
+        rin <= v;
+
+        -- update outputs
+        halt <= r.halt;
+    END PROCESS;
+
     PROCESS (clk)
-        VARIABLE nextPc : STD_LOGIC_VECTOR(31 DOWNTO 0);
-
-        VARIABLE phase_ram_write : STD_LOGIC;
-        VARIABLE phase_ram_read : STD_LOGIC;
-        VARIABLE phase_ram_di : STD_LOGIC_VECTOR(31 DOWNTO 0);
-        VARIABLE phase_ram_addr : STD_LOGIC_VECTOR(31 DOWNTO 0);
-
-        VARIABLE phase_reg_addr : RegisterIndex;
-        VARIABLE phase_reg_data : STD_LOGIC_VECTOR(XLEN - 1 DOWNTO 0);
-        VARIABLE phase_reg_data_from_ram : STD_LOGIC := '0';
-        VARIABLE phase_reg_we : STD_LOGIC;
     BEGIN
         IF rising_edge(clk) THEN
-            -- default register write strobe to off
-            reg_wr_strobe <= '0';
-
-            IF reset = '1' THEN
-                pc <= (OTHERS => '0');
-                stage <= FETCH;
-
-                phase_ram_write := '0';
-                phase_ram_read := '0';
-                phase_ram_di := (OTHERS => '0');
-                phase_ram_addr := (OTHERS => '0');
-
-                phase_reg_addr := 0;
-                phase_reg_data := (OTHERS => '0');
-                phase_reg_data_from_ram := '0';
-                phase_reg_we := '0';
-            ELSE
-                CASE stage IS
-                    WHEN FETCH =>
-                        stage <= DECODE;
-                        instruction <= ram_do;
-                    WHEN DECODE =>
-                        stage <= EXECUTE;
-                        -- todo: register decoded instruction here?
-
-                        phase_reg_addr := rd;
-                        phase_reg_data := (OTHERS => '0');
-                        phase_reg_data_from_ram := '0';
-                        phase_reg_we := '0';
-
-                        phase_ram_addr := (OTHERS => '0');
-                        phase_ram_di := (OTHERS => '0');
-                        phase_ram_write := '0';
-                        phase_ram_read := '0';
-
-                        CASE instType IS
-                            WHEN LUI =>
-                                phase_reg_data := immediate;
-                                phase_reg_we := '1';
-                            WHEN ADDI =>
-                                phase_reg_data := STD_LOGIC_VECTOR(unsigned(rs1Value) + unsigned(immediate));
-                                phase_reg_we := '1';
-                            WHEN ADD =>
-                                phase_reg_data := STD_LOGIC_VECTOR(unsigned(rs1Value) + unsigned(rs2Value));
-                                phase_reg_we := '1';
-                            WHEN SUB =>
-                                phase_reg_data := STD_LOGIC_VECTOR(unsigned(rs1Value) - unsigned(rs2Value));
-                                phase_reg_we := '1';
-                            WHEN LW =>
-                                phase_ram_addr := STD_LOGIC_VECTOR(unsigned(rs1Value) + unsigned(immediate));
-                                phase_ram_read := '1';
-                            WHEN OTHERS =>
-                                -- on unknown instruction, halt
-                                halt <= '1';
-                                NULL;
-                        END CASE;
-
-                        -- todo: setup ram write addr
-
-                    WHEN EXECUTE =>
-                        stage <= MEMORY;
-
-                        -- todo: ALU ops
-                    WHEN MEMORY =>
-                        stage <= WRITEBACK;
-
-                        -- setup ram request
-                        ram_addr <= phase_ram_addr;
-                        ram_we <= phase_ram_write;
-                        ram_di <= phase_ram_di;
-
-                        IF phase_ram_read THEN
-                            phase_reg_data_from_ram := '1';
-                            phase_reg_we := '1';
-                        END IF;
-
-                    WHEN WRITEBACK =>
-                        stage <= FETCH;
-
-                        -- register writeback
-                        reg_wr_addr <= phase_reg_addr;
-                        reg_wr_data <= ram_do WHEN phase_reg_data_from_ram ELSE
-                            phase_reg_data;
-                        reg_wr_strobe <= phase_reg_we;
-
-                        -- prepare for fetch
-                        nextPc := STD_LOGIC_VECTOR(UNSIGNED(pc) + 4);
-                        pc <= nextPc;
-                        ram_addr <= nextPc;
-                END CASE;
-            END IF;
+            r <= rin AFTER TPD_G;
         END IF;
     END PROCESS;
 
@@ -152,28 +180,29 @@ BEGIN
             rs1Value => rs1Value,
             rs2 => rs2,
             rs2Value => rs2Value,
-            wr_addr => reg_wr_addr,
-            wr_data => reg_wr_data,
-            wr_strobe => reg_wr_strobe
+            wr_addr => r.regWrAddr,
+            wr_data => r.regWrData,
+            wr_strobe => r.regWrStrobe
         );
 
     Ram_inst : ENTITY work.Ram
         PORT MAP(
             clk => clk,
-            we => ram_we,
+            we => r.ramWe,
             -- word-addressed
-            addr => ram_addr(7 DOWNTO 2),
-            di => ram_di,
-            do => ram_do
+            addr => r.ramAddr(7 DOWNTO 2),
+            di => r.ramDin,
+            do => ramDout
         );
 
     InstructionDecoder_inst : ENTITY work.InstructionDecoder
         PORT MAP(
             instructionType => instType,
-            instruction => instruction,
+            instruction => r.instruction,
             immediate => immediate,
             rs1 => rs1,
             rs2 => rs2,
             rd => rd
         );
+
 END ARCHITECTURE;
