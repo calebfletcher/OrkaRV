@@ -36,8 +36,6 @@ ARCHITECTURE rtl OF Cpu IS
         -- alu
         aluResult : STD_LOGIC_VECTOR(31 DOWNTO 0); -- todo: XLEN?
 
-        ramReadData : STD_LOGIC_VECTOR(31 DOWNTO 0);
-
         -- control signals
         opMemWrite : STD_LOGIC;
         opRegWriteSource : RegWriteSourceType;
@@ -56,7 +54,6 @@ ARCHITECTURE rtl OF Cpu IS
         regWrData => (OTHERS => '0'),
         regWrStrobe => '0',
         aluResult => (OTHERS => '0'),
-        ramReadData => (OTHERS => '0'),
         opMemWrite => '0',
         opRegWriteSource => NONE_SRC,
         halt => '0'
@@ -113,6 +110,7 @@ BEGIN
                         v.aluResult := STD_LOGIC_VECTOR(unsigned(rs1Value) + unsigned(immediate));
                         v.opRegWriteSource := MEMORY_SRC;
                     WHEN SW =>
+                        v.aluResult := STD_LOGIC_VECTOR(unsigned(rs1Value) + unsigned(immediate));
                         v.opMemWrite := '1';
                     WHEN OTHERS =>
                         -- on unknown instruction, halt
@@ -126,12 +124,10 @@ BEGIN
                 v.stage := MEMORY;
 
                 -- prepare memory ops in advance due to the memory latency
-                v.ramAddr := r.aluResult; -- todo: check
+                v.ramAddr := r.aluResult;
                 v.ramWe := r.opMemWrite;
-                v.ramDin := rs1Value; -- todo: check if it is always this
+                v.ramDin := rs2Value;
             WHEN MEMORY =>
-                v.ramReadData := ramDout;
-
                 -- prepare ram read for fetch in advance due to the memory latency
                 v.ramAddr := r.pc;
                 v.ramWe := '0';
@@ -144,7 +140,7 @@ BEGIN
                 v.regWrAddr := rd;
 
                 CASE r.opRegWriteSource IS
-                    WHEN MEMORY_SRC => v.regWrData := r.ramReadData;
+                    WHEN MEMORY_SRC => v.regWrData := ramDout;
                     WHEN ALU_SRC => v.regWrData := r.aluResult;
                     WHEN IMMEDIATE_SRC => v.regWrData := immediate;
                     WHEN OTHERS =>
