@@ -16,11 +16,16 @@ END ENTITY Cpu;
 
 ARCHITECTURE rtl OF Cpu IS
     TYPE StageType IS (FETCH, DECODE, EXECUTE, MEMORY, WRITEBACK);
-    TYPE RegWriteSourceType IS (NONE_SRC, MEMORY_SRC, ALU_SRC, IMMEDIATE_SRC);
+    TYPE RegWriteSourceType IS (NONE_SRC, MEMORY_SRC, ALU_SRC, IMMEDIATE_SRC, SUCC_PC_SRC);
 
     TYPE RegType IS RECORD
         stage : StageType;
+        -- address of the current instruction, will be updated if there
+        -- are jumps
         pc : STD_LOGIC_VECTOR(XLEN - 1 DOWNTO 0);
+        -- address of the instruction directly after the current one
+        successivePc : STD_LOGIC_VECTOR(XLEN - 1 DOWNTO 0);
+
         instruction : STD_LOGIC_VECTOR(31 DOWNTO 0);
 
         -- ram write control
@@ -39,6 +44,7 @@ ARCHITECTURE rtl OF Cpu IS
         -- control signals
         opMemWrite : STD_LOGIC;
         opRegWriteSource : RegWriteSourceType;
+        opPcFromAlu : STD_LOGIC;
 
         halt : STD_LOGIC;
     END RECORD RegType;
@@ -46,6 +52,7 @@ ARCHITECTURE rtl OF Cpu IS
     CONSTANT REG_INIT_C : RegType := (
         stage => FETCH,
         pc => (OTHERS => '0'),
+        successivePc => (OTHERS => '0'),
         instruction => (OTHERS => '0'),
         ramAddr => (OTHERS => '0'),
         ramDin => (OTHERS => '0'),
@@ -56,6 +63,7 @@ ARCHITECTURE rtl OF Cpu IS
         aluResult => (OTHERS => '0'),
         opMemWrite => '0',
         opRegWriteSource => NONE_SRC,
+        opPcFromAlu => '0',
         halt => '0'
     );
 
@@ -85,7 +93,8 @@ BEGIN
         CASE (r.stage) IS
             WHEN FETCH =>
                 v.instruction := ramDout;
-                v.pc := STD_LOGIC_VECTOR(UNSIGNED(v.pc) + 4);
+
+                v.successivePc := STD_LOGIC_VECTOR(UNSIGNED(r.pc) + 4);
 
                 v.stage := DECODE;
             WHEN DECODE =>
@@ -93,6 +102,7 @@ BEGIN
 
                 v.opRegWriteSource := NONE_SRC;
                 v.opMemWrite := '0';
+                v.opPcFromAlu := '0';
 
                 CASE instType IS
                     WHEN LUI =>
@@ -112,6 +122,14 @@ BEGIN
                     WHEN SW =>
                         v.aluResult := STD_LOGIC_VECTOR(unsigned(rs1Value) + unsigned(immediate));
                         v.opMemWrite := '1';
+                    WHEN JAL =>
+                        v.aluResult := STD_LOGIC_VECTOR(unsigned(r.pc) + unsigned(immediate));
+                        v.opRegWriteSource := SUCC_PC_SRC;
+                        v.opPcFromAlu := '1';
+                    WHEN JALR =>
+                        v.aluResult := STD_LOGIC_VECTOR(unsigned(rs1Value) + unsigned(immediate));
+                        v.opRegWriteSource := SUCC_PC_SRC;
+                        v.opPcFromAlu := '1';
                     WHEN OTHERS =>
                         -- on unknown instruction, halt
                         v.halt := '1';
@@ -128,8 +146,15 @@ BEGIN
                 v.ramWe := r.opMemWrite;
                 v.ramDin := rs2Value;
             WHEN MEMORY =>
+                IF v.opPcFromAlu THEN
+                    v.pc := r.aluResult(31 DOWNTO 1) & "0";
+                ELSE
+                    v.pc := r.successivePc;
+                END IF;
+
                 -- prepare ram read for fetch in advance due to the memory latency
-                v.ramAddr := r.pc;
+                -- use v.nextPc so it takes into account jumps
+                v.ramAddr := v.pc;
                 v.ramWe := '0';
 
                 v.stage := WRITEBACK;
@@ -143,6 +168,7 @@ BEGIN
                     WHEN MEMORY_SRC => v.regWrData := ramDout;
                     WHEN ALU_SRC => v.regWrData := r.aluResult;
                     WHEN IMMEDIATE_SRC => v.regWrData := immediate;
+                    WHEN SUCC_PC_SRC => v.regWrData := r.successivePc;
                     WHEN OTHERS =>
                         v.regWrData := (OTHERS => '0');
                 END CASE;

@@ -2,7 +2,10 @@
     .globl _start
 
 _start:
-    j foo
+    j bar
 foo:
-
+    j end
+bar:
+    j foo
+end:
     ebreak
