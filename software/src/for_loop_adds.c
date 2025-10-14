@@ -9,4 +9,5 @@ void _start()
     {
         value2 += value1;
     }
+    __asm__("ebreak\n\t");
 }

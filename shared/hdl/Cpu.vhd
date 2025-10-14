@@ -130,6 +130,30 @@ BEGIN
                         v.aluResult := STD_LOGIC_VECTOR(unsigned(rs1Value) + unsigned(immediate));
                         v.opRegWriteSource := SUCC_PC_SRC;
                         v.opPcFromAlu := '1';
+                    WHEN BEQ =>
+                        v.aluResult := STD_LOGIC_VECTOR(unsigned(r.pc) + unsigned(immediate));
+                        v.opPcFromAlu := '1' WHEN rs1Value = rs2Value ELSE
+                        '0';
+                    WHEN BNE =>
+                        v.aluResult := STD_LOGIC_VECTOR(unsigned(r.pc) + unsigned(immediate));
+                        v.opPcFromAlu := '1' WHEN rs1Value /= rs2Value ELSE
+                        '0';
+                    WHEN BLT =>
+                        v.aluResult := STD_LOGIC_VECTOR(unsigned(r.pc) + unsigned(immediate));
+                        v.opPcFromAlu := '1' WHEN SIGNED(rs1Value) < SIGNED(rs2Value) ELSE
+                        '0';
+                    WHEN BLTU =>
+                        v.aluResult := STD_LOGIC_VECTOR(unsigned(r.pc) + unsigned(immediate));
+                        v.opPcFromAlu := '1' WHEN UNSIGNED(rs1Value) < UNSIGNED(rs2Value) ELSE
+                        '0';
+                    WHEN BGE =>
+                        v.aluResult := STD_LOGIC_VECTOR(unsigned(r.pc) + unsigned(immediate));
+                        v.opPcFromAlu := '1' WHEN SIGNED(rs1Value) >= SIGNED(rs2Value) ELSE
+                        '0';
+                    WHEN BGEU =>
+                        v.aluResult := STD_LOGIC_VECTOR(unsigned(r.pc) + unsigned(immediate));
+                        v.opPcFromAlu := '1' WHEN UNSIGNED(rs1Value) >= UNSIGNED(rs2Value) ELSE
+                        '0';
                     WHEN OTHERS =>
                         -- on unknown instruction, halt
                         v.halt := '1';
