@@ -33,31 +33,33 @@ BEGIN
         rd <= to_integer(unsigned(instruction(11 DOWNTO 7)));
 
         -- extract immediate
-        CASE encoding IS
-            WHEN R =>
+        CASE instruction(6 DOWNTO 2) IS
+            WHEN "01100" =>
                 immediate <= (OTHERS => '0');
-            WHEN I =>
+            WHEN "11001" | "00000" | "00011" =>
                 immediate(31 DOWNTO 11) <= (OTHERS => instruction(31));
                 immediate(10 DOWNTO 0) <= instruction(30 DOWNTO 20);
-            WHEN S =>
+            WHEN "01000" | "00100" =>
                 immediate(31 DOWNTO 11) <= (OTHERS => instruction(31));
                 immediate(10 DOWNTO 5) <= instruction(30 DOWNTO 25);
                 immediate(4 DOWNTO 0) <= instruction(11 DOWNTO 7);
-            WHEN B =>
+            WHEN "11000" =>
                 immediate(31 DOWNTO 12) <= (OTHERS => instruction(31));
                 immediate(11) <= instruction(7);
                 immediate(10 DOWNTO 5) <= instruction(30 DOWNTO 25);
                 immediate(4 DOWNTO 1) <= instruction(11 DOWNTO 8);
                 immediate(0) <= '0';
-            WHEN U =>
+            WHEN "01101" | "00101" =>
                 immediate(31 DOWNTO 12) <= instruction(31 DOWNTO 12);
                 immediate(11 DOWNTO 0) <= "000000000000";
-            WHEN J =>
+            WHEN "11011" =>
                 immediate(31 DOWNTO 20) <= (OTHERS => instruction(31));
                 immediate(19 DOWNTO 12) <= instruction(19 DOWNTO 12);
                 immediate(11) <= instruction(20);
                 immediate(10 DOWNTO 1) <= instruction(30 DOWNTO 21);
                 immediate(0) <= '0';
+            WHEN OTHERS =>
+                immediate <= (OTHERS => '0');
         END CASE;
     END PROCESS;
 

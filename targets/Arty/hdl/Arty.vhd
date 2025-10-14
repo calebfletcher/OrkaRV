@@ -19,4 +19,11 @@ ARCHITECTURE rtl OF Arty IS
 
 BEGIN
 
+    Cpu_inst : ENTITY work.Cpu
+        PORT MAP(
+            clk => CLK100MHZ,
+            reset => NOT ck_rstn,
+            halt => led(0)
+        );
+
 END ARCHITECTURE;
