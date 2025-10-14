@@ -30,6 +30,8 @@ ARCHITECTURE rtl OF Ram IS
         VARIABLE RamFileLine : line;
         VARIABLE RamTemp : RamType := (OTHERS => (OTHERS => '0'));
         VARIABLE status : FILE_OPEN_STATUS;
+        VARIABLE line_count : NATURAL := 0;
+        VARIABLE extra_lines : NATURAL := 0;
     BEGIN
         FILE_OPEN(status, RamFile, RamFileName, READ_MODE);
         IF status = OPEN_OK THEN
@@ -39,7 +41,19 @@ ARCHITECTURE rtl OF Ram IS
                 END IF;
                 readline (RamFile, RamFileLine);
                 hex_read (RamFileLine, RamTemp(I));
+                line_count := line_count + 1;
             END LOOP;
+            -- Check if file still has data after filling the RAM
+            IF NOT endfile(RamFile) THEN
+                WHILE NOT endfile(RamFile) LOOP
+                    readline (RamFile, RamFileLine);
+                    extra_lines := extra_lines + 1;
+                END LOOP;
+                REPORT "RAM initialization file '" & RamFileName & "' is too big (" &
+                    INTEGER'image(line_count + extra_lines) & " lines, expected <= " &
+                    INTEGER'image(RamType'length) & ")"
+                    SEVERITY error;
+            END IF;
             FILE_CLOSE(RamFile);
         ELSE
             REPORT "RAM initialization file '" & RamFileName & "' does not exist!" SEVERITY error;
