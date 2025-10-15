@@ -5,6 +5,9 @@ LIBRARY std;
 USE std.textio.ALL;
 
 ENTITY Ram IS
+    GENERIC (
+        RAM_FILE_PATH_G : STRING
+    );
     PORT (
         clk : IN STD_LOGIC;
         we : IN STD_LOGIC;
@@ -61,7 +64,7 @@ ARCHITECTURE rtl OF Ram IS
         RETURN RamTemp;
     END FUNCTION;
 
-    SIGNAL ramValue : RamType := InitRamFromFile("build/program.hex");
+    SIGNAL ramValue : RamType := InitRamFromFile(RAM_FILE_PATH_G);
 BEGIN
     PROCESS (clk)
     BEGIN

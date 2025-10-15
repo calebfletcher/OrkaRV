@@ -20,6 +20,9 @@ ARCHITECTURE rtl OF Arty IS
 BEGIN
 
     Cpu_inst : ENTITY work.Cpu
+        GENERIC MAP(
+            RAM_FILE_PATH_G => "../../software/build/program.hex"
+        )
         PORT MAP(
             clk => CLK100MHZ,
             reset => NOT ck_rstn,

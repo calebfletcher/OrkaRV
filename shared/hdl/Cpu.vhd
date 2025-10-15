@@ -5,7 +5,8 @@ USE work.RiscVPkg.ALL;
 
 ENTITY Cpu IS
     GENERIC (
-        TPD_G : TIME := 1 ns
+        TPD_G : TIME := 1 ns;
+        RAM_FILE_PATH_G : STRING := "build/program.hex"
     );
     PORT (
         clk : IN STD_LOGIC;
@@ -247,6 +248,9 @@ BEGIN
         );
 
     Ram_inst : ENTITY work.Ram
+        GENERIC MAP(
+            RAM_FILE_PATH_G => RAM_FILE_PATH_G
+        )
         PORT MAP(
             clk => clk,
             we => r.ramWe,
