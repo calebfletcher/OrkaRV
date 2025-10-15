@@ -29,8 +29,9 @@ ARCHITECTURE rtl OF Cpu IS
         instruction : STD_LOGIC_VECTOR(31 DOWNTO 0);
         immediate : STD_LOGIC_VECTOR(31 DOWNTO 0);
         instType : InstructionType;
-        rs1Value : STD_LOGIC_VECTOR(XLEN - 1 DOWNTO 0);
-        rs2Value : STD_LOGIC_VECTOR(XLEN - 1 DOWNTO 0);
+        rs1 : RegisterIndex;
+        rs2 : RegisterIndex;
+        rd : RegisterIndex;
 
         -- ram write control
         ramAddr : STD_LOGIC_VECTOR(31 DOWNTO 0);
@@ -60,8 +61,9 @@ ARCHITECTURE rtl OF Cpu IS
         instruction => (OTHERS => '0'),
         immediate => (OTHERS => '0'),
         instType => UNKNOWN,
-        rs1Value => (OTHERS => '0'),
-        rs2Value => (OTHERS => '0'),
+        rs1 => 0,
+        rs2 => 0,
+        rd => 0,
         ramAddr => (OTHERS => '0'),
         ramDin => (OTHERS => '0'),
         ramWe => '0',
@@ -103,8 +105,9 @@ BEGIN
                 v.instruction := ramDout;
                 v.immediate := immediate;
                 v.instType := instType;
-                v.rs1Value := rs1Value;
-                v.rs2Value := rs2Value;
+                v.rs1 := rs1;
+                v.rs2 := rs2;
+                v.rd := rd;
 
                 v.successivePc := STD_LOGIC_VECTOR(UNSIGNED(r.pc) + 4);
 
@@ -120,51 +123,51 @@ BEGIN
                     WHEN LUI =>
                         v.opRegWriteSource := IMMEDIATE_SRC;
                     WHEN ADDI =>
-                        v.aluResult := STD_LOGIC_VECTOR(unsigned(r.rs1Value) + unsigned(r.immediate));
+                        v.aluResult := STD_LOGIC_VECTOR(unsigned(rs1Value) + unsigned(r.immediate));
                         v.opRegWriteSource := ALU_SRC;
                     WHEN ADD =>
-                        v.aluResult := STD_LOGIC_VECTOR(unsigned(r.rs1Value) + unsigned(r.rs2Value));
+                        v.aluResult := STD_LOGIC_VECTOR(unsigned(rs1Value) + unsigned(rs2Value));
                         v.opRegWriteSource := ALU_SRC;
                     WHEN SUB =>
-                        v.aluResult := STD_LOGIC_VECTOR(unsigned(r.rs1Value) - unsigned(r.rs2Value));
+                        v.aluResult := STD_LOGIC_VECTOR(unsigned(rs1Value) - unsigned(rs2Value));
                         v.opRegWriteSource := ALU_SRC;
                     WHEN LW =>
-                        v.aluResult := STD_LOGIC_VECTOR(unsigned(r.rs1Value) + unsigned(r.immediate));
+                        v.aluResult := STD_LOGIC_VECTOR(unsigned(rs1Value) + unsigned(r.immediate));
                         v.opRegWriteSource := MEMORY_SRC;
                     WHEN SW =>
-                        v.aluResult := STD_LOGIC_VECTOR(unsigned(r.rs1Value) + unsigned(r.immediate));
+                        v.aluResult := STD_LOGIC_VECTOR(unsigned(rs1Value) + unsigned(r.immediate));
                         v.opMemWrite := '1';
                     WHEN JAL =>
                         v.aluResult := STD_LOGIC_VECTOR(unsigned(r.pc) + unsigned(r.immediate));
                         v.opRegWriteSource := SUCC_PC_SRC;
                         v.opPcFromAlu := '1';
                     WHEN JALR =>
-                        v.aluResult := STD_LOGIC_VECTOR(unsigned(r.rs1Value) + unsigned(r.immediate));
+                        v.aluResult := STD_LOGIC_VECTOR(unsigned(rs1Value) + unsigned(r.immediate));
                         v.opRegWriteSource := SUCC_PC_SRC;
                         v.opPcFromAlu := '1';
                     WHEN BEQ =>
                         v.aluResult := STD_LOGIC_VECTOR(unsigned(r.pc) + unsigned(r.immediate));
-                        v.opPcFromAlu := '1' WHEN r.rs1Value = r.rs2Value ELSE
+                        v.opPcFromAlu := '1' WHEN rs1Value = rs2Value ELSE
                         '0';
                     WHEN BNE =>
                         v.aluResult := STD_LOGIC_VECTOR(unsigned(r.pc) + unsigned(r.immediate));
-                        v.opPcFromAlu := '1' WHEN r.rs1Value /= r.rs2Value ELSE
+                        v.opPcFromAlu := '1' WHEN rs1Value /= rs2Value ELSE
                         '0';
                     WHEN BLT =>
                         v.aluResult := STD_LOGIC_VECTOR(unsigned(r.pc) + unsigned(r.immediate));
-                        v.opPcFromAlu := '1' WHEN SIGNED(r.rs1Value) < SIGNED(r.rs2Value) ELSE
+                        v.opPcFromAlu := '1' WHEN SIGNED(rs1Value) < SIGNED(rs2Value) ELSE
                         '0';
                     WHEN BLTU =>
                         v.aluResult := STD_LOGIC_VECTOR(unsigned(r.pc) + unsigned(r.immediate));
-                        v.opPcFromAlu := '1' WHEN UNSIGNED(r.rs1Value) < UNSIGNED(r.rs2Value) ELSE
+                        v.opPcFromAlu := '1' WHEN UNSIGNED(rs1Value) < UNSIGNED(rs2Value) ELSE
                         '0';
                     WHEN BGE =>
                         v.aluResult := STD_LOGIC_VECTOR(unsigned(r.pc) + unsigned(r.immediate));
-                        v.opPcFromAlu := '1' WHEN SIGNED(r.rs1Value) >= SIGNED(r.rs2Value) ELSE
+                        v.opPcFromAlu := '1' WHEN SIGNED(rs1Value) >= SIGNED(rs2Value) ELSE
                         '0';
                     WHEN BGEU =>
                         v.aluResult := STD_LOGIC_VECTOR(unsigned(r.pc) + unsigned(r.immediate));
-                        v.opPcFromAlu := '1' WHEN UNSIGNED(r.rs1Value) >= UNSIGNED(r.rs2Value) ELSE
+                        v.opPcFromAlu := '1' WHEN UNSIGNED(rs1Value) >= UNSIGNED(rs2Value) ELSE
                         '0';
                     WHEN OTHERS =>
                         -- on unknown instruction, halt
@@ -180,7 +183,7 @@ BEGIN
                 -- prepare memory ops in advance due to the memory latency
                 v.ramAddr := r.aluResult;
                 v.ramWe := r.opMemWrite;
-                v.ramDin := r.rs2Value;
+                v.ramDin := rs2Value;
             WHEN MEMORY =>
                 IF v.opPcFromAlu THEN
                     v.pc := r.aluResult(31 DOWNTO 1) & "0";
@@ -198,7 +201,7 @@ BEGIN
                 -- write to register from alu, ram, or immediate
                 v.regWrStrobe := '1' WHEN r.opRegWriteSource /= NONE_SRC ELSE
                 '0';
-                v.regWrAddr := rd;
+                v.regWrAddr := r.rd;
 
                 CASE r.opRegWriteSource IS
                     WHEN MEMORY_SRC => v.regWrData := ramDout;
@@ -234,9 +237,9 @@ BEGIN
         PORT MAP(
             clk => clk,
             reset => reset,
-            rs1 => rs1,
+            rs1 => r.rs1,
             rs1Value => rs1Value,
-            rs2 => rs2,
+            rs2 => r.rs2,
             rs2Value => rs2Value,
             wr_addr => r.regWrAddr,
             wr_data => r.regWrData,
