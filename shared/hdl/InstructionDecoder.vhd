@@ -17,7 +17,6 @@ ENTITY InstructionDecoder IS
 END ENTITY InstructionDecoder;
 
 ARCHITECTURE rtl OF InstructionDecoder IS
-    SIGNAL encoding : InstructionEncodingType;
 BEGIN
 
     PROCESS (ALL)
@@ -25,7 +24,6 @@ BEGIN
 
         -- map opcodes
         instructionType <= decodeInstruction(instruction);
-        encoding <= instructionToEncoding(instructionType);
 
         -- extract register indexes
         rs1 <= to_integer(unsigned(instruction(19 DOWNTO 15)));

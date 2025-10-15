@@ -55,7 +55,6 @@ PACKAGE RiscVPkg IS
     FUNCTION decodeInstruction (
         instruction : IN STD_LOGIC_VECTOR(31 DOWNTO 0)
     ) RETURN InstructionType;
-    FUNCTION instructionToEncoding(inst : IN InstructionType) RETURN InstructionEncodingType;
 
 END PACKAGE;
 
@@ -310,64 +309,4 @@ PACKAGE BODY RiscVPkg IS
         END CASE;
         RETURN inst;
     END FUNCTION;
-
-    FUNCTION instructionToEncoding(inst : IN InstructionType) RETURN InstructionEncodingType IS
-        VARIABLE encoding : InstructionEncodingType;
-    BEGIN
-        CASE inst IS
-            WHEN LUI => encoding := U;
-            WHEN AUIPC => encoding := U;
-            WHEN JAL => encoding := J;
-            WHEN JALR => encoding := I;
-
-            WHEN BEQ => encoding := B;
-            WHEN BNE => encoding := B;
-            WHEN BLT => encoding := B;
-            WHEN BGE => encoding := B;
-            WHEN BLTU => encoding := B;
-            WHEN BGEU => encoding := B;
-
-            WHEN LB => encoding := I;
-            WHEN LH => encoding := I;
-            WHEN LW => encoding := I;
-            WHEN LBU => encoding := I;
-            WHEN LHU => encoding := I;
-
-            WHEN SB => encoding := S;
-            WHEN SH => encoding := S;
-            WHEN SW => encoding := S;
-
-            WHEN ADDI => encoding := I;
-            WHEN SLTI => encoding := I;
-            WHEN SLTIU => encoding := I;
-            WHEN XORI => encoding := I;
-            WHEN ORI => encoding := I;
-            WHEN ANDI => encoding := I;
-
-            WHEN SLLI => encoding := R;
-            WHEN SRLI => encoding := R;
-            WHEN SRAI => encoding := R;
-
-            WHEN ADD => encoding := R;
-            WHEN SUB => encoding := R;
-            WHEN \SLL\ => encoding := R;
-            WHEN SLT => encoding := R;
-            WHEN SLTU => encoding := R;
-            WHEN \XOR\ => encoding := R;
-            WHEN \SRL\ => encoding := R;
-            WHEN \SRA\ => encoding := R;
-            WHEN \OR\ => encoding := R;
-            WHEN \AND\ => encoding := R;
-
-            WHEN FENCE => encoding := I;
-            WHEN FENCE_TSO => encoding := I;
-            WHEN PAUSE => encoding := I;
-
-            WHEN OTHERS =>
-                encoding := R;
-        END CASE;
-
-        RETURN encoding;
-    END FUNCTION;
-
 END PACKAGE BODY;
