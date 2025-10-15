@@ -126,6 +126,34 @@ BEGIN
                     WHEN ADDI =>
                         v.aluResult := STD_LOGIC_VECTOR(unsigned(rs1Value) + unsigned(r.immediate));
                         v.opRegWriteSource := ALU_SRC;
+                    WHEN SLTI =>
+                        v.aluResult := (OTHERS => '0');
+                        v.aluResult(0) := '1' WHEN signed(rs1Value) < signed(r.immediate) ELSE
+                        '0';
+                        v.opRegWriteSource := ALU_SRC;
+                    WHEN SLTIU =>
+                        v.aluResult := (OTHERS => '0');
+                        v.aluResult(0) := '1' WHEN unsigned(rs1Value) < unsigned(r.immediate) ELSE
+                        '0';
+                        v.opRegWriteSource := ALU_SRC;
+                    WHEN ANDI =>
+                        v.aluResult := rs1Value AND r.immediate;
+                        v.opRegWriteSource := ALU_SRC;
+                    WHEN ORI =>
+                        v.aluResult := rs1Value OR r.immediate;
+                        v.opRegWriteSource := ALU_SRC;
+                    WHEN XORI =>
+                        v.aluResult := rs1Value XOR r.immediate;
+                        v.opRegWriteSource := ALU_SRC;
+                    WHEN SLLI =>
+                        v.aluResult := STD_LOGIC_VECTOR(SHIFT_LEFT(unsigned(rs1Value), to_integer(unsigned(r.immediate(4 DOWNTO 0)))));
+                        v.opRegWriteSource := ALU_SRC;
+                    WHEN SRLI =>
+                        v.aluResult := STD_LOGIC_VECTOR(SHIFT_RIGHT(unsigned(rs1Value), to_integer(unsigned(r.immediate(4 DOWNTO 0)))));
+                        v.opRegWriteSource := ALU_SRC;
+                    WHEN SRAI =>
+                        v.aluResult := STD_LOGIC_VECTOR(SHIFT_RIGHT(signed(rs1Value), to_integer(unsigned(r.immediate(4 DOWNTO 0)))));
+                        v.opRegWriteSource := ALU_SRC;
                     WHEN ADD =>
                         v.aluResult := STD_LOGIC_VECTOR(unsigned(rs1Value) + unsigned(rs2Value));
                         v.opRegWriteSource := ALU_SRC;
