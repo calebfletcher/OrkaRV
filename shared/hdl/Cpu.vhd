@@ -157,8 +157,36 @@ BEGIN
                     WHEN ADD =>
                         v.aluResult := STD_LOGIC_VECTOR(unsigned(rs1Value) + unsigned(rs2Value));
                         v.opRegWriteSource := ALU_SRC;
+                    WHEN SLT =>
+                        v.aluResult := (OTHERS => '0');
+                        v.aluResult(0) := '1' WHEN signed(rs1Value) < signed(rs2Value) ELSE
+                        '0';
+                        v.opRegWriteSource := ALU_SRC;
+                    WHEN SLTU =>
+                        v.aluResult := (OTHERS => '0');
+                        v.aluResult(0) := '1' WHEN unsigned(rs1Value) < unsigned(rs2Value) ELSE
+                        '0';
+                        v.opRegWriteSource := ALU_SRC;
+                    WHEN \AND\ =>
+                        v.aluResult := rs1Value AND rs2Value;
+                        v.opRegWriteSource := ALU_SRC;
+                    WHEN \OR\ =>
+                        v.aluResult := rs1Value OR rs2Value;
+                        v.opRegWriteSource := ALU_SRC;
+                    WHEN \XOR\ =>
+                        v.aluResult := rs1Value XOR rs2Value;
+                        v.opRegWriteSource := ALU_SRC;
+                    WHEN \SLL\ =>
+                        v.aluResult := STD_LOGIC_VECTOR(SHIFT_LEFT(unsigned(rs1Value), to_integer(unsigned(rs2Value(4 DOWNTO 0)))));
+                        v.opRegWriteSource := ALU_SRC;
+                    WHEN \SRL\ =>
+                        v.aluResult := STD_LOGIC_VECTOR(SHIFT_RIGHT(unsigned(rs1Value), to_integer(unsigned(rs2Value(4 DOWNTO 0)))));
+                        v.opRegWriteSource := ALU_SRC;
                     WHEN SUB =>
                         v.aluResult := STD_LOGIC_VECTOR(unsigned(rs1Value) - unsigned(rs2Value));
+                        v.opRegWriteSource := ALU_SRC;
+                    WHEN \SRA\ =>
+                        v.aluResult := STD_LOGIC_VECTOR(SHIFT_RIGHT(signed(rs1Value), to_integer(unsigned(rs2Value(4 DOWNTO 0)))));
                         v.opRegWriteSource := ALU_SRC;
                     WHEN LW =>
                         v.aluResult := STD_LOGIC_VECTOR(unsigned(rs1Value) + unsigned(r.immediate));
