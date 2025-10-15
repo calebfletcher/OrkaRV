@@ -123,6 +123,9 @@ BEGIN
                 CASE r.instType IS
                     WHEN LUI =>
                         v.opRegWriteSource := IMMEDIATE_SRC;
+                    WHEN AUIPC =>
+                        v.aluResult := STD_LOGIC_VECTOR(unsigned(r.pc) + unsigned(r.immediate));
+                        v.opRegWriteSource := ALU_SRC;
                     WHEN ADDI =>
                         v.aluResult := STD_LOGIC_VECTOR(unsigned(rs1Value) + unsigned(r.immediate));
                         v.opRegWriteSource := ALU_SRC;
