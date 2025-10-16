@@ -191,7 +191,8 @@ BEGIN
                     WHEN \SRA\ =>
                         v.aluResult := STD_LOGIC_VECTOR(SHIFT_RIGHT(signed(rs1Value), to_integer(unsigned(rs2Value(4 DOWNTO 0)))));
                         v.opRegWriteSource := ALU_SRC;
-                    WHEN LW =>
+                    WHEN LB | LH | LW | LBU | LHU =>
+                        -- todo: read strobes on ram
                         v.aluResult := STD_LOGIC_VECTOR(unsigned(rs1Value) + unsigned(r.immediate));
                         v.opRegWriteSource := MEMORY_SRC;
                     WHEN SW =>
@@ -264,7 +265,51 @@ BEGIN
                 v.regWrAddr := r.rd;
 
                 CASE r.opRegWriteSource IS
-                    WHEN MEMORY_SRC => v.regWrData := ramDout;
+                    WHEN MEMORY_SRC =>
+                        CASE r.instType IS
+                            WHEN LB =>
+                                CASE r.aluResult(1 DOWNTO 0) IS
+                                    WHEN "00" =>
+                                        v.regWrData := STD_LOGIC_VECTOR(resize(signed(ramDout(7 DOWNTO 0)), XLEN));
+                                    WHEN "01" =>
+                                        v.regWrData := STD_LOGIC_VECTOR(resize(signed(ramDout(15 DOWNTO 8)), XLEN));
+                                    WHEN "10" =>
+                                        v.regWrData := STD_LOGIC_VECTOR(resize(signed(ramDout(23 DOWNTO 16)), XLEN));
+                                    WHEN "11" =>
+                                        v.regWrData := STD_LOGIC_VECTOR(resize(signed(ramDout(31 DOWNTO 24)), XLEN));
+                                    WHEN OTHERS =>
+                                        v.regWrData := (OTHERS => '0');
+                                END CASE;
+                            WHEN LH =>
+                                IF r.aluResult(1) THEN
+                                    v.regWrData := STD_LOGIC_VECTOR(resize(signed(ramDout(31 DOWNTO 16)), XLEN));
+                                ELSE
+                                    v.regWrData := STD_LOGIC_VECTOR(resize(signed(ramDout(15 DOWNTO 0)), XLEN));
+                                END IF;
+                            WHEN LW =>
+                                v.regWrData := ramDout;
+                            WHEN LBU =>
+                                CASE r.aluResult(1 DOWNTO 0) IS
+                                    WHEN "00" =>
+                                        v.regWrData := STD_LOGIC_VECTOR(resize(unsigned(ramDout(7 DOWNTO 0)), XLEN));
+                                    WHEN "01" =>
+                                        v.regWrData := STD_LOGIC_VECTOR(resize(unsigned(ramDout(15 DOWNTO 8)), XLEN));
+                                    WHEN "10" =>
+                                        v.regWrData := STD_LOGIC_VECTOR(resize(unsigned(ramDout(23 DOWNTO 16)), XLEN));
+                                    WHEN "11" =>
+                                        v.regWrData := STD_LOGIC_VECTOR(resize(unsigned(ramDout(31 DOWNTO 24)), XLEN));
+                                    WHEN OTHERS =>
+                                        v.regWrData := (OTHERS => '0');
+                                END CASE;
+                            WHEN LHU =>
+                                IF r.aluResult(1) THEN
+                                    v.regWrData := STD_LOGIC_VECTOR(resize(unsigned(ramDout(31 DOWNTO 16)), XLEN));
+                                ELSE
+                                    v.regWrData := STD_LOGIC_VECTOR(resize(unsigned(ramDout(15 DOWNTO 0)), XLEN));
+                                END IF;
+                            WHEN OTHERS =>
+                                NULL;
+                        END CASE;
                     WHEN ALU_SRC => v.regWrData := r.aluResult;
                     WHEN IMMEDIATE_SRC => v.regWrData := r.immediate;
                     WHEN SUCC_PC_SRC => v.regWrData := r.successivePc;
