@@ -1,0 +1,5 @@
+[target.riscv32i-unknown-none-elf]
+rustflags = ["-C", "link-arg=-T../linker.ld"]
+
+[build]
+target = "riscv32i-unknown-none-elf"

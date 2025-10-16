@@ -11,14 +11,14 @@ ENTITY Ram IS
     PORT (
         clk : IN STD_LOGIC;
         we : IN STD_LOGIC;
-        addr : IN STD_LOGIC_VECTOR(5 DOWNTO 0);
+        addr : IN STD_LOGIC_VECTOR(11 DOWNTO 0);
         di : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
         do : OUT STD_LOGIC_VECTOR(31 DOWNTO 0)
     );
 END ENTITY Ram;
 
 ARCHITECTURE rtl OF Ram IS
-    TYPE RamType IS ARRAY (0 TO 63) OF STD_LOGIC_VECTOR(31 DOWNTO 0);
+    TYPE RamType IS ARRAY (0 TO 4095) OF STD_LOGIC_VECTOR(31 DOWNTO 0);
     -- SIGNAL ramValue : RamType := (
     --     0 => X"00000000",
     --     1 => X"00000000",

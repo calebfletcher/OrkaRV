@@ -314,7 +314,7 @@ BEGIN
             clk => clk,
             we => r.ramWe,
             -- word-addressed
-            addr => r.ramAddr(7 DOWNTO 2),
+            addr => r.ramAddr(13 DOWNTO 2),
             di => r.ramDin,
             do => ramDout
         );

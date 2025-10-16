@@ -28,3 +28,10 @@ gui:
 compile file:
     mkdir -p build
     riscv64-unknown-elf-gcc -mabi=ilp32 -march=rv32i -nostdlib -nostartfiles -T linker.ld -o build/program.elf {{file}}
+
+[no-cd]
+rust:
+    cargo clean
+    cargo b
+    riscv64-unknown-elf-objdump -d -h target/riscv32i-unknown-none-elf/debug/sample_rust | head -n 50
+    cp target/riscv32i-unknown-none-elf/debug/sample_rust ../build/program.elf
