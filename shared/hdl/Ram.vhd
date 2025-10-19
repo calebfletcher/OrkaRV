@@ -11,6 +11,7 @@ ENTITY Ram IS
     PORT (
         clk : IN STD_LOGIC;
         we : IN STD_LOGIC;
+        byteWrite : IN STD_LOGIC_VECTOR(3 DOWNTO 0);
         addr : IN STD_LOGIC_VECTOR(11 DOWNTO 0);
         di : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
         do : OUT STD_LOGIC_VECTOR(31 DOWNTO 0)
@@ -70,7 +71,11 @@ BEGIN
     BEGIN
         IF rising_edge(clk) THEN
             IF we = '1' THEN
-                ramValue(to_integer(unsigned(addr))) <= di;
+                FOR i IN 0 TO 3 LOOP
+                    IF byteWrite(i) = '1' THEN
+                        ramValue(to_integer(unsigned(addr)))((i + 1) * 8 - 1 DOWNTO i * 8) <= di((i + 1) * 8 - 1 DOWNTO i * 8);
+                    END IF;
+                END LOOP;
             END IF;
             do <= ramValue(to_integer(unsigned(addr)));
         END IF;
