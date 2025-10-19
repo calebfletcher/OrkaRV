@@ -1,6 +1,6 @@
 STACK_SIZE = 0x100;
 
-ENTRY(entry)
+ENTRY(_start)
 
 SECTIONS {
   .text : { *(.text); *(.text.*); }

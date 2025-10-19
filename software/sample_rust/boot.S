@@ -1,7 +1,7 @@
 .text
-    .global entry
+    .global _start
 
-entry:
+_start:
     la sp, _sp
 
     la t0, _sbss # t0 = _sbss
@@ -14,4 +14,4 @@ loop:
     addi t0, t0, 4
     blt t0, t1, loop
 
-    j _start
+    j main

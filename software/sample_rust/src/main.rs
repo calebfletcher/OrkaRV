@@ -17,7 +17,7 @@ fn panic(_info: &PanicInfo) -> ! {
 #[allow(static_mut_refs)]
 #[unsafe(no_mangle)]
 //#[unsafe(link_section = ".entry")]
-pub extern "C" fn _start() -> ! {
+pub extern "C" fn main() -> ! {
     let _x = RODATA;
     let _y = unsafe { &BSS };
     let _z = unsafe { &DATA };
