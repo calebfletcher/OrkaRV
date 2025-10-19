@@ -5,7 +5,8 @@ use core::{arch::asm, panic::PanicInfo};
 
 static RODATA: &[u8] = b"Hello, world!";
 static mut BSS: [u8; 16] = [0; 16];
-static mut DATA: u16 = 1;
+#[unsafe(no_mangle)]
+static mut DATA: u32 = 1;
 
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {
@@ -20,7 +21,9 @@ pub extern "C" fn _start() -> ! {
     let _x = RODATA;
     let _y = unsafe { &BSS };
     let _z = unsafe { &DATA };
-    math();
+    let val = math();
+    unsafe { DATA = val };
+
     panic!();
 }
 
