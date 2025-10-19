@@ -6,16 +6,16 @@ ruckus.files = ['build/*/*.srcs/*.vhd']
 ruckus.is_third_party = true
 
 # Surf
-# surf.files = [
-#     'submodules/surf/axi/**/*.vhd',
-#     'submodules/surf/base/**/*.vhd',
-#     'submodules/surf/dsp/**/*.vhd',
-#     'submodules/surf/devices/**/*.vhd',
-#     'submodules/surf/ethernet/**/*.vhd',
-#     'submodules/surf/protocols/**/*.vhd',
-#     'submodules/surf/xilinx/**/*.vhd',
-# ]
-# surf.is_third_party = true
+surf.files = [
+    'submodules/surf/axi/**/*.vhd',
+    'submodules/surf/base/**/*.vhd',
+    'submodules/surf/dsp/**/*.vhd',
+    'submodules/surf/devices/**/*.vhd',
+    'submodules/surf/ethernet/**/*.vhd',
+    'submodules/surf/protocols/**/*.vhd',
+    'submodules/surf/xilinx/**/*.vhd',
+]
+surf.is_third_party = true
 
 # Unisim
 UNISIM.files = ['$XILINX_VIVADO/data/vhdl/src/unisims/unisim_VCOMP.vhd']
