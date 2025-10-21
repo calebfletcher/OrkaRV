@@ -12,3 +12,9 @@ rustup target add riscv32i-unknown-none-elf
 cd software/sample_rust
 just rust simulate gui
 ```
+
+## Python Environment
+
+Uses `uv` as the package manager, install via `curl -LsSf https://astral.sh/uv/install.sh | sh`
+
+Run tests with `uv run pytest`
