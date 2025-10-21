@@ -62,31 +62,36 @@ PACKAGE BODY RiscVPkg IS
     FUNCTION opcodeToMajorOpcode (opcode : IN STD_LOGIC_VECTOR(6 DOWNTO 0)) RETURN MajorOpcode IS
         VARIABLE major : MajorOpcode;
     BEGIN
-        CASE opcode(6 DOWNTO 2) IS
-            WHEN "00000" => major := LOAD;
-            WHEN "00001" => major := LOAD_FP;
-            WHEN "00011" => major := MISC_MEM;
-            WHEN "00100" => major := OP_IMM;
-            WHEN "00101" => major := AUIPC;
-            WHEN "00110" => major := OP_IMM_32;
-            WHEN "01000" => major := STORE;
-            WHEN "01001" => major := STORE_FP;
-            WHEN "01011" => major := AMO;
-            WHEN "01100" => major := OP;
-            WHEN "01101" => major := LUI;
-            WHEN "01110" => major := OP_32;
-            WHEN "10000" => major := MADD;
-            WHEN "10001" => major := MSUB;
-            WHEN "10010" => major := NMSUB;
-            WHEN "10011" => major := NMADD;
-            WHEN "10100" => major := OP_FP;
-            WHEN "10101" => major := OP_V;
-            WHEN "11000" => major := BRANCH;
-            WHEN "11001" => major := JALR;
-            WHEN "11011" => major := JAL;
-            WHEN "11100" => major := SYSTEM;
-            WHEN "11101" => major := OP_VE;
+        CASE opcode(1 DOWNTO 0) IS
+            WHEN "11" =>
+                CASE opcode(6 DOWNTO 2) IS
+                    WHEN "00000" => major := LOAD;
+                    WHEN "00001" => major := LOAD_FP;
+                    WHEN "00011" => major := MISC_MEM;
+                    WHEN "00100" => major := OP_IMM;
+                    WHEN "00101" => major := AUIPC;
+                    WHEN "00110" => major := OP_IMM_32;
+                    WHEN "01000" => major := STORE;
+                    WHEN "01001" => major := STORE_FP;
+                    WHEN "01011" => major := AMO;
+                    WHEN "01100" => major := OP;
+                    WHEN "01101" => major := LUI;
+                    WHEN "01110" => major := OP_32;
+                    WHEN "10000" => major := MADD;
+                    WHEN "10001" => major := MSUB;
+                    WHEN "10010" => major := NMSUB;
+                    WHEN "10011" => major := NMADD;
+                    WHEN "10100" => major := OP_FP;
+                    WHEN "10101" => major := OP_V;
+                    WHEN "11000" => major := BRANCH;
+                    WHEN "11001" => major := JALR;
+                    WHEN "11011" => major := JAL;
+                    WHEN "11100" => major := SYSTEM;
+                    WHEN "11101" => major := OP_VE;
 
+                    WHEN OTHERS =>
+                        major := UNKNOWN;
+                END CASE;
             WHEN OTHERS =>
                 major := UNKNOWN;
         END CASE;
