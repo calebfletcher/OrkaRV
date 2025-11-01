@@ -36,6 +36,9 @@ BEGIN
 
     -- Instantiate CPU
     uut : ENTITY work.Cpu
+        GENERIC MAP(
+            RAM_FILE_PATH_G => "build/program.hex"
+        )
         PORT MAP(
             clk => clk,
             reset => reset,

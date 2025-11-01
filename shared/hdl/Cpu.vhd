@@ -6,7 +6,7 @@ USE work.RiscVPkg.ALL;
 ENTITY Cpu IS
     GENERIC (
         TPD_G : TIME := 1 ns;
-        RAM_FILE_PATH_G : STRING := "build/program.hex"
+        RAM_FILE_PATH_G : STRING
     );
     PORT (
         clk : IN STD_LOGIC;

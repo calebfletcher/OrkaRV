@@ -14,13 +14,7 @@ simulate:
     mkdir -p build/sim
     riscv32-unknown-elf-objcopy -O binary build/program.elf build/program.bin
     hexdump -v -e '1/4 "%08x\n"' build/program.bin > build/program.hex
-    ghdl -a --std=08 --workdir=build/sim ../shared/hdl/RiscVPkg.vhd
-    ghdl -a --std=08 --workdir=build/sim ../shared/hdl/Ram.vhd
-    ghdl -a --std=08 --workdir=build/sim ../shared/hdl/Registers.vhd
-    ghdl -a --std=08 --workdir=build/sim ../shared/hdl/InstructionDecoder.vhd
-    ghdl -a --std=08 --workdir=build/sim ../shared/hdl/Cpu.vhd
-    ghdl -a --std=08 --workdir=build/sim ../shared/tb/CpuTb.vhd
-    ghdl -r --std=08 --workdir=build/sim cputb --wave=build/sim/out.ghw
+    uv run runner.py build/program.hex
 
 gui:       
     surfer -s cpu.surf.ron build/sim/out.ghw
