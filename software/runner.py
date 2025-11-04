@@ -1,5 +1,7 @@
+import glob
 from shutil import copyfile
 from pathlib import Path
+import subprocess
 import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import RisingEdge
@@ -29,6 +31,23 @@ def main():
     ]
 
     runner = get_runner("ghdl")
+
+    subprocess.run("make src", cwd=proj_path / "submodules" / "surf", shell=True, check=True)
+
+    runner.build(
+        sources=glob.glob("../submodules/surf/build/SRC_VHDL/surf/*"),
+        hdl_library="surf",
+        always=True,
+        build_args=["--std=08"],
+        clean=True
+    )
+
+    runner.build(
+        sources=glob.glob("../submodules/surf/build/SRC_VHDL/ruckus/*"),
+        hdl_library="ruckus",
+        always=True,
+        build_args=["--std=08"],
+    )
 
     runner.build(
         sources=sources,

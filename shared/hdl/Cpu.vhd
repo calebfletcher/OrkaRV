@@ -3,6 +3,9 @@ CONTEXT ieee.ieee_std_context;
 
 USE work.RiscVPkg.ALL;
 
+LIBRARY surf;
+USE surf.AxiLitePkg.ALL;
+
 ENTITY Cpu IS
     GENERIC (
         TPD_G : TIME := 1 ns;
@@ -35,6 +38,8 @@ ARCHITECTURE rtl OF Cpu IS
         rd : RegisterIndex;
 
         -- ram write control
+        axiReadMaster : AxiLiteReadMasterType;
+        axiWriteMaster : AxiLiteWriteMasterType;
         ramAddr : STD_LOGIC_VECTOR(31 DOWNTO 0);
         ramDin : STD_LOGIC_VECTOR(31 DOWNTO 0);
         ramWe : STD_LOGIC;
@@ -67,6 +72,9 @@ ARCHITECTURE rtl OF Cpu IS
         rs1 => 0,
         rs2 => 0,
         rd => 0,
+        -- axi read master defaults to reading addr 0 for first fetch
+        axiReadMaster => (araddr => (OTHERS => '0'), arprot => (OTHERS => '0'), arvalid => '1', rready => '1'),
+        axiWriteMaster => AXI_LITE_WRITE_MASTER_INIT_C,
         ramAddr => (OTHERS => '0'),
         ramDin => (OTHERS => '0'),
         ramWe => '0',
@@ -96,6 +104,9 @@ ARCHITECTURE rtl OF Cpu IS
     SIGNAL immediate : STD_LOGIC_VECTOR(XLEN - 1 DOWNTO 0);
 
     SIGNAL instType : InstructionType;
+
+    SIGNAL axiReadSlave : AxiLiteReadSlaveType := AXI_LITE_READ_SLAVE_INIT_C;
+    SIGNAL axiWriteSlave : AxiLiteWriteSlaveType := AXI_LITE_WRITE_SLAVE_INIT_C;
 BEGIN
     PROCESS (ALL)
         VARIABLE v : regType;
@@ -105,18 +116,27 @@ BEGIN
 
         v.regWrStrobe := '0';
 
+        IF (axiReadSlave.arready AND r.axiReadMaster.arvalid) THEN
+            v.axiReadMaster.arvalid := '0';
+            v.axiReadMaster.araddr := (OTHERS => '0');
+        END IF;
+
         CASE (r.stage) IS
             WHEN FETCH =>
-                v.instruction := ramDout;
-                v.immediate := immediate;
-                v.instType := instType;
-                v.rs1 := rs1;
-                v.rs2 := rs2;
-                v.rd := rd;
+                IF (r.axiReadMaster.rready AND axiReadSlave.rvalid) THEN
+                    v.axiReadMaster.rready := '0';
 
-                v.successivePc := STD_LOGIC_VECTOR(UNSIGNED(r.pc) + 4);
+                    v.instruction := axiReadSlave.rdata;
+                    v.immediate := immediate;
+                    v.instType := instType;
+                    v.rs1 := rs1;
+                    v.rs2 := rs2;
+                    v.rd := rd;
 
-                v.stage := DECODE;
+                    v.successivePc := STD_LOGIC_VECTOR(UNSIGNED(r.pc) + 4);
+
+                    v.stage := DECODE;
+                END IF;
             WHEN DECODE =>
                 -- todo: register decoded instruction here?
 
@@ -294,9 +314,13 @@ BEGIN
 
                 -- prepare ram read for fetch in advance due to the memory latency
                 -- use v.nextPc so it takes into account jumps
-                v.ramAddr := v.pc;
+                --v.ramAddr := v.pc;
                 v.ramWe := '0';
                 v.ramWrByteEnable := (OTHERS => '0');
+
+                v.axiReadMaster.arvalid := '1';
+                v.axiReadMaster.araddr := v.pc;
+                v.axiReadMaster.rready := '1';
 
                 v.stage := WRITEBACK;
             WHEN WRITEBACK =>
@@ -398,18 +422,17 @@ BEGIN
         )
         PORT MAP(
             clk => clk,
-            we => r.ramWe,
-            byteWrite => r.ramWrByteEnable,
-            -- word-addressed
-            addr => r.ramAddr(13 DOWNTO 2),
-            di => r.ramDin,
-            do => ramDout
+            reset => reset,
+            axiReadMaster => r.axiReadMaster,
+            axiReadSlave => axiReadSlave,
+            axiWriteMaster => r.axiWriteMaster,
+            axiWriteSlave => axiWriteSlave
         );
 
     InstructionDecoder_inst : ENTITY work.InstructionDecoder
         PORT MAP(
             instructionType => instType,
-            instruction => ramDout,
+            instruction => axiReadSlave.rdata,
             immediate => immediate,
             rs1 => rs1,
             rs2 => rs2,

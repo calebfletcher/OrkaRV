@@ -4,30 +4,28 @@ CONTEXT ieee.ieee_std_context;
 LIBRARY std;
 USE std.textio.ALL;
 
+LIBRARY surf;
+USE surf.AxiLitePkg.ALL;
+USE surf.StdRtlPkg.ALL;
+
 ENTITY Ram IS
     GENERIC (
-        RAM_FILE_PATH_G : STRING
+        RAM_FILE_PATH_G : STRING;
+        LENGTH_WORDS_G : INTEGER := 4096
     );
     PORT (
         clk : IN STD_LOGIC;
-        we : IN STD_LOGIC;
-        byteWrite : IN STD_LOGIC_VECTOR(3 DOWNTO 0);
-        addr : IN STD_LOGIC_VECTOR(11 DOWNTO 0);
-        di : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
-        do : OUT STD_LOGIC_VECTOR(31 DOWNTO 0)
+        reset : IN STD_LOGIC;
+
+        axiReadMaster : IN AxiLiteReadMasterType;
+        axiReadSlave : OUT AxiLiteReadSlaveType;
+        axiWriteMaster : IN AxiLiteWriteMasterType;
+        axiWriteSlave : OUT AxiLiteWriteSlaveType
     );
 END ENTITY Ram;
 
 ARCHITECTURE rtl OF Ram IS
-    TYPE RamType IS ARRAY (0 TO 4095) OF STD_LOGIC_VECTOR(31 DOWNTO 0);
-    -- SIGNAL ramValue : RamType := (
-    --     0 => X"00000000",
-    --     1 => X"00000000",
-    --     2 => X"00000000",
-    --     3 => X"00000000",
-    --     4 => X"00000000",
-    --     OTHERS => X"00000000"
-    -- );
+    TYPE RamType IS ARRAY (0 TO LENGTH_WORDS_G - 1) OF STD_LOGIC_VECTOR(31 DOWNTO 0);
 
     IMPURE FUNCTION InitRamFromFile (RamFileName : IN STRING) RETURN RamType IS
         FILE RamFile : text;
@@ -66,18 +64,78 @@ ARCHITECTURE rtl OF Ram IS
     END FUNCTION;
 
     SIGNAL ramValue : RamType := InitRamFromFile(RAM_FILE_PATH_G);
+    SIGNAL axiStatusS : AxiLiteStatusType;
+
 BEGIN
     PROCESS (clk)
+        VARIABLE read_word_address : unsigned(29 DOWNTO 0);
+        VARIABLE write_word_address : unsigned(29 DOWNTO 0);
+        VARIABLE axiStatus : AxiLiteStatusType := AXI_LITE_STATUS_INIT_C;
+        VARIABLE vAxiReadSlave : AxiLiteReadSlaveType := AXI_LITE_READ_SLAVE_INIT_C;
+        VARIABLE vAxiWriteSlave : AxiLiteWriteSlaveType := AXI_LITE_WRITE_SLAVE_INIT_C;
     BEGIN
         IF rising_edge(clk) THEN
-            IF we = '1' THEN
-                FOR i IN 0 TO 3 LOOP
-                    IF byteWrite(i) = '1' THEN
-                        ramValue(to_integer(unsigned(addr)))((i + 1) * 8 - 1 DOWNTO i * 8) <= di((i + 1) * 8 - 1 DOWNTO i * 8);
+            IF (reset) THEN
+                vAxiReadSlave := AXI_LITE_READ_SLAVE_INIT_C;
+                vAxiReadSlave.arready := '1';
+                vAxiWriteSlave := AXI_LITE_WRITE_SLAVE_INIT_C;
+                axiStatus := AXI_LITE_STATUS_INIT_C;
+            ELSE
+                -- defaults before checking
+                vAxiReadSlave.rvalid := '0';
+                axiStatus.readEnable := '0';
+                axiStatus.writeEnable := '0';
+
+                -- accept reads
+                IF axiReadMaster.arvalid AND vAxiReadSlave.arready THEN
+                    axiStatus.readEnable := '1';
+                    vAxiReadSlave.arready := '0';
+
+                    read_word_address := unsigned(axiReadMaster.araddr(31 DOWNTO 2));
+                END IF;
+
+                -- Write
+                IF (axiStatus.writeEnable) THEN
+                    write_word_address := unsigned(axiWriteMaster.awaddr(31 DOWNTO 2));
+                    IF (write_word_address < LENGTH_WORDS_G) THEN
+                        -- address is in range of the ram
+                        FOR i IN 0 TO 3 LOOP
+                            IF axiWriteMaster.wstrb(i) = '1' THEN
+                                ramValue(to_integer(write_word_address))((i + 1) * 8 - 1 DOWNTO i * 8) <= axiWriteMaster.wdata((i + 1) * 8 - 1 DOWNTO i * 8);
+                            END IF;
+                        END LOOP;
+
+                        axiSlaveWriteResponse(vAxiWriteSlave);
+                    ELSE
+                        -- out of range, return with SLVERR
+                        axiSlaveWriteResponse(vAxiWriteSlave, AXI_RESP_SLVERR_C);
                     END IF;
-                END LOOP;
+                END IF;
+
+                -- Read
+                IF (axiStatus.readEnable AND axiReadMaster.rready) THEN
+                    -- output data this clock
+                    vAxiReadSlave.rvalid := '1';
+                    -- ready for next tx
+                    vAxiReadSlave.arready := '1';
+
+                    IF (read_word_address < LENGTH_WORDS_G) THEN
+                        -- address is in range of the ram
+                        vAxiReadSlave.rdata := ramValue(to_integer(read_word_address));
+                        vAxiReadSlave.rresp := AXI_RESP_OK_C;
+                    ELSE
+                        -- out of range, return with SLVERR
+                        vAxiReadSlave.rdata := (OTHERS => '0');
+                        vAxiReadSlave.rresp := AXI_RESP_SLVERR_C;
+                    END IF;
+
+                END IF;
             END IF;
-            do <= ramValue(to_integer(unsigned(addr)));
+
+            -- update output ports
+            axiWriteSlave <= vAxiWriteSlave;
+            axiReadSlave <= vAxiReadSlave;
+            axiStatusS <= axiStatus;
         END IF;
     END PROCESS;
 END ARCHITECTURE;
