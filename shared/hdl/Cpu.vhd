@@ -19,7 +19,7 @@ ENTITY Cpu IS
 END ENTITY Cpu;
 
 ARCHITECTURE rtl OF Cpu IS
-    TYPE StageType IS (FETCH, DECODE, EXECUTE, MEMORY, WRITEBACK);
+    TYPE StageType IS (INIT, FETCH, DECODE, EXECUTE, MEMORY, WRITEBACK);
     TYPE RegWriteSourceType IS (NONE_SRC, MEMORY_SRC, ALU_SRC, IMMEDIATE_SRC, SUCC_PC_SRC);
 
     TYPE RegType IS RECORD
@@ -60,7 +60,7 @@ ARCHITECTURE rtl OF Cpu IS
     END RECORD RegType;
 
     CONSTANT REG_INIT_C : RegType := (
-        stage => FETCH,
+        stage => INIT,
         pc => (OTHERS => '0'),
         successivePc => (OTHERS => '0'),
         instruction => (OTHERS => '0'),
@@ -70,7 +70,7 @@ ARCHITECTURE rtl OF Cpu IS
         rs2 => 0,
         rd => 0,
         -- axi read master defaults to reading addr 0 for first fetch
-        axiReadMaster => (araddr => (OTHERS => '0'), arprot => (OTHERS => '0'), arvalid => '1', rready => '1'),
+        axiReadMaster => AXI_LITE_READ_MASTER_INIT_C,
         axiWriteMaster => AXI_LITE_WRITE_MASTER_INIT_C,
         regWrAddr => 0,
         regWrData => (OTHERS => '0'),
@@ -129,6 +129,12 @@ BEGIN
         END IF;
 
         CASE (r.stage) IS
+            WHEN INIT =>
+                -- initial read of the pc to start the cpu running
+                v.axiReadMaster.arvalid := '1';
+                v.axiReadMaster.araddr := v.pc;
+
+                v.stage := FETCH;
             WHEN FETCH =>
                 IF (r.axiReadMaster.rready AND axiReadSlave.rvalid) THEN
                     v.instruction := axiReadSlave.rdata;
