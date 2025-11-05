@@ -45,6 +45,7 @@ ARCHITECTURE rtl OF Cpu IS
         -- ram write control
         axiReadMaster : AxiLiteReadMasterType;
         axiWriteMaster : AxiLiteWriteMasterType;
+        memReadData : STD_LOGIC_VECTOR(31 DOWNTO 0);
 
         -- register write control
         regWrAddr : RegisterIndex;
@@ -75,6 +76,7 @@ ARCHITECTURE rtl OF Cpu IS
         -- axi read master defaults to reading addr 0 for first fetch
         axiReadMaster => AXI_LITE_READ_MASTER_INIT_C,
         axiWriteMaster => AXI_LITE_WRITE_MASTER_INIT_C,
+        memReadData => (OTHERS => '0'),
         regWrAddr => 0,
         regWrData => (OTHERS => '0'),
         regWrStrobe => '0',
@@ -368,6 +370,9 @@ BEGIN
                 END IF;
                 IF r.opMemRead AND r.axiReadMaster.rready AND axiReadSlave.rvalid THEN
                     IF axiReadSlave.rresp = AXI_RESP_OK_C THEN
+                        -- register read data
+                        v.memReadData := axiReadSlave.rdata;
+
                         -- prepare ram read for fetch in advance due to the memory latency
                         v.axiReadMaster.arvalid := '1';
                         v.axiReadMaster.araddr := v.pc;
@@ -390,42 +395,42 @@ BEGIN
                             WHEN LB =>
                                 CASE r.aluResult(1 DOWNTO 0) IS
                                     WHEN "00" =>
-                                        v.regWrData := STD_LOGIC_VECTOR(resize(signed(axiReadSlave.rdata(7 DOWNTO 0)), XLEN));
+                                        v.regWrData := STD_LOGIC_VECTOR(resize(signed(r.memReadData(7 DOWNTO 0)), XLEN));
                                     WHEN "01" =>
-                                        v.regWrData := STD_LOGIC_VECTOR(resize(signed(axiReadSlave.rdata(15 DOWNTO 8)), XLEN));
+                                        v.regWrData := STD_LOGIC_VECTOR(resize(signed(r.memReadData(15 DOWNTO 8)), XLEN));
                                     WHEN "10" =>
-                                        v.regWrData := STD_LOGIC_VECTOR(resize(signed(axiReadSlave.rdata(23 DOWNTO 16)), XLEN));
+                                        v.regWrData := STD_LOGIC_VECTOR(resize(signed(r.memReadData(23 DOWNTO 16)), XLEN));
                                     WHEN "11" =>
-                                        v.regWrData := STD_LOGIC_VECTOR(resize(signed(axiReadSlave.rdata(31 DOWNTO 24)), XLEN));
+                                        v.regWrData := STD_LOGIC_VECTOR(resize(signed(r.memReadData(31 DOWNTO 24)), XLEN));
                                     WHEN OTHERS =>
                                         v.regWrData := (OTHERS => '0');
                                 END CASE;
                             WHEN LH =>
                                 IF r.aluResult(1) THEN
-                                    v.regWrData := STD_LOGIC_VECTOR(resize(signed(axiReadSlave.rdata(31 DOWNTO 16)), XLEN));
+                                    v.regWrData := STD_LOGIC_VECTOR(resize(signed(r.memReadData(31 DOWNTO 16)), XLEN));
                                 ELSE
-                                    v.regWrData := STD_LOGIC_VECTOR(resize(signed(axiReadSlave.rdata(15 DOWNTO 0)), XLEN));
+                                    v.regWrData := STD_LOGIC_VECTOR(resize(signed(r.memReadData(15 DOWNTO 0)), XLEN));
                                 END IF;
                             WHEN LW =>
-                                v.regWrData := axiReadSlave.rdata;
+                                v.regWrData := r.memReadData;
                             WHEN LBU =>
                                 CASE r.aluResult(1 DOWNTO 0) IS
                                     WHEN "00" =>
-                                        v.regWrData := STD_LOGIC_VECTOR(resize(unsigned(axiReadSlave.rdata(7 DOWNTO 0)), XLEN));
+                                        v.regWrData := STD_LOGIC_VECTOR(resize(unsigned(r.memReadData(7 DOWNTO 0)), XLEN));
                                     WHEN "01" =>
-                                        v.regWrData := STD_LOGIC_VECTOR(resize(unsigned(axiReadSlave.rdata(15 DOWNTO 8)), XLEN));
+                                        v.regWrData := STD_LOGIC_VECTOR(resize(unsigned(r.memReadData(15 DOWNTO 8)), XLEN));
                                     WHEN "10" =>
-                                        v.regWrData := STD_LOGIC_VECTOR(resize(unsigned(axiReadSlave.rdata(23 DOWNTO 16)), XLEN));
+                                        v.regWrData := STD_LOGIC_VECTOR(resize(unsigned(r.memReadData(23 DOWNTO 16)), XLEN));
                                     WHEN "11" =>
-                                        v.regWrData := STD_LOGIC_VECTOR(resize(unsigned(axiReadSlave.rdata(31 DOWNTO 24)), XLEN));
+                                        v.regWrData := STD_LOGIC_VECTOR(resize(unsigned(r.memReadData(31 DOWNTO 24)), XLEN));
                                     WHEN OTHERS =>
                                         v.regWrData := (OTHERS => '0');
                                 END CASE;
                             WHEN LHU =>
                                 IF r.aluResult(1) THEN
-                                    v.regWrData := STD_LOGIC_VECTOR(resize(unsigned(axiReadSlave.rdata(31 DOWNTO 16)), XLEN));
+                                    v.regWrData := STD_LOGIC_VECTOR(resize(unsigned(r.memReadData(31 DOWNTO 16)), XLEN));
                                 ELSE
-                                    v.regWrData := STD_LOGIC_VECTOR(resize(unsigned(axiReadSlave.rdata(15 DOWNTO 0)), XLEN));
+                                    v.regWrData := STD_LOGIC_VECTOR(resize(unsigned(r.memReadData(15 DOWNTO 0)), XLEN));
                                 END IF;
                             WHEN OTHERS =>
                                 NULL;
