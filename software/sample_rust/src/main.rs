@@ -20,7 +20,7 @@ pub extern "C" fn main() -> ! {
     let _y = unsafe { &BSS };
     let val = math();
     unsafe {
-        core::ptr::write_volatile(0x01000000 as *mut u32, val);
+        core::ptr::write_volatile(0x02000000 as *mut u32, val);
     };
 
     panic!();

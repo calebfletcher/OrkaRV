@@ -7,7 +7,7 @@ from cocotb.clock import Clock
 from cocotb.triggers import RisingEdge
 from cocotb_tools.runner import get_runner
 
-@cocotb.test(timeout_time=10, timeout_unit="ms")
+@cocotb.test(timeout_time=1, timeout_unit="ms")
 async def run(dut):
     clock = Clock(dut.clk, 10, unit="ns")
     clock.start()

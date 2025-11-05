@@ -18,27 +18,20 @@ ENTITY Soc IS
 END ENTITY Soc;
 
 ARCHITECTURE rtl OF Soc IS
-    constant NUM_MASTERS_C: NATURAL := 1;
-    constant NUM_SLAVES_C: NATURAL := 2;
-    
-    SIGNAL mAxiWriteMasters : AxiLiteWriteMasterArray(NUM_MASTERS_C-1 downto 0);
-    SIGNAL mAxiWriteSlaves : AxiLiteWriteSlaveArray(NUM_MASTERS_C-1 downto 0);
-    SIGNAL mAxiReadMasters : AxiLiteReadMasterArray(NUM_MASTERS_C-1 downto 0);
-    SIGNAL mAxiReadSlaves : AxiLiteReadSlaveArray(NUM_MASTERS_C-1 downto 0);
+    CONSTANT NUM_MASTERS_C : NATURAL := 1;
+    CONSTANT NUM_SLAVES_C : NATURAL := 2;
 
-    SIGNAL sAxiWriteMasters : AxiLiteWriteMasterArray(NUM_SLAVES_C-1 downto 0);
-    SIGNAL sAxiWriteSlaves : AxiLiteWriteSlaveArray(NUM_SLAVES_C-1 downto 0);
-    SIGNAL sAxiReadMasters : AxiLiteReadMasterArray(NUM_SLAVES_C-1 downto 0);
-    SIGNAL sAxiReadSlaves : AxiLiteReadSlaveArray(NUM_SLAVES_C-1 downto 0);
+    SIGNAL mAxiWriteMasters : AxiLiteWriteMasterArray(NUM_MASTERS_C - 1 DOWNTO 0) := (OTHERS => AXI_LITE_WRITE_MASTER_INIT_C);
+    SIGNAL mAxiWriteSlaves : AxiLiteWriteSlaveArray(NUM_MASTERS_C - 1 DOWNTO 0);
+    SIGNAL mAxiReadMasters : AxiLiteReadMasterArray(NUM_MASTERS_C - 1 DOWNTO 0) := (OTHERS => AXI_LITE_READ_MASTER_INIT_C);
+    SIGNAL mAxiReadSlaves : AxiLiteReadSlaveArray(NUM_MASTERS_C - 1 DOWNTO 0);
 
-    constant AXIL_XBAR_CFG_C : AxiLiteCrossbarMasterConfigArray(0 to 1) := (
-      0 => (baseAddr => X"01000000",
-            addrBits     => 24,
-            connectivity => X"FFFF"),
-      1 => (baseAddr => X"02000000",
-            addrBits     => 24,
-            connectivity => X"FFFF")
-    );
+    SIGNAL sAxiWriteMasters : AxiLiteWriteMasterArray(NUM_SLAVES_C - 1 DOWNTO 0);
+    SIGNAL sAxiWriteSlaves : AxiLiteWriteSlaveArray(NUM_SLAVES_C - 1 DOWNTO 0) := (OTHERS => AXI_LITE_WRITE_SLAVE_INIT_C);
+    SIGNAL sAxiReadMasters : AxiLiteReadMasterArray(NUM_SLAVES_C - 1 DOWNTO 0);
+    SIGNAL sAxiReadSlaves : AxiLiteReadSlaveArray(NUM_SLAVES_C - 1 DOWNTO 0) := (OTHERS => AXI_LITE_READ_SLAVE_INIT_C);
+
+    CONSTANT AXIL_XBAR_CFG_C : AxiLiteCrossbarMasterConfigArray(0 TO 1) := (0 => (baseAddr => X"01000000", addrBits => 24, connectivity => X"FFFF"), 1 => (baseAddr => X"02000000", addrBits => 24, connectivity => X"FFFF"));
 BEGIN
     Cpu_inst : ENTITY work.Cpu
         PORT MAP(
