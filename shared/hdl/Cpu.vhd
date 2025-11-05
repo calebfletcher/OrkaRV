@@ -8,13 +8,18 @@ USE surf.AxiLitePkg.ALL;
 
 ENTITY Cpu IS
     GENERIC (
-        TPD_G : TIME := 1 ns;
-        RAM_FILE_PATH_G : STRING
+        TPD_G : TIME := 1 ns
     );
     PORT (
         clk : IN STD_LOGIC;
         reset : IN STD_LOGIC;
-        halt : OUT STD_LOGIC := '0'
+        halt : OUT STD_LOGIC := '0';
+
+        -- memory interface
+        axiReadMaster : OUT AxiLiteReadMasterType := AXI_LITE_READ_MASTER_INIT_C;
+        axiReadSlave : IN AxiLiteReadSlaveType := AXI_LITE_READ_SLAVE_INIT_C;
+        axiWriteMaster : OUT AxiLiteWriteMasterType := AXI_LITE_WRITE_MASTER_INIT_C;
+        axiWriteSlave : IN AxiLiteWriteSlaveType := AXI_LITE_WRITE_SLAVE_INIT_C
     );
 END ENTITY Cpu;
 
@@ -96,9 +101,6 @@ ARCHITECTURE rtl OF Cpu IS
     SIGNAL immediate : STD_LOGIC_VECTOR(XLEN - 1 DOWNTO 0);
 
     SIGNAL instType : InstructionType;
-
-    SIGNAL axiReadSlave : AxiLiteReadSlaveType := AXI_LITE_READ_SLAVE_INIT_C;
-    SIGNAL axiWriteSlave : AxiLiteWriteSlaveType := AXI_LITE_WRITE_SLAVE_INIT_C;
 BEGIN
     PROCESS (ALL)
         VARIABLE v : regType;
@@ -424,6 +426,8 @@ BEGIN
 
         -- update outputs
         halt <= r.halt;
+        axiReadMaster <= r.axiReadMaster;
+        axiWriteMaster <= r.axiWriteMaster;
     END PROCESS;
 
     PROCESS (clk)
@@ -444,19 +448,6 @@ BEGIN
             wr_addr => r.regWrAddr,
             wr_data => r.regWrData,
             wr_strobe => r.regWrStrobe
-        );
-
-    Ram_inst : ENTITY work.Ram
-        GENERIC MAP(
-            RAM_FILE_PATH_G => RAM_FILE_PATH_G
-        )
-        PORT MAP(
-            clk => clk,
-            reset => reset,
-            axiReadMaster => r.axiReadMaster,
-            axiReadSlave => axiReadSlave,
-            axiWriteMaster => r.axiWriteMaster,
-            axiWriteSlave => axiWriteSlave
         );
 
     InstructionDecoder_inst : ENTITY work.InstructionDecoder

@@ -28,6 +28,7 @@ def main():
         proj_path / "shared" / "hdl" / "Ram.vhd",
         proj_path / "shared" / "hdl" / "Registers.vhd",
         proj_path / "shared" / "hdl" / "Cpu.vhd",
+        proj_path / "shared" / "hdl" / "Soc.vhd",
     ]
 
     runner = get_runner("ghdl")
@@ -53,20 +54,20 @@ def main():
         sources=sources,
         always=True,
         build_args=["--std=08", "-fsynopsys", "-frelaxed-rules"],
-        hdl_toplevel="cpu",
+        hdl_toplevel="soc",
     )
 
     memory_file_path = Path(__file__).resolve().parent.joinpath("build/program.hex")
 
     runner.test(
-        hdl_toplevel="cpu",
+        hdl_toplevel="soc",
         test_module="runner",
         parameters={"RAM_FILE_PATH_G": memory_file_path},
         waves=True,
         test_args=["--std=08", "-fsynopsys", "-frelaxed-rules"],
     )
 
-    copyfile(runner.test_dir.joinpath("cpu.ghw"), "build/sim/out.ghw")
+    copyfile(runner.test_dir.joinpath("soc.ghw"), "build/sim/out.ghw")
 
 
 if __name__ == "__main__":

@@ -2,10 +2,10 @@ LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
 USE ieee.numeric_std.ALL;
 
-ENTITY CpuTb IS
+ENTITY SocTb IS
 END ENTITY;
 
-ARCHITECTURE sim OF CpuTb IS
+ARCHITECTURE sim OF SocTb IS
     SIGNAL clk : STD_LOGIC := '0';
     SIGNAL reset : STD_LOGIC := '1';
     SIGNAL halt : STD_LOGIC;
@@ -35,7 +35,7 @@ BEGIN
     END PROCESS;
 
     -- Instantiate CPU
-    uut : ENTITY work.Cpu
+    uut : ENTITY work.Soc
         GENERIC MAP(
             RAM_FILE_PATH_G => "build/program.hex"
         )
