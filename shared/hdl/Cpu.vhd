@@ -288,11 +288,26 @@ BEGIN
                         NULL;
                 END CASE;
             WHEN EXECUTE =>
-                --v.alu_result := ;
-                v.stage := MEMORY;
+                -- update PC
+                IF v.opPcFromAlu THEN
+                    v.pc := r.aluResult(31 DOWNTO 1) & "0";
+                ELSE
+                    v.pc := r.successivePc;
+                END IF;
+
+                -- skip memory stage if we aren't doing any memory ops
+                IF r.opMemRead OR r.opMemWrite THEN
+                    v.stage := MEMORY;
+                ELSE
+                    v.stage := WRITEBACK;
+
+                    -- prepare ram read for fetch in advance due to the memory latency
+                    v.axiReadMaster.arvalid := '1';
+                    v.axiReadMaster.araddr := v.pc;
+                    v.axiReadMaster.rready := '1';
+                END IF;
 
                 -- prepare memory ops in advance due to the memory latency
-
                 IF r.opMemRead THEN
                     v.axiReadMaster.araddr := (OTHERS => '0');
                     v.axiReadMaster.araddr(31 DOWNTO 2) := r.aluResult(31 DOWNTO 2);
@@ -313,6 +328,7 @@ BEGIN
                     v.axiWriteMaster.bready := '1';
                 END IF;
 
+                -- set wstrb and wdata for mem write
                 CASE r.opMemWriteWidthBytes IS
                     WHEN 1 =>
                         FOR i IN 0 TO 3 LOOP
@@ -337,12 +353,6 @@ BEGIN
                         v.axiWriteMaster.wdata := rs2Value;
                 END CASE;
             WHEN MEMORY =>
-                IF v.opPcFromAlu THEN
-                    v.pc := r.aluResult(31 DOWNTO 1) & "0";
-                ELSE
-                    v.pc := r.successivePc;
-                END IF;
-
                 -- once mem transaction completes
                 IF r.opMemWrite AND r.axiWriteMaster.bready AND axiWriteSlave.bvalid THEN
                     IF axiWriteSlave.bresp = AXI_RESP_OK_C THEN
@@ -367,15 +377,6 @@ BEGIN
                     ELSE
                         v.stage := HALTED;
                     END IF;
-                END IF;
-                -- not a memory op, go straight to the writeback
-                IF NOT r.opMemRead AND NOT r.opMemWrite THEN
-                    -- prepare ram read for fetch in advance due to the memory latency
-                    v.axiReadMaster.arvalid := '1';
-                    v.axiReadMaster.araddr := v.pc;
-                    v.axiReadMaster.rready := '1';
-
-                    v.stage := WRITEBACK;
                 END IF;
             WHEN WRITEBACK =>
                 -- write to register from alu, ram, or immediate
