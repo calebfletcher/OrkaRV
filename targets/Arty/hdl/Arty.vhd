@@ -19,7 +19,7 @@ ARCHITECTURE rtl OF Arty IS
 
 BEGIN
 
-    Cpu_inst : ENTITY work.Cpu
+    Soc_inst : ENTITY work.Soc
         GENERIC MAP(
             RAM_FILE_PATH_G => "../../software/build/program.hex"
         )

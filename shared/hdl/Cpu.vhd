@@ -24,7 +24,7 @@ ENTITY Cpu IS
 END ENTITY Cpu;
 
 ARCHITECTURE rtl OF Cpu IS
-    TYPE StageType IS (INIT, FETCH, DECODE, EXECUTE, MEMORY, WRITEBACK);
+    TYPE StageType IS (INIT, FETCH, DECODE, EXECUTE, MEMORY, WRITEBACK, HALTED);
     TYPE RegWriteSourceType IS (NONE_SRC, MEMORY_SRC, ALU_SRC, IMMEDIATE_SRC, SUCC_PC_SRC);
 
     TYPE RegType IS RECORD
@@ -60,8 +60,6 @@ ARCHITECTURE rtl OF Cpu IS
         opMemWriteWidthBytes : NATURAL RANGE 1 TO 4;
         opRegWriteSource : RegWriteSourceType;
         opPcFromAlu : STD_LOGIC;
-
-        halt : STD_LOGIC;
     END RECORD RegType;
 
     CONSTANT REG_INIT_C : RegType := (
@@ -85,8 +83,7 @@ ARCHITECTURE rtl OF Cpu IS
         opMemWrite => '0',
         opMemWriteWidthBytes => 1,
         opRegWriteSource => NONE_SRC,
-        opPcFromAlu => '0',
-        halt => '0'
+        opPcFromAlu => '0'
     );
 
     SIGNAL r : RegType := REG_INIT_C;
@@ -139,16 +136,20 @@ BEGIN
                 v.stage := FETCH;
             WHEN FETCH =>
                 IF (r.axiReadMaster.rready AND axiReadSlave.rvalid) THEN
-                    v.instruction := axiReadSlave.rdata;
-                    v.immediate := immediate;
-                    v.instType := instType;
-                    v.rs1 := rs1;
-                    v.rs2 := rs2;
-                    v.rd := rd;
+                    IF axiReadSlave.rresp = AXI_RESP_OK_C THEN
+                        v.instruction := axiReadSlave.rdata;
+                        v.immediate := immediate;
+                        v.instType := instType;
+                        v.rs1 := rs1;
+                        v.rs2 := rs2;
+                        v.rd := rd;
 
-                    v.successivePc := STD_LOGIC_VECTOR(UNSIGNED(r.pc) + 4);
+                        v.successivePc := STD_LOGIC_VECTOR(UNSIGNED(r.pc) + 4);
 
-                    v.stage := DECODE;
+                        v.stage := DECODE;
+                    ELSE
+                        v.stage := HALTED;
+                    END IF;
                 END IF;
             WHEN DECODE =>
                 -- todo: register decoded instruction here?
@@ -158,6 +159,8 @@ BEGIN
                 v.opMemWrite := '0';
                 v.opMemWriteWidthBytes := 1;
                 v.opPcFromAlu := '0';
+
+                v.stage := EXECUTE;
 
                 CASE r.instType IS
                     WHEN LUI =>
@@ -281,11 +284,9 @@ BEGIN
                         '0';
                     WHEN OTHERS =>
                         -- on unknown instruction, halt
-                        v.halt := '1';
+                        v.stage := HALTED;
                         NULL;
                 END CASE;
-
-                v.stage := EXECUTE;
             WHEN EXECUTE =>
                 --v.alu_result := ;
                 v.stage := MEMORY;
@@ -343,11 +344,32 @@ BEGIN
                 END IF;
 
                 -- once mem transaction completes
-                IF (
-                    (r.opMemWrite AND r.axiWriteMaster.bready AND axiWriteSlave.bvalid)
-                    OR (r.opMemRead AND r.axiReadMaster.rready AND axiReadSlave.rvalid)
-                    OR (NOT r.opMemRead AND NOT r.opMemWrite)
-                    ) THEN
+                IF r.opMemWrite AND r.axiWriteMaster.bready AND axiWriteSlave.bvalid THEN
+                    IF axiWriteSlave.bresp = AXI_RESP_OK_C THEN
+                        -- prepare ram read for fetch in advance due to the memory latency
+                        v.axiReadMaster.arvalid := '1';
+                        v.axiReadMaster.araddr := v.pc;
+                        v.axiReadMaster.rready := '1';
+
+                        v.stage := WRITEBACK;
+                    ELSE
+                        v.stage := HALTED;
+                    END IF;
+                END IF;
+                IF r.opMemRead AND r.axiReadMaster.rready AND axiReadSlave.rvalid THEN
+                    IF axiReadSlave.rresp = AXI_RESP_OK_C THEN
+                        -- prepare ram read for fetch in advance due to the memory latency
+                        v.axiReadMaster.arvalid := '1';
+                        v.axiReadMaster.araddr := v.pc;
+                        v.axiReadMaster.rready := '1';
+
+                        v.stage := WRITEBACK;
+                    ELSE
+                        v.stage := HALTED;
+                    END IF;
+                END IF;
+                -- not a memory op, go straight to the writeback
+                IF NOT r.opMemRead AND NOT r.opMemWrite THEN
                     -- prepare ram read for fetch in advance due to the memory latency
                     v.axiReadMaster.arvalid := '1';
                     v.axiReadMaster.araddr := v.pc;
@@ -415,6 +437,8 @@ BEGIN
                 END CASE;
 
                 v.stage := FETCH;
+            WHEN HALTED =>
+                -- do nothing
         END CASE;
 
         IF reset THEN
@@ -425,7 +449,8 @@ BEGIN
         rin <= v;
 
         -- update outputs
-        halt <= r.halt;
+        halt <= '1' WHEN r.stage = HALTED ELSE
+            '0';
         axiReadMaster <= r.axiReadMaster;
         axiWriteMaster <= r.axiWriteMaster;
     END PROCESS;
