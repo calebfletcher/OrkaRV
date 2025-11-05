@@ -3,6 +3,7 @@ STACK_SIZE = 0x100;
 ENTRY(_start)
 
 SECTIONS {
+  . = 0x01000000;
   .text : { *(.text); *(.text.*); }
   .rodata : { *(.rodata); *(.rodata.*); }
   .bss :

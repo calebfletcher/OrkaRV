@@ -65,7 +65,7 @@ ARCHITECTURE rtl OF Cpu IS
 
     CONSTANT REG_INIT_C : RegType := (
         stage => INIT,
-        pc => (OTHERS => '0'),
+        pc => x"01000000", -- reset vector
         successivePc => (OTHERS => '0'),
         instruction => (OTHERS => '0'),
         immediate => (OTHERS => '0'),

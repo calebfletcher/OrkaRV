@@ -11,7 +11,8 @@ USE surf.StdRtlPkg.ALL;
 ENTITY Ram IS
     GENERIC (
         RAM_FILE_PATH_G : STRING;
-        LENGTH_WORDS_G : INTEGER := 4096
+        LENGTH_WORDS_G : INTEGER := 4096;
+        AXI_BASE_ADDR_G : UNSIGNED(31 DOWNTO 0)
     );
     PORT (
         clk : IN STD_LOGIC;
@@ -25,6 +26,7 @@ ENTITY Ram IS
 END ENTITY Ram;
 
 ARCHITECTURE rtl OF Ram IS
+    CONSTANT LENGTH_BYTES_G : INTEGER := LENGTH_WORDS_G * 4;
     TYPE RamType IS ARRAY (0 TO LENGTH_WORDS_G - 1) OF STD_LOGIC_VECTOR(31 DOWNTO 0);
 
     TYPE AxiLiteStatusType IS RECORD
@@ -75,8 +77,11 @@ ARCHITECTURE rtl OF Ram IS
 
 BEGIN
     PROCESS (clk)
-        VARIABLE readWordAddress : unsigned(29 DOWNTO 0);
-        VARIABLE writeWordAddress : unsigned(29 DOWNTO 0);
+        VARIABLE readAddress : unsigned(31 DOWNTO 0);
+        VARIABLE writeAddress : unsigned(31 DOWNTO 0);
+        VARIABLE readWordAddress : unsigned(31 DOWNTO 0);
+        VARIABLE writeWordAddress : unsigned(31 DOWNTO 0);
+
         VARIABLE writeData : STD_LOGIC_VECTOR(31 DOWNTO 0);
         VARIABLE writeStrb : STD_LOGIC_VECTOR(3 DOWNTO 0);
         VARIABLE axiStatus : AxiLiteStatusType := AXI_LITE_STATUS_INIT_C;
@@ -91,6 +96,11 @@ BEGIN
                 vAxiWriteSlave.awready := '1';
                 vAxiWriteSlave.wready := '1';
                 axiStatus := AXI_LITE_STATUS_INIT_C;
+
+                readAddress := (OTHERS => '0');
+                writeAddress := (OTHERS => '0');
+                readWordAddress := (OTHERS => '0');
+                writeWordAddress := (OTHERS => '0');
             ELSE
                 -- check write complete
                 IF axiWriteSlave.bvalid AND axiWriteMaster.bready THEN
@@ -110,7 +120,7 @@ BEGIN
                     axiStatus.readEnable := '1';
                     vAxiReadSlave.arready := '0';
 
-                    readWordAddress := unsigned(axiReadMaster.araddr(31 DOWNTO 2));
+                    readAddress := unsigned(axiReadMaster.araddr);
                 END IF;
 
                 -- accept writes
@@ -119,7 +129,7 @@ BEGIN
 
                     axiStatus.writeAddrEnable := '1';
 
-                    writeWordAddress := unsigned(axiWriteMaster.awaddr(31 DOWNTO 2));
+                    writeAddress := unsigned(axiWriteMaster.awaddr);
                 END IF;
                 IF axiWriteMaster.wvalid AND axiWriteSlave.wready THEN
                     vAxiWriteSlave.wready := '0';
@@ -137,7 +147,9 @@ BEGIN
 
                     vAxiWriteSlave.bvalid := '1';
 
-                    IF (writeWordAddress < LENGTH_WORDS_G) THEN
+                    IF (writeAddress >= AXI_BASE_ADDR_G AND writeAddress < AXI_BASE_ADDR_G + LENGTH_BYTES_G) THEN
+                        writeWordAddress := (writeAddress - AXI_BASE_ADDR_G) / 4;
+
                         -- address is in range of the ram
                         FOR i IN 0 TO 3 LOOP
                             IF writeStrb(i) = '1' THEN
@@ -159,7 +171,9 @@ BEGIN
                     -- output data this clock
                     vAxiReadSlave.rvalid := '1';
 
-                    IF (readWordAddress < LENGTH_WORDS_G) THEN
+                    IF (readAddress >= AXI_BASE_ADDR_G AND readAddress < AXI_BASE_ADDR_G + LENGTH_BYTES_G) THEN
+                        readWordAddress := (readAddress - AXI_BASE_ADDR_G) / 4;
+
                         -- address is in range of the ram
                         vAxiReadSlave.rdata := ramValue(to_integer(readWordAddress));
                         vAxiReadSlave.rresp := AXI_RESP_OK_C;
