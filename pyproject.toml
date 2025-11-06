@@ -4,7 +4,15 @@ version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.10"
-dependencies = ["cocotb>=2.0.0", "pytest>=8.4.2"]
+dependencies = [
+    "cocotb>=2.0.0",
+    "cocotb-bus",
+    "cocotbext-axi>=0.1.26",
+    "pytest>=8.4.2",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.uv.sources]
+cocotb-bus = { git = "https://github.com/cocotb/cocotb-bus.git" }

@@ -38,6 +38,28 @@ wheels = [
 ]
 
 [[package]]
+name = "cocotb-bus"
+version = "0.2.1"
+source = { git = "https://github.com/cocotb/cocotb-bus.git#3a575eb12f1e5cc747e41254d71d2ae80ce606ad" }
+dependencies = [
+    { name = "cocotb" },
+    { name = "scapy" },
+]
+
+[[package]]
+name = "cocotbext-axi"
+version = "0.1.26"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "cocotb" },
+    { name = "cocotb-bus" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/b1/85/85fbd2f224100381447806166caaf0ba2c606e125c0073fcadf38ae191b5/cocotbext_axi-0.1.26.tar.gz", hash = "sha256:7c0c34e2c0163f1df6e314506a49e0d742b23e43eb0ec1b79c89827fb7c2e6b9", size = 58195, upload-time = "2025-09-07T22:35:55.304Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/27/c7/47220e92da93c59a6db5b5e8962a032ac7b9e3fda159b7b5f5b4936e5701/cocotbext_axi-0.1.26-py3-none-any.whl", hash = "sha256:1560be1da5c4d2a59ae34513184c3b2c72ba5b3147a4f28b4aef1644db10afd4", size = 56664, upload-time = "2025-09-07T22:35:53.293Z" },
+]
+
+[[package]]
 name = "colorama"
 version = "0.4.6"
 source = { registry = "https://pypi.org/simple" }
@@ -82,12 +104,16 @@ version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "cocotb" },
+    { name = "cocotb-bus" },
+    { name = "cocotbext-axi" },
     { name = "pytest" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "cocotb", specifier = ">=2.0.0" },
+    { name = "cocotb-bus", git = "https://github.com/cocotb/cocotb-bus.git" },
+    { name = "cocotbext-axi", specifier = ">=0.1.26" },
     { name = "pytest", specifier = ">=8.4.2" },
 ]
 
@@ -134,6 +160,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/a3/5c/00a0e072241553e1a7496d638deababa67c5058571567b92a7eaa258397c/pytest-8.4.2.tar.gz", hash = "sha256:86c0d0b93306b961d58d62a4db4879f27fe25513d4b969df351abdddb3c30e01", size = 1519618, upload-time = "2025-09-04T14:34:22.711Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/a8/a4/20da314d277121d6534b3a980b29035dcd51e6744bd79075a6ce8fa4eb8d/pytest-8.4.2-py3-none-any.whl", hash = "sha256:872f880de3fc3a5bdc88a11b39c9710c3497a547cfa9320bc3c5e62fbf272e79", size = 365750, upload-time = "2025-09-04T14:34:20.226Z" },
+]
+
+[[package]]
+name = "scapy"
+version = "2.6.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/df/2f/035d3888f26d999e9680af8c7ddb7ce4ea0fd8d0e01c000de634c22dcf13/scapy-2.6.1.tar.gz", hash = "sha256:7600d7e2383c853e5c3a6e05d37e17643beebf2b3e10d7914dffcc3bc3c6e6c5", size = 2247754, upload-time = "2024-11-05T08:43:23.488Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/4b/34/8695b43af99d0c796e4b7933a0d7df8925f43a8abdd0ff0f6297beb4de3a/scapy-2.6.1-py3-none-any.whl", hash = "sha256:88a998572049b511a1f3e44f4aa7c62dd39c6ea2aa1bb58434f503956641789d", size = 2420670, upload-time = "2024-11-05T08:43:21.285Z" },
 ]
 
 [[package]]
