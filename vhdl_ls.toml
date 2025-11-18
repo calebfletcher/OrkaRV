@@ -1,3 +1,5 @@
+standard = "2019"
+
 [libraries]
 xil_defaultlib.files = ['targets/**/*.vhd', 'shared/**/*.vhd']
 

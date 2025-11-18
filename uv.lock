@@ -60,6 +60,15 @@ wheels = [
 ]
 
 [[package]]
+name = "cocotbext-jtag"
+version = "0.2.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "cocotb" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/f3/78/48be1e9a1d0d7e267b5115750289aab8d9c4158d2eec4c66685ec149581f/cocotbext_jtag-0.2.1.tar.gz", hash = "sha256:ea4eb81b3ee6bf7f98797dc378f43fd897ad33f91f568e6ef7285ce01e2c6774", size = 20339, upload-time = "2025-10-27T21:15:48.303Z" }
+
+[[package]]
 name = "colorama"
 version = "0.4.6"
 source = { registry = "https://pypi.org/simple" }
@@ -106,6 +115,7 @@ dependencies = [
     { name = "cocotb" },
     { name = "cocotb-bus" },
     { name = "cocotbext-axi" },
+    { name = "cocotbext-jtag" },
     { name = "pytest" },
 ]
 
@@ -114,6 +124,7 @@ requires-dist = [
     { name = "cocotb", specifier = ">=2.0.0" },
     { name = "cocotb-bus", git = "https://github.com/cocotb/cocotb-bus.git" },
     { name = "cocotbext-axi", specifier = ">=0.1.26" },
+    { name = "cocotbext-jtag", specifier = ">=0.2.1" },
     { name = "pytest", specifier = ">=8.4.2" },
 ]
 

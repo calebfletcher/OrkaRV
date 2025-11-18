@@ -8,6 +8,7 @@ dependencies = [
     "cocotb>=2.0.0",
     "cocotb-bus",
     "cocotbext-axi>=0.1.26",
+    "cocotbext-jtag>=0.2.1",
     "pytest>=8.4.2",
 ]
 
