@@ -10,7 +10,7 @@ Rust
 ```bash
 rustup target add riscv32i-unknown-none-elf
 cd software/sample_rust
-just rust simulate gui
+just rust math simulate gui
 ```
 
 ## Python Environment

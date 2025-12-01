@@ -24,8 +24,8 @@ compile file:
     riscv32-unknown-elf-gcc -mabi=ilp32 -march=rv32i -nostdlib -nostartfiles -T linker.ld -o build/program.elf {{file}}
 
 [no-cd]
-rust:
+rust example:
     cargo clean
-    cargo b
-    riscv32-unknown-elf-objdump -d -h target/riscv32i-unknown-none-elf/debug/sample_rust | head -n 50
-    cp target/riscv32i-unknown-none-elf/debug/sample_rust ../build/program.elf
+    cargo b --example {{example}}
+    riscv32-unknown-elf-objdump -d -h target/riscv32i-unknown-none-elf/debug/examples/{{example}} | head -n 50
+    cp target/riscv32i-unknown-none-elf/debug/examples/{{example}} ../build/program.elf
