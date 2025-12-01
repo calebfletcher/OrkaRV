@@ -25,9 +25,12 @@ def main():
     sources = [
         proj_path / "shared" / "hdl" / "RiscVPkg.vhd",
         proj_path / "shared" / "hdl" / "InstructionDecoder.vhd",
-        proj_path / "shared" / "hdl" / "Ram.vhd",
         proj_path / "shared" / "hdl" / "Registers.vhd",
         proj_path / "shared" / "hdl" / "Cpu.vhd",
+
+        proj_path / "shared" / "hdl" / "Ram.vhd",
+        proj_path / "shared" / "hdl" / "Gpio.vhd",
+
         proj_path / "shared" / "hdl" / "Soc.vhd",
     ]
 

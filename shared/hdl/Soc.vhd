@@ -13,13 +13,14 @@ ENTITY Soc IS
     PORT (
         clk : IN STD_LOGIC;
         reset : IN STD_LOGIC;
-        halt : OUT STD_LOGIC := '0'
+        halt : OUT STD_LOGIC := '0';
+        gpioPins : INOUT STD_LOGIC_VECTOR(31 DOWNTO 0)
     );
 END ENTITY Soc;
 
 ARCHITECTURE rtl OF Soc IS
     CONSTANT NUM_MASTERS_C : NATURAL := 1;
-    CONSTANT NUM_SLAVES_C : NATURAL := 2;
+    CONSTANT NUM_SLAVES_C : NATURAL := 3;
 
     SIGNAL mAxiWriteMasters : AxiLiteWriteMasterArray(NUM_MASTERS_C - 1 DOWNTO 0) := (OTHERS => AXI_LITE_WRITE_MASTER_INIT_C);
     SIGNAL mAxiWriteSlaves : AxiLiteWriteSlaveArray(NUM_MASTERS_C - 1 DOWNTO 0);
@@ -31,7 +32,7 @@ ARCHITECTURE rtl OF Soc IS
     SIGNAL sAxiReadMasters : AxiLiteReadMasterArray(NUM_SLAVES_C - 1 DOWNTO 0);
     SIGNAL sAxiReadSlaves : AxiLiteReadSlaveArray(NUM_SLAVES_C - 1 DOWNTO 0) := (OTHERS => AXI_LITE_READ_SLAVE_INIT_C);
 
-    CONSTANT AXIL_XBAR_CFG_C : AxiLiteCrossbarMasterConfigArray(0 TO 1) := (0 => (baseAddr => X"01000000", addrBits => 24, connectivity => X"FFFF"), 1 => (baseAddr => X"02000000", addrBits => 24, connectivity => X"FFFF"));
+    CONSTANT AXIL_XBAR_CFG_C : AxiLiteCrossbarMasterConfigArray(0 TO NUM_SLAVES_C - 1) := (0 => (baseAddr => X"01000000", addrBits => 24, connectivity => X"FFFF"), 1 => (baseAddr => X"02000000", addrBits => 16, connectivity => X"FFFF"), 2 => (baseAddr => X"02010000", addrBits => 16, connectivity => X"FFFF"));
 BEGIN
     Cpu_inst : ENTITY work.Cpu
         PORT MAP(
@@ -58,6 +59,17 @@ BEGIN
             axiReadSlave => sAxiReadSlaves(0),
             axiWriteMaster => sAxiWriteMasters(0),
             axiWriteSlave => sAxiWriteSlaves(0)
+        );
+
+    Gpio_inst : ENTITY work.Gpio
+        PORT MAP(
+            clk => clk,
+            reset => reset,
+            axilReadMaster => sAxiReadMasters(1),
+            axilReadSlave => sAxiReadSlaves(1),
+            axilWriteMaster => sAxiWriteMasters(1),
+            axilWriteSlave => sAxiWriteSlaves(1),
+            pins => gpioPins
         );
 
     AxiLiteCrossbar_inst : ENTITY surf.AxiLiteCrossbar
