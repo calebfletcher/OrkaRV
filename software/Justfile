@@ -26,6 +26,6 @@ compile file:
 [no-cd]
 rust example:
     cargo clean
-    cargo b --example {{example}}
-    riscv32-unknown-elf-objdump -d -h target/riscv32i-unknown-none-elf/debug/examples/{{example}} | head -n 50
-    cp target/riscv32i-unknown-none-elf/debug/examples/{{example}} ../build/program.elf
+    cargo b --example {{example}} -r
+    riscv32-unknown-elf-objdump -d -h target/riscv32i-unknown-none-elf/release/examples/{{example}} | head -n 50
+    cp target/riscv32i-unknown-none-elf/release/examples/{{example}} ../build/program.elf
