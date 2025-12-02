@@ -29,7 +29,14 @@ def main():
         proj_path / "shared" / "hdl" / "Cpu.vhd",
 
         proj_path / "shared" / "hdl" / "Ram.vhd",
-        proj_path / "shared" / "hdl" / "Gpio.vhd",
+
+        proj_path / "shared" / "hdl" / "reg_utils.vhd",
+        proj_path / "shared" / "hdl" / "axi4lite_intf_pkg.vhd",
+        proj_path / "shared" / "hdl" / "AxiLitePeakRdlBridge.vhd",
+        
+        proj_path / "shared" / "gpio" / "hdl" / "GpioRegisters_pkg.vhd",
+        proj_path / "shared" / "gpio" / "hdl" / "GpioRegisters.vhd",
+        proj_path / "shared" / "gpio" / "hdl" / "Gpio.vhd",
 
         proj_path / "shared" / "hdl" / "Soc.vhd",
     ]

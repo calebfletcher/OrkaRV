@@ -9,6 +9,9 @@ dependencies = [
     "cocotb-bus",
     "cocotbext-axi>=0.1.26",
     "cocotbext-jtag>=0.2.1",
+    "peakrdl>=1.5.0",
+    "peakrdl-markdown>=1.0.3",
+    "peakrdl-regblock-vhdl>=1.1.1.0",
     "pytest>=8.4.2",
 ]
 

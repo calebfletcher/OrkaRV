@@ -1,0 +1,25 @@
+addrmap GpioRegisters {
+    name = "GPIO Peripheral";
+    
+    default sw = rw;
+    default hw = r;
+
+    reg {
+        name = "Direction";
+        desc = "For each pin, a value of 0 corresponds to input, and 1 corresponds to output.";
+        field {} direction[32] = 0;
+    } direction;
+    
+    reg {
+        name = "Output Data";
+        field {} output[32] = 0;
+    } output;
+    
+    reg {
+        name = "Input Data";
+        field {
+            sw = r;
+            hw = w;
+        } input[32] = 0;
+    } input;
+};
