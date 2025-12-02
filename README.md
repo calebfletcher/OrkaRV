@@ -9,8 +9,8 @@ C compiler and assembler: `sudo apt install gcc-riscv64-unknown-elf`
 Rust
 ```bash
 rustup target add riscv32i-unknown-none-elf
-cd software/sample_rust
-just rust math simulate gui
+cd software/rust
+cargo r -r --example gpio
 ```
 
 ## Python Environment

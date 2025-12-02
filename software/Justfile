@@ -10,7 +10,7 @@ assemble file:
     riscv32-unknown-elf-as -march=rv32i -o build/program.o {{file}}
     riscv32-unknown-elf-ld -m elf32lriscv -T linker.ld -o build/program.elf build/program.o
 
-simulate:
+simulate: && gui
     mkdir -p build/sim
     riscv32-unknown-elf-objcopy -O binary build/program.elf build/program.bin
     hexdump -v -e '1/4 "%08x\n"' build/program.bin > build/program.hex
@@ -24,8 +24,6 @@ compile file:
     riscv32-unknown-elf-gcc -mabi=ilp32 -march=rv32i -nostdlib -nostartfiles -T linker.ld -o build/program.elf {{file}}
 
 [no-cd]
-rust example:
-    cargo clean
-    cargo b --example {{example}} -r
-    riscv32-unknown-elf-objdump -d -h target/riscv32i-unknown-none-elf/release/examples/{{example}} | head -n 50
-    cp target/riscv32i-unknown-none-elf/release/examples/{{example}} ../build/program.elf
+rust path: && simulate
+    riscv32-unknown-elf-objdump -d -h {{path}} | head -n 100
+    cp {{path}} ../build/program.elf

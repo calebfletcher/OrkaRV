@@ -1,6 +1,9 @@
 #![no_std]
 #![no_main]
 
+// needed to link the boot.S
+use rust as _;
+
 use core::{arch::asm, panic::PanicInfo};
 
 static RODATA: &[u8] = b"Hello, world!";

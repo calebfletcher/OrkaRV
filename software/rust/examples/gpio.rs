@@ -1,6 +1,9 @@
 #![no_std]
 #![no_main]
 
+// needed to link the boot.S
+use rust as _;
+
 use core::{arch::asm, panic::PanicInfo};
 
 use rust::gpio::{Direction, Gpio};
@@ -11,7 +14,6 @@ fn panic(_info: &PanicInfo) -> ! {
     loop {}
 }
 
-#[allow(static_mut_refs)]
 #[unsafe(no_mangle)]
 pub extern "C" fn main() -> ! {
     let gpio = unsafe { Gpio::from_ptr(0x0200_0000 as *mut _) };
