@@ -28,4 +28,9 @@ SECTIONS {
     _sp = .;
     . = ALIGN(4);
   }
+
+  /* for some reason this keeps on being put before .text, so discard it */
+  /DISCARD/ : {
+    *(.eh_frame);
+  }
 }

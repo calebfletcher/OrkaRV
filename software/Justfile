@@ -2,7 +2,7 @@ _default:
     @just --list
 
 clean:
-    rm -r build
+    rm -rf build sim_build
 
 # Assemble a file for the processor
 assemble file:
@@ -25,5 +25,6 @@ compile file:
 
 [no-cd]
 rust path: && simulate
+    mkdir -p ../build
     riscv32-unknown-elf-objdump -d -h {{path}} | head -n 100
     cp {{path}} ../build/program.elf
