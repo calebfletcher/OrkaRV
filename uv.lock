@@ -281,7 +281,7 @@ requires-dist = [
     { name = "cocotbext-jtag", specifier = ">=0.2.1" },
     { name = "peakrdl", specifier = ">=1.5.0" },
     { name = "peakrdl-markdown", specifier = ">=1.0.3" },
-    { name = "peakrdl-regblock-vhdl", specifier = ">=1.1.1.0" },
+    { name = "peakrdl-regblock-vhdl", git = "https://github.com/SystemRDL/PeakRDL-regblock-vhdl.git" },
     { name = "pytest", specifier = ">=8.4.2" },
 ]
 
@@ -396,14 +396,10 @@ wheels = [
 [[package]]
 name = "peakrdl-regblock-vhdl"
 version = "1.1.1.0"
-source = { registry = "https://pypi.org/simple" }
+source = { git = "https://github.com/SystemRDL/PeakRDL-regblock-vhdl.git#074320873aa90a2a599dedbd9e9016d33d41f5d1" }
 dependencies = [
     { name = "jinja2" },
     { name = "systemrdl-compiler" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/74/f5/e357edf799650b2c1edb43aba92f1a799fb5651c003b2eaa6d1f18c5860f/peakrdl_regblock_vhdl-1.1.1.0.tar.gz", hash = "sha256:80229adfa18c7b6d3acaaee157cd0c9966176296bf5966e65a3dd38053fec660", size = 594472, upload-time = "2025-09-19T02:55:47.18Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/e7/41/ce47a057308bd9b215a6e908c2531eba063afce9bb47191be30f8862eaed/peakrdl_regblock_vhdl-1.1.1.0-py3-none-any.whl", hash = "sha256:cda3aa8115f6dbd9739b3157daea8700a2d652bbbd5109613ed2e98027e931a5", size = 93686, upload-time = "2025-09-19T02:55:45.933Z" },
 ]
 
 [[package]]

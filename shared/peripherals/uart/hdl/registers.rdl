@@ -1,0 +1,50 @@
+addrmap UartRegisters {
+    name = "UART Peripheral";
+    desc = "Basic UART, no flow control, fixed 1M baud, no FIFO.";
+    
+    default sw = rw;
+    default hw = r;
+
+    reg {
+        name = "Receiver Buffer Register";
+
+        field {
+            sw = r;
+            hw = w;
+            swacc;
+        } rx [7:0];
+    } rx;
+
+    
+    reg {
+        name = "Transmitter Holding Register";
+    
+        field {
+            sw = w;
+            hw = r;
+            swacc;
+        } tx[7:0] = 0;
+    } tx;
+
+    reg {
+        name = "Control Register";
+        field {
+            name = "Enable TX/RX";
+        } enable = 1;
+    } ctrl;
+    
+    reg {
+        name = "Status Register";
+        
+        default sw = r;
+        default hw = w;
+
+        field {
+            name = "RX Data Ready";
+            hw = rw;
+        } rxr;
+        field {
+            name = "TX Empty";
+        } txe;
+    } status;
+};

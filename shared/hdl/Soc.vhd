@@ -14,7 +14,10 @@ ENTITY Soc IS
         clk : IN STD_LOGIC;
         reset : IN STD_LOGIC;
         halt : OUT STD_LOGIC := '0';
-        gpioPins : INOUT STD_LOGIC_VECTOR(31 DOWNTO 0)
+        gpioPins : INOUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+
+        uart_rxd_out : OUT STD_LOGIC;
+        uart_txd_in : IN STD_LOGIC
     );
 END ENTITY Soc;
 
@@ -70,6 +73,18 @@ BEGIN
             axilWriteMaster => sAxiWriteMasters(1),
             axilWriteSlave => sAxiWriteSlaves(1),
             pins => gpioPins
+        );
+
+    Uart_inst : ENTITY work.Uart
+        PORT MAP(
+            clk => clk,
+            reset => reset,
+            axilWriteMaster => sAxiWriteMasters(2),
+            axilWriteSlave => sAxiWriteSlaves(2),
+            axilReadMaster => sAxiReadMasters(2),
+            axilReadSlave => sAxiReadSlaves(2),
+            uart_rxd_out => uart_rxd_out,
+            uart_txd_in => uart_txd_in
         );
 
     AxiLiteCrossbar_inst : ENTITY surf.AxiLiteCrossbar

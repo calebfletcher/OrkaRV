@@ -12,6 +12,8 @@ async def run(dut):
     clock = Clock(dut.clk, 10, unit="ns")
     clock.start()
 
+    dut.uart_txd_in.value = 1
+
     # Reset the CPU
     dut.reset.value = 1
     await clock.cycles(3)
@@ -37,6 +39,10 @@ def main():
         proj_path / "shared" / "peripherals" / "gpio" / "hdl" / "GpioRegisters_pkg.vhd",
         proj_path / "shared" / "peripherals" / "gpio" / "hdl" / "GpioRegisters.vhd",
         proj_path / "shared" / "peripherals" / "gpio" / "hdl" / "Gpio.vhd",
+        
+        proj_path / "shared" / "peripherals" / "uart" / "hdl" / "UartRegisters_pkg.vhd",
+        proj_path / "shared" / "peripherals" / "uart" / "hdl" / "UartRegisters.vhd",
+        proj_path / "shared" / "peripherals" / "uart" / "hdl" / "Uart.vhd",
 
         proj_path / "shared" / "hdl" / "Soc.vhd",
     ]

@@ -2,7 +2,7 @@
 Markdown description for SystemRDL register map.
 
 Don't override. Generated from: GpioRegisters
-  - ../gpio/hdl/registers.rdl
+  - ../peripherals/gpio/hdl/registers.rdl
 -->
 
 ## GpioRegisters address map
