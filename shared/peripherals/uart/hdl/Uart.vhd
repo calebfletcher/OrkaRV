@@ -39,6 +39,7 @@ ARCHITECTURE rtl OF Uart IS
     SIGNAL hwif_out : UartRegisters_out_t;
 
     SIGNAL rdFifoValid : STD_LOGIC;
+    SIGNAL wrDelayed : STD_LOGIC := '0';
 BEGIN
     -- convert surf axilite to peakrdl's
     AxiLitePeakRdlBridge_inst : ENTITY work.AxiLitePeakRdlBridge
@@ -74,7 +75,7 @@ BEGIN
             clk => clk,
             rst => reset,
             wrData => hwif_out.tx.tx.value,
-            wrValid => hwif_out.tx.tx.swacc,
+            wrValid => wrDelayed,
             wrReady => hwif_in.status.txe.next_q,
             rdData => hwif_in.rx.rx.next_q,
             rdValid => rdFifoValid,
@@ -92,6 +93,17 @@ BEGIN
         ELSE
             -- preserve current value
             hwif_in.status.rxr.next_q <= hwif_out.status.rxr.value;
+        END IF;
+    END PROCESS;
+
+    PROCESS (clk)
+    BEGIN
+        IF rising_edge(clk) THEN
+            IF reset = '1' THEN
+                wrDelayed <= '0';
+            ELSE
+                wrDelayed <= hwif_out.tx.tx.swacc;
+            END IF;
         END IF;
     END PROCESS;
 
