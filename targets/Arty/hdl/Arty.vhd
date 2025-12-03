@@ -26,7 +26,12 @@ BEGIN
         PORT MAP(
             clk => CLK100MHZ,
             reset => NOT ck_rstn,
-            halt => led(0)
+            halt => led(0),
+            gpioPins(3 DOWNTO 0) => sw,
+            gpioPins(7 DOWNTO 4) => btn,
+            gpioPins(10 DOWNTO 8) => led(3 DOWNTO 1),
+            uart_rxd_out => uart_rxd_out,
+            uart_txd_in => uart_txd_in
         );
 
 END ARCHITECTURE;

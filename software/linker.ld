@@ -1,4 +1,4 @@
-STACK_SIZE = 0x100;
+STACK_SIZE = 0x1000;
 
 ENTRY(_start)
 

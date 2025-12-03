@@ -1,6 +1,7 @@
 #![no_std]
 #![no_main]
 
+use heapless::Deque;
 // needed to link the boot.S
 use rust as _;
 
@@ -18,18 +19,33 @@ fn panic(_info: &PanicInfo) -> ! {
 pub extern "C" fn main() -> ! {
     let uart = unsafe { Uart::from_ptr(0x0201_0000 as *mut _) };
 
+    let mut bytes = Deque::<_, 256>::new();
+
     loop {
         let status = uart.status().read();
 
         // read
         if status.rxr() {
-            // read byte to clear rx buffer
-            let _byte = uart.rx();
+            // read byte
+            let byte = uart.rx();
+
+            let _ = bytes.push_back(byte);
         }
 
-        // write
-        if status.txe() {
-            uart.tx(0xA5);
+        if bytes.back() == Some(&b'\n') {
+            while let Some(byte) = bytes.pop_front() {
+                // wait for tx slot
+                loop {
+                    let status = uart.status().read();
+                    if status.txe() {
+                        break;
+                    }
+                }
+
+                uart.tx(byte);
+            }
+
+            panic!("");
         }
     }
 }

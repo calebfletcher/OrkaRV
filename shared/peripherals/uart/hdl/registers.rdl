@@ -42,7 +42,7 @@ addrmap UartRegisters {
         field {
             name = "RX Data Ready";
             hw = rw;
-        } rxr;
+        } rxr = 0;
         field {
             name = "TX Empty";
         } txe;
