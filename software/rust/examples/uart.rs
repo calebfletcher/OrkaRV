@@ -2,7 +2,7 @@
 #![no_main]
 
 use heapless::Deque;
-use rust::uart::Uart;
+use rust::{debug, uart::Uart};
 
 use riscv_rt::entry;
 
@@ -36,7 +36,7 @@ fn main() -> ! {
                 uart.tx(byte);
             }
 
-            panic!("");
+            debug::set_pass();
         }
     }
 }

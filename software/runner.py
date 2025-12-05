@@ -1,24 +1,45 @@
+import asyncio
 import glob
 from shutil import copyfile
 from pathlib import Path
 import subprocess
 import cocotb
 from cocotb.clock import Clock
-from cocotb.triggers import RisingEdge
+from cocotb.triggers import Event
 from cocotb_tools.runner import get_runner
 from cocotbext.uart import UartSink, UartSource
-from cocotbext.axi import AxiLiteMaster, AxiLiteSlave, AxiLiteBus, AxiLiteRam
+from cocotbext.axi import AxiLiteMaster, AxiLiteSlave, AxiLiteBus
 
+class DebugPeripheral:
+    def __init__(self):
+        self.pass_event = Event()
+        self.fail_event = Event()
+
+    async def write(self, address: int, data: bytes):
+        masked_addr = address & ((1 << 24) - 1)
+        print(f"0x{masked_addr:08X}", data)
+        match masked_addr:
+            case 0x0:
+                # pass
+                self.pass_event.set()
+            case 0x4:
+                # pass
+                self.fail_event.set()
+            case _:
+                raise RuntimeError("invalid peripheral write addr")
+
+    async def read(self, address: int, length: int):
+        raise RuntimeError("attempt read from debug peripheral")
 
 @cocotb.test(timeout_time=2, timeout_unit="ms")
 async def run(dut):
     clock = Clock(dut.clk, 10, unit="ns")
     clock.start()
+    
+    debug_peripheral = DebugPeripheral()
 
     uart_sink = UartSink(dut.uart_rxd_out, baud=1000000)
     uart_source = UartSource(dut.uart_txd_in, baud=1000000)
-
-    dut.uart_txd_in.value = 1
 
     # Reset the CPU
     dut.reset.value = 1
@@ -26,16 +47,15 @@ async def run(dut):
     dut.reset.value = 0
 
     axil_master = AxiLiteMaster(AxiLiteBus.from_prefix(dut, "S_AXI"), dut.clk)
-    axil_slave = AxiLiteRam(AxiLiteBus.from_prefix(dut, "M_AXI"), dut.clk, size = 2 ** 32)
+    axil_slave = AxiLiteSlave(AxiLiteBus.from_prefix(dut, "M_AXI"), dut.clk, target=debug_peripheral)
 
+    # detect fail event from debug peripheral
     async def fail_on_error():
-        if not dut.trap.value:
-            await RisingEdge(dut.trap)
+        await debug_peripheral.fail_event.wait()
         raise RuntimeError
     cocotb.start_soon(fail_on_error())
 
     expected_string = b"Hello World! This is a long test string from cocotb to the orkarv core.\n"
-
     await uart_source.write(expected_string)
     
     # receive newline-terminated string
@@ -48,8 +68,8 @@ async def run(dut):
 
     assert received_buffer == expected_string
 
-    if not dut.halt.value:
-        await RisingEdge(dut.halt)
+    # wait for pass
+    debug_peripheral.pass_event.wait()
 
 def main():
     proj_path = Path(__file__).resolve().parent.parent

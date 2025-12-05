@@ -1,7 +1,10 @@
 #![no_std]
 #![no_main]
 
-use rust::gpio::{Direction, Gpio};
+use rust::{
+    debug,
+    gpio::{Direction, Gpio},
+};
 
 use riscv_rt::entry;
 
@@ -16,5 +19,5 @@ fn main() -> ! {
     gpio.output().modify(|w| w.set_value(0, false));
     gpio.output().modify(|w| w.set_value(0, true));
 
-    panic!();
+    debug::set_pass();
 }

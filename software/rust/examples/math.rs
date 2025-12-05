@@ -2,9 +2,12 @@
 #![no_main]
 
 use riscv_rt::entry;
+use rust::debug;
 
 static RODATA: &[u8] = b"Hello, world!";
 static mut BSS: [u8; 16] = [0; 16];
+
+const EXPECTED: u32 = 0xD77DB24E;
 
 #[allow(static_mut_refs)]
 #[entry]
@@ -12,11 +15,12 @@ fn main() -> ! {
     let _x = RODATA;
     let _y = unsafe { &BSS };
     let val = math();
-    unsafe {
-        core::ptr::write_volatile(0x02000000 as *mut u32, val);
-    };
 
-    panic!();
+    if val != EXPECTED {
+        panic!("invalid value");
+    }
+
+    debug::set_pass();
 }
 
 fn math() -> u32 {

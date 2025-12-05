@@ -23,16 +23,16 @@ ENTITY Soc IS
         uart_txd_in : IN STD_LOGIC;
 
         -- external master interface
-        mAxilReadMaster : IN AxiLiteReadMasterType;
+        mAxilReadMaster : IN AxiLiteReadMasterType := AXI_LITE_READ_MASTER_INIT_C;
         mAxilReadSlave : OUT AxiLiteReadSlaveType;
-        mAxilWriteMaster : IN AxiLiteWriteMasterType;
+        mAxilWriteMaster : IN AxiLiteWriteMasterType := AXI_LITE_WRITE_MASTER_INIT_C;
         mAxilWriteSlave : OUT AxiLiteWriteSlaveType;
 
         -- external slave interface
         sAxilReadMaster : OUT AxiLiteReadMasterType;
-        sAxilReadSlave : IN AxiLiteReadSlaveType;
+        sAxilReadSlave : IN AxiLiteReadSlaveType := AXI_LITE_READ_SLAVE_INIT_C;
         sAxilWriteMaster : OUT AxiLiteWriteMasterType;
-        sAxilWriteSlave : IN AxiLiteWriteSlaveType
+        sAxilWriteSlave : IN AxiLiteWriteSlaveType := AXI_LITE_WRITE_SLAVE_INIT_C
     );
 END ENTITY Soc;
 
