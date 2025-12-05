@@ -23,6 +23,12 @@ async def run(dut):
     await clock.cycles(3)
     dut.reset.value = 0
 
+    async def fail_on_error():
+        if not dut.halt.value:
+            await RisingEdge(dut.halt)
+        raise RuntimeError
+    cocotb.start_soon(fail_on_error())
+
     expected_string = b"Hello World! This is a long test string from cocotb to the orkarv core.\n"
 
     await uart_source.write(expected_string)
@@ -36,10 +42,6 @@ async def run(dut):
             break
 
     assert received_buffer == expected_string
-
-    # Wait for it to halt
-    if not dut.halt.value:
-        await RisingEdge(dut.halt)
 
 def main():
     proj_path = Path(__file__).resolve().parent.parent
