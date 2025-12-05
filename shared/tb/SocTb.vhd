@@ -42,7 +42,9 @@ BEGIN
         PORT MAP(
             clk => clk,
             reset => reset,
-            halt => halt
+            halt => halt,
+
+            uart_txd_in => '1'
         );
 
     -- Stop simulation on halt or timeout
