@@ -13,7 +13,10 @@ ENTITY Soc IS
     PORT (
         clk : IN STD_LOGIC;
         reset : IN STD_LOGIC;
+        -- set high on ebreak
         halt : OUT STD_LOGIC := '0';
+        -- set high on illegal instruction/mem error/etc.
+        trap : OUT STD_LOGIC := '0';
         gpioPins : INOUT STD_LOGIC_VECTOR(31 DOWNTO 0);
 
         uart_rxd_out : OUT STD_LOGIC;
@@ -42,6 +45,7 @@ BEGIN
             clk => clk,
             reset => reset,
             halt => halt,
+            trap => trap,
 
             axiReadMaster => mAxiReadMasters(0),
             axiReadSlave => mAxiReadSlaves(0),

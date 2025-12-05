@@ -14,6 +14,7 @@ ENTITY Cpu IS
         clk : IN STD_LOGIC;
         reset : IN STD_LOGIC;
         halt : OUT STD_LOGIC := '0';
+        trap : OUT STD_LOGIC := '0';
 
         -- memory interface
         axiReadMaster : OUT AxiLiteReadMasterType := AXI_LITE_READ_MASTER_INIT_C;
@@ -24,7 +25,7 @@ ENTITY Cpu IS
 END ENTITY Cpu;
 
 ARCHITECTURE rtl OF Cpu IS
-    TYPE StageType IS (INIT, FETCH, DECODE, EXECUTE, MEMORY, WRITEBACK, HALTED);
+    TYPE StageType IS (INIT, FETCH, DECODE, EXECUTE, MEMORY, WRITEBACK, HALTED, TRAPPED);
     TYPE RegWriteSourceType IS (NONE_SRC, MEMORY_SRC, ALU_SRC, IMMEDIATE_SRC, SUCC_PC_SRC);
 
     TYPE RegType IS RECORD
@@ -150,7 +151,7 @@ BEGIN
 
                         v.stage := DECODE;
                     ELSE
-                        v.stage := HALTED;
+                        v.stage := TRAPPED;
                     END IF;
                 END IF;
             WHEN DECODE =>
@@ -284,10 +285,11 @@ BEGIN
                         v.aluResult := STD_LOGIC_VECTOR(unsigned(r.pc) + unsigned(r.immediate));
                         v.opPcFromAlu := '1' WHEN UNSIGNED(rs1Value) >= UNSIGNED(rs2Value) ELSE
                         '0';
+                    WHEN EBREAK =>
+                        v.stage := HALTED;
                     WHEN OTHERS =>
                         -- on unknown instruction, halt
-                        v.stage := HALTED;
-                        NULL;
+                        v.stage := TRAPPED;
                 END CASE;
             WHEN EXECUTE =>
                 -- update PC
@@ -365,7 +367,7 @@ BEGIN
 
                         v.stage := WRITEBACK;
                     ELSE
-                        v.stage := HALTED;
+                        v.stage := TRAPPED;
                     END IF;
                 END IF;
                 IF r.opMemRead AND r.axiReadMaster.rready AND axiReadSlave.rvalid THEN
@@ -380,7 +382,7 @@ BEGIN
 
                         v.stage := WRITEBACK;
                     ELSE
-                        v.stage := HALTED;
+                        v.stage := TRAPPED;
                     END IF;
                 END IF;
             WHEN WRITEBACK =>
@@ -445,6 +447,8 @@ BEGIN
                 v.stage := FETCH;
             WHEN HALTED =>
                 -- do nothing
+            WHEN TRAPPED =>
+                -- do nothing
         END CASE;
 
         IF reset THEN
@@ -456,6 +460,8 @@ BEGIN
 
         -- update outputs
         halt <= '1' WHEN r.stage = HALTED ELSE
+            '0';
+        trap <= '1' WHEN r.stage = TRAPPED ELSE
             '0';
         axiReadMaster <= r.axiReadMaster;
         axiWriteMaster <= r.axiWriteMaster;

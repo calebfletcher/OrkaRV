@@ -24,8 +24,8 @@ async def run(dut):
     dut.reset.value = 0
 
     async def fail_on_error():
-        if not dut.halt.value:
-            await RisingEdge(dut.halt)
+        if not dut.trap.value:
+            await RisingEdge(dut.trap)
         raise RuntimeError
     cocotb.start_soon(fail_on_error())
 
@@ -42,6 +42,9 @@ async def run(dut):
             break
 
     assert received_buffer == expected_string
+
+    if not dut.halt.value:
+        await RisingEdge(dut.halt)
 
 def main():
     proj_path = Path(__file__).resolve().parent.parent
