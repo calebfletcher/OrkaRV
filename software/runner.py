@@ -7,6 +7,8 @@ from cocotb.clock import Clock
 from cocotb.triggers import RisingEdge
 from cocotb_tools.runner import get_runner
 from cocotbext.uart import UartSink, UartSource
+from cocotbext.axi import AxiLiteMaster, AxiLiteSlave, AxiLiteBus, AxiLiteRam
+
 
 @cocotb.test(timeout_time=2, timeout_unit="ms")
 async def run(dut):
@@ -22,6 +24,9 @@ async def run(dut):
     dut.reset.value = 1
     await clock.cycles(3)
     dut.reset.value = 0
+
+    axil_master = AxiLiteMaster(AxiLiteBus.from_prefix(dut, "S_AXI"), dut.clk)
+    axil_slave = AxiLiteRam(AxiLiteBus.from_prefix(dut, "M_AXI"), dut.clk, size = 2 ** 32)
 
     async def fail_on_error():
         if not dut.trap.value:

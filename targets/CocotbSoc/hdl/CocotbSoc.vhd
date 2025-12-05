@@ -90,7 +90,19 @@ BEGIN
             trap => trap,
             gpioPins => gpioPins,
             uart_rxd_out => uart_rxd_out,
-            uart_txd_in => uart_txd_in
+            uart_txd_in => uart_txd_in,
+
+            -- cocotb master interface
+            mAxilReadMaster => mAxilReadMaster,
+            mAxilReadSlave => mAxilReadSlave,
+            mAxilWriteMaster => mAxilWriteMaster,
+            mAxilWriteSlave => mAxilWriteSlave,
+
+            -- cocotb slave interface
+            sAxilReadMaster => sAxilReadMaster,
+            sAxilReadSlave => sAxilReadSlave,
+            sAxilWriteMaster => sAxilWriteMaster,
+            sAxilWriteSlave => sAxilWriteSlave
         );
     -- adapter for cocotb master
     SlaveAxiLiteIpIntegrator_inst : ENTITY surf.SlaveAxiLiteIpIntegrator

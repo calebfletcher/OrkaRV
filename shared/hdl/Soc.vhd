@@ -20,13 +20,25 @@ ENTITY Soc IS
         gpioPins : INOUT STD_LOGIC_VECTOR(31 DOWNTO 0);
 
         uart_rxd_out : OUT STD_LOGIC;
-        uart_txd_in : IN STD_LOGIC
+        uart_txd_in : IN STD_LOGIC;
+
+        -- external master interface
+        mAxilReadMaster : IN AxiLiteReadMasterType;
+        mAxilReadSlave : OUT AxiLiteReadSlaveType;
+        mAxilWriteMaster : IN AxiLiteWriteMasterType;
+        mAxilWriteSlave : OUT AxiLiteWriteSlaveType;
+
+        -- external slave interface
+        sAxilReadMaster : OUT AxiLiteReadMasterType;
+        sAxilReadSlave : IN AxiLiteReadSlaveType;
+        sAxilWriteMaster : OUT AxiLiteWriteMasterType;
+        sAxilWriteSlave : IN AxiLiteWriteSlaveType
     );
 END ENTITY Soc;
 
 ARCHITECTURE rtl OF Soc IS
-    CONSTANT NUM_MASTERS_C : NATURAL := 1;
-    CONSTANT NUM_SLAVES_C : NATURAL := 3;
+    CONSTANT NUM_MASTERS_C : NATURAL := 2;
+    CONSTANT NUM_SLAVES_C : NATURAL := 4;
 
     SIGNAL mAxiWriteMasters : AxiLiteWriteMasterArray(NUM_MASTERS_C - 1 DOWNTO 0) := (OTHERS => AXI_LITE_WRITE_MASTER_INIT_C);
     SIGNAL mAxiWriteSlaves : AxiLiteWriteSlaveArray(NUM_MASTERS_C - 1 DOWNTO 0);
@@ -38,7 +50,7 @@ ARCHITECTURE rtl OF Soc IS
     SIGNAL sAxiReadMasters : AxiLiteReadMasterArray(NUM_SLAVES_C - 1 DOWNTO 0);
     SIGNAL sAxiReadSlaves : AxiLiteReadSlaveArray(NUM_SLAVES_C - 1 DOWNTO 0) := (OTHERS => AXI_LITE_READ_SLAVE_INIT_C);
 
-    CONSTANT AXIL_XBAR_CFG_C : AxiLiteCrossbarMasterConfigArray(0 TO NUM_SLAVES_C - 1) := (0 => (baseAddr => X"01000000", addrBits => 24, connectivity => X"FFFF"), 1 => (baseAddr => X"02000000", addrBits => 16, connectivity => X"FFFF"), 2 => (baseAddr => X"02010000", addrBits => 16, connectivity => X"FFFF"));
+    CONSTANT AXIL_XBAR_CFG_C : AxiLiteCrossbarMasterConfigArray(0 TO NUM_SLAVES_C - 1) := (0 => (baseAddr => X"01000000", addrBits => 24, connectivity => X"FFFF"), 1 => (baseAddr => X"03000000", addrBits => 24, connectivity => X"FFFF"), 2 => (baseAddr => X"02000000", addrBits => 16, connectivity => X"FFFF"), 3 => (baseAddr => X"02010000", addrBits => 16, connectivity => X"FFFF"));
 BEGIN
     Cpu_inst : ENTITY work.Cpu
         PORT MAP(
@@ -72,10 +84,10 @@ BEGIN
         PORT MAP(
             clk => clk,
             reset => reset,
-            axilReadMaster => sAxiReadMasters(1),
-            axilReadSlave => sAxiReadSlaves(1),
-            axilWriteMaster => sAxiWriteMasters(1),
-            axilWriteSlave => sAxiWriteSlaves(1),
+            axilReadMaster => sAxiReadMasters(2),
+            axilReadSlave => sAxiReadSlaves(2),
+            axilWriteMaster => sAxiWriteMasters(2),
+            axilWriteSlave => sAxiWriteSlaves(2),
             pins => gpioPins
         );
 
@@ -83,14 +95,27 @@ BEGIN
         PORT MAP(
             clk => clk,
             reset => reset,
-            axilWriteMaster => sAxiWriteMasters(2),
-            axilWriteSlave => sAxiWriteSlaves(2),
-            axilReadMaster => sAxiReadMasters(2),
-            axilReadSlave => sAxiReadSlaves(2),
+            axilWriteMaster => sAxiWriteMasters(3),
+            axilWriteSlave => sAxiWriteSlaves(3),
+            axilReadMaster => sAxiReadMasters(3),
+            axilReadSlave => sAxiReadSlaves(3),
             uart_rxd_out => uart_rxd_out,
             uart_txd_in => uart_txd_in
         );
 
+    -- external master interface
+    mAxiWriteMasters(1) <= mAxilWriteMaster;
+    mAxilWriteSlave <= mAxiWriteSlaves(1);
+    mAxiReadMasters(1) <= mAxilReadMaster;
+    mAxilReadSlave <= mAxiReadSlaves(1);
+
+    -- external slave interface
+    sAxilWriteMaster <= sAxiWriteMasters(1);
+    sAxiWriteSlaves(1) <= sAxilWriteSlave;
+    sAxilReadMaster <= sAxiReadMasters(1);
+    sAxiReadSlaves(1) <= sAxilReadSlave;
+
+    -- crossbar
     AxiLiteCrossbar_inst : ENTITY surf.AxiLiteCrossbar
         GENERIC MAP(
             NUM_SLAVE_SLOTS_G => NUM_MASTERS_C,
