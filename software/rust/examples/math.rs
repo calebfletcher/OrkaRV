@@ -1,23 +1,14 @@
 #![no_std]
 #![no_main]
 
-// needed to link the boot.S
-use rust as _;
-
-use core::{arch::asm, panic::PanicInfo};
+use riscv_rt::entry;
 
 static RODATA: &[u8] = b"Hello, world!";
 static mut BSS: [u8; 16] = [0; 16];
 
-#[panic_handler]
-fn panic(_info: &PanicInfo) -> ! {
-    unsafe { asm!("ebreak") }
-    loop {}
-}
-
 #[allow(static_mut_refs)]
-#[unsafe(no_mangle)]
-pub extern "C" fn main() -> ! {
+#[entry]
+fn main() -> ! {
     let _x = RODATA;
     let _y = unsafe { &BSS };
     let val = math();

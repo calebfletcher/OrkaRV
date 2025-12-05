@@ -6,6 +6,25 @@ edition = "2024"
 [dependencies]
 bit_field = "0.10.3"
 heapless = "0.9.2"
+riscv = { version = "0.15.0" }
 
 [build-dependencies]
 cc = "1.0"
+
+[dev-dependencies]
+riscv-rt = { version = "0.16.0", features = [
+    "single-hart",
+    "memory",
+    "no-xie-xip",
+    "no-mhartid",
+    "no-xtvec",
+] }
+
+[patch.crates-io]
+riscv-rt = { git = 'https://github.com/rust-embedded/riscv' }
+
+[profile.release]
+panic = "abort"
+
+[profile.dev]
+panic = "abort"

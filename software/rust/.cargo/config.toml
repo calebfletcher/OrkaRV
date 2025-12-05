@@ -1,5 +1,5 @@
 [target.riscv32i-unknown-none-elf]
-rustflags = ["-C", "link-arg=-T../linker.ld"]
+rustflags = ["-C", "link-arg=-Tlink.x"]
 runner = "just rust"
 
 [build]

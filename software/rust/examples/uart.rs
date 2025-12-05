@@ -2,21 +2,12 @@
 #![no_main]
 
 use heapless::Deque;
-// needed to link the boot.S
-use rust as _;
-
-use core::{arch::asm, panic::PanicInfo};
-
 use rust::uart::Uart;
 
-#[panic_handler]
-fn panic(_info: &PanicInfo) -> ! {
-    unsafe { asm!("ebreak") }
-    loop {}
-}
+use riscv_rt::entry;
 
-#[unsafe(no_mangle)]
-pub extern "C" fn main() -> ! {
+#[entry]
+fn main() -> ! {
     let uart = unsafe { Uart::from_ptr(0x0201_0000 as *mut _) };
 
     let mut bytes = Deque::<_, 256>::new();
