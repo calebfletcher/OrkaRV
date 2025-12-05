@@ -48,12 +48,13 @@ wheels = [
 
 [[package]]
 name = "cocotb-bus"
-version = "0.2.1"
-source = { git = "https://github.com/cocotb/cocotb-bus.git#3a575eb12f1e5cc747e41254d71d2ae80ce606ad" }
+version = "0.3.0"
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "cocotb" },
     { name = "scapy" },
 ]
+sdist = { url = "https://files.pythonhosted.org/packages/4e/f9/1474d5503af6f8c979a33e3489c0e6886b6ffb1af3d00419d2e0da1dd274/cocotb_bus-0.3.0.tar.gz", hash = "sha256:9762b29273ff062f52160e57274e3cb106d14e7e776515de1372c1d73546b005", size = 29991, upload-time = "2025-11-22T00:19:31.734Z" }
 
 [[package]]
 name = "cocotbext-axi"
@@ -289,7 +290,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "cocotb", specifier = ">=2.0.0" },
-    { name = "cocotb-bus", git = "https://github.com/cocotb/cocotb-bus.git" },
+    { name = "cocotb-bus" },
     { name = "cocotbext-axi", specifier = ">=0.1.26" },
     { name = "cocotbext-jtag", specifier = ">=0.2.1" },
     { name = "cocotbext-uart", specifier = ">=0.1.4" },

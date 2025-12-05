@@ -69,6 +69,8 @@ def main():
         proj_path / "shared" / "peripherals" / "uart" / "hdl" / "Uart.vhd",
 
         proj_path / "shared" / "hdl" / "Soc.vhd",
+        
+        proj_path / "targets" / "CocotbSoc" / "hdl" / "CocotbSoc.vhd",
     ]
 
     runner = get_runner("ghdl")
@@ -93,21 +95,21 @@ def main():
     runner.build(
         sources=sources,
         always=True,
-        build_args=["--std=08", "-fsynopsys", "-frelaxed-rules", "-Wno-elaboration", "-Wno-shared"],
-        hdl_toplevel="soc",
+        build_args=["--std=08", "-fsynopsys", "-frelaxed-rules", "-Wno-elaboration", "-Wno-shared", "-Wno-specs"],
+        hdl_toplevel="cocotbsoc",
     )
 
     memory_file_path = Path(__file__).resolve().parent.joinpath("build/program.hex")
 
     runner.test(
-        hdl_toplevel="soc",
+        hdl_toplevel="cocotbsoc",
         test_module="runner",
         parameters={"RAM_FILE_PATH_G": memory_file_path},
         waves=True,
         test_args=["--std=08", "-fsynopsys", "-frelaxed-rules"],
     )
 
-    copyfile(runner.test_dir.joinpath("soc.ghw"), "build/sim/out.ghw")
+    copyfile(runner.test_dir.joinpath("cocotbsoc.ghw"), "build/sim/out.ghw")
 
 
 if __name__ == "__main__":

@@ -20,5 +20,4 @@ dependencies = [
 testpaths = ["tests"]
 
 [tool.uv.sources]
-cocotb-bus = { git = "https://github.com/cocotb/cocotb-bus.git" }
 peakrdl-regblock-vhdl = { git = "https://github.com/SystemRDL/PeakRDL-regblock-vhdl.git" }
