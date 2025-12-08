@@ -16,7 +16,6 @@ riscv-rt = { version = "0.16.0", features = [
     "single-hart",
     "memory",
     "no-xie-xip",
-    "no-mhartid",
     "no-xtvec",
 ] }
 

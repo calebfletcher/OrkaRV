@@ -47,7 +47,16 @@ ARCHITECTURE rtl OF Csr IS
 
     -- csr storage
     TYPE CsrStorage IS ARRAY (0 TO NUM_CSRS - 1) OF STD_LOGIC_VECTOR(31 DOWNTO 0);
-    SIGNAL csrReg : CsrStorage := (OTHERS => (OTHERS => '0'));
+
+    CONSTANT INIT_TABLE_C : CsrStorage := (
+    0 => x"00000000", -- mvendorid
+    1 => x"00000000", -- marchid
+    2 => x"00000000", -- mimpid
+    3 => x"00000000", -- mhartid
+    4 => x"00000000" -- mconfigptr
+    );
+
+    SIGNAL csrReg : CsrStorage := INIT_TABLE_C;
 
     -- addr demux
     SIGNAL hitVector : STD_LOGIC_VECTOR(NUM_CSRS - 1 DOWNTO 0);
@@ -105,6 +114,7 @@ BEGIN
     BEGIN
         IF rising_edge(clk) THEN
             IF reset = '1' THEN
+                csrReg <= INIT_TABLE_C;
             ELSE
                 IF readRequested AND readPermitted AND csrMatch THEN
                     rdData <= csrReg(csrIndex);
