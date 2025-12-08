@@ -309,6 +309,19 @@ BEGIN
                         OP_READ_WRITE;
                         v.csrAddr          := r.immediate(11 DOWNTO 0);
                         v.csrWrData        := rs1Value;
+                        v.opRegWriteSource := NONE_SRC WHEN r.rd = 0 ELSE
+                        CSR_SRC;
+                    WHEN CSRRS =>
+                        v.csrOp := OP_READ WHEN r.rs1 = 0 ELSE
+                        OP_READ_SET;
+                        v.csrAddr          := r.immediate(11 DOWNTO 0);
+                        v.csrWrData        := rs1Value;
+                        v.opRegWriteSource := CSR_SRC;
+                    WHEN CSRRC =>
+                        v.csrOp := OP_READ WHEN r.rs1 = 0 ELSE
+                        OP_READ_CLEAR;
+                        v.csrAddr          := r.immediate(11 DOWNTO 0);
+                        v.csrWrData        := rs1Value;
                         v.opRegWriteSource := CSR_SRC;
                     WHEN EBREAK =>
                         v.stage := HALTED;

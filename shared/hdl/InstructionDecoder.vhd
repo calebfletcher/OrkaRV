@@ -32,7 +32,7 @@ BEGIN
 
         -- extract immediate
         CASE instruction(6 DOWNTO 2) IS
-            WHEN "11001" | "00000" | "00100" => -- I
+            WHEN "11001" | "00000" | "00100" | "11100" => -- I
                 immediate(31 DOWNTO 11) <= (OTHERS => instruction(31));
                 immediate(10 DOWNTO 0) <= instruction(30 DOWNTO 20);
             WHEN "01000" => -- S
@@ -45,7 +45,7 @@ BEGIN
                 immediate(10 DOWNTO 5) <= instruction(30 DOWNTO 25);
                 immediate(4 DOWNTO 1) <= instruction(11 DOWNTO 8);
                 immediate(0) <= '0';
-            WHEN "01101" | "00101" | "11100" => -- U
+            WHEN "01101" | "00101" => -- U
                 immediate(31 DOWNTO 12) <= instruction(31 DOWNTO 12);
                 immediate(11 DOWNTO 0) <= "000000000000";
             WHEN "11011" => -- J

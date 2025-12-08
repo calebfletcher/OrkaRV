@@ -19,7 +19,7 @@ ENTITY Csr IS
         wrData : IN STD_LOGIC_VECTOR(XLEN - 1 DOWNTO 0);
         rdData : OUT STD_LOGIC_VECTOR(XLEN - 1 DOWNTO 0) := (OTHERS => '0');
         -- set high if the access was not permitted
-        illegalAccess : OUT STD_LOGIC := '0';
+        illegalAccess : OUT STD_LOGIC := '0'
     );
 END ENTITY Csr;
 
@@ -53,6 +53,16 @@ ARCHITECTURE rtl OF Csr IS
     SIGNAL hitVector : STD_LOGIC_VECTOR(NUM_CSRS - 1 DOWNTO 0);
     SIGNAL csrIndex  : NATURAL RANGE 0 TO NUM_CSRS - 1;
     SIGNAL csrMatch  : STD_LOGIC;
+
+    FUNCTION lowest_set_index(vec : STD_LOGIC_VECTOR) RETURN NATURAL IS
+    BEGIN
+        FOR i IN vec'RANGE LOOP
+            IF vec(i) = '1' THEN
+                RETURN i;
+            END IF;
+        END LOOP;
+        RETURN 0;
+    END FUNCTION;
 BEGIN
     -- addr demux
     addrdemux : FOR i IN 0 TO NUM_CSRS - 1 GENERATE
@@ -60,7 +70,7 @@ BEGIN
         '0';
     END GENERATE;
     csrMatch <= OR hitVector;
-    csrIndex <= to_integer(unsigned(hitVector));
+    csrIndex <= lowest_set_index(hitVector);
 
     -- op decode
     PROCESS (ALL)
