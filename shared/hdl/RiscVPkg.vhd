@@ -48,6 +48,7 @@ PACKAGE RiscVPkg IS
         ADD, SUB, \SLL\, SLT, SLTU, \XOR\, \SRL\, \SRA\, \OR\, \AND\, -- OP
         FENCE, FENCE_TSO, PAUSE, -- MISC-MEM
         ECALL, EBREAK, -- SYSTEM
+        CSRRW, CSRRS, CSRRC, CSRRWI, CSRRSI, CSRRCI, -- SYSTEM - Zicsr
 
         UNKNOWN
     );
@@ -56,6 +57,11 @@ PACKAGE RiscVPkg IS
         instruction : IN STD_LOGIC_VECTOR(31 DOWNTO 0)
     ) RETURN InstructionType;
 
+    -- privilege levels
+    SUBTYPE Privilege IS STD_LOGIC_VECTOR(1 DOWNTO 0);
+    CONSTANT PRIV_USER_C : Privilege := "00";
+    CONSTANT PRIV_SUPERVISOR_C : Privilege := "01";
+    CONSTANT PRIV_MACHINE_C : Privilege := "11";
 END PACKAGE;
 
 PACKAGE BODY RiscVPkg IS
@@ -298,11 +304,28 @@ PACKAGE BODY RiscVPkg IS
             WHEN JAL =>
                 inst := JAL;
             WHEN SYSTEM =>
-                CASE instruction IS
-                    WHEN "00000000000000000000000001110011" =>
-                        inst := ECALL;
-                    WHEN "00000000000100000000000001110011" =>
-                        inst := EBREAK;
+                CASE funct3 IS
+                    WHEN "000" =>
+                        CASE instruction IS
+                            WHEN "00000000000000000000000001110011" =>
+                                inst := ECALL;
+                            WHEN "00000000000100000000000001110011" =>
+                                inst := EBREAK;
+                            WHEN OTHERS =>
+                                NULL;
+                        END CASE;
+                    WHEN "001" =>
+                        inst := CSRRW;
+                    WHEN "010" =>
+                        inst := CSRRS;
+                    WHEN "011" =>
+                        inst := CSRRC;
+                    WHEN "101" =>
+                        inst := CSRRWI;
+                    WHEN "110" =>
+                        inst := CSRRSI;
+                    WHEN "111" =>
+                        inst := CSRRCI;
                     WHEN OTHERS =>
                         NULL;
                 END CASE;
