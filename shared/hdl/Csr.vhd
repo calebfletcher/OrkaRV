@@ -17,9 +17,9 @@ ENTITY Csr IS
         op     : IN CsrOp;
         addr   : IN STD_LOGIC_VECTOR(11 DOWNTO 0);
         wrData : IN STD_LOGIC_VECTOR(XLEN - 1 DOWNTO 0);
-        rdData : OUT STD_LOGIC_VECTOR(XLEN - 1 DOWNTO 0);
+        rdData : OUT STD_LOGIC_VECTOR(XLEN - 1 DOWNTO 0) := (OTHERS => '0');
         -- set high if the access was not permitted
-        illegalAccess : OUT STD_LOGIC;
+        illegalAccess : OUT STD_LOGIC := '0';
     );
 END ENTITY Csr;
 
@@ -55,7 +55,7 @@ ARCHITECTURE rtl OF Csr IS
     SIGNAL csrMatch  : STD_LOGIC;
 BEGIN
     -- addr demux
-    FOR i IN 0 TO NUM_CSRS - 1 GENERATE
+    addrdemux : FOR i IN 0 TO NUM_CSRS - 1 GENERATE
         hitVector(i) <= '1' WHEN addr = CSR_TABLE_C(i).addr ELSE
         '0';
     END GENERATE;

@@ -5,7 +5,7 @@ from pathlib import Path
 import subprocess
 import cocotb
 from cocotb.clock import Clock
-from cocotb.triggers import Event
+from cocotb.triggers import Event, RisingEdge
 from cocotb_tools.runner import get_runner
 from cocotbext.uart import UartSink, UartSource
 from cocotbext.axi import AxiLiteMaster, AxiLiteSlave, AxiLiteBus
@@ -54,6 +54,11 @@ async def run(dut):
         await debug_peripheral.fail_event.wait()
         raise RuntimeError
     cocotb.start_soon(fail_on_error())
+    # detect fail event from traps
+    async def fail_on_trap():
+        await RisingEdge(dut.trap)
+        raise RuntimeError
+    cocotb.start_soon(fail_on_trap())
 
     expected_string = b"Hello World! This is a long test string from cocotb to the orkarv core.\n"
     await uart_source.write(expected_string)
@@ -77,6 +82,8 @@ def main():
         proj_path / "shared" / "hdl" / "RiscVPkg.vhd",
         proj_path / "shared" / "hdl" / "InstructionDecoder.vhd",
         proj_path / "shared" / "hdl" / "Registers.vhd",
+        proj_path / "shared" / "hdl" / "CsrPkg.vhd",
+        proj_path / "shared" / "hdl" / "Csr.vhd",
         proj_path / "shared" / "hdl" / "Cpu.vhd",
 
         proj_path / "shared" / "hdl" / "Ram.vhd",
