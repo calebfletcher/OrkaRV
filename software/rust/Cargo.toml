@@ -17,6 +17,7 @@ riscv-rt = { version = "0.16.0", features = [
     "memory",
     "no-xie-xip",
     "no-xtvec",
+    "no-mhartid",
 ] }
 
 [patch.crates-io]
