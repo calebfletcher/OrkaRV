@@ -58,5 +58,5 @@ Don't override. Generated from: UartRegisters
 
 |Bits|Identifier|Access|Reset|     Name    |
 |----|----------|------|-----|-------------|
-|  0 |    rxr   |   r  |  —  |RX Data Ready|
+|  0 |    rxr   |   r  | 0x0 |RX Data Ready|
 |  1 |    txe   |   r  |  —  |   TX Empty  |

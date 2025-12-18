@@ -1,0 +1,52 @@
+addrmap CsrRegisters {
+    name = "CSRs";
+
+    default sw = rw;
+    default hw = r;
+    
+    reg {
+        field {
+            hw = rw;
+        } sie[1:1];
+        field {
+            hw = rw;
+        } mie[3:3];
+        field {
+            hw = rw;
+        } spie[5:5];
+        field {} ube[6:6];
+        field {
+            hw = rw;
+        } mpie[7:7];
+        field {
+            hw = rw;
+        } spp[8:8];
+        field {} vs[10:9];
+        field {
+            hw = rw;
+        } mpp[12:11];
+        field {} fs[14:13];
+        field {} xs[16:15];
+        field {} mprv[17:17];
+        field {} sum[18:18];
+        field {} mxr[19:19];
+        field {} tvm[20:20];
+        field {} tw[21:21];
+        field {} tsr[22:22];
+        field {} spelp[23:23];
+        field {} sdt[24:24];
+        field {} sd[31:31];
+    } mstatus @ 0x300 << 2;
+    
+    reg {
+        field {} misa[32];
+    } misa @ 0x301 << 2;
+
+    reg {
+        field {} mie[32];
+    } mie @ 0x304 << 2;
+    
+    reg {
+        field {} mtvec[32];
+    } mtvec @ 0x305 << 2;
+};

@@ -12,6 +12,15 @@ wheels = [
 ]
 
 [[package]]
+name = "case-converter"
+version = "1.2.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/83/09/f5b4cf1f5da361e7c6f5f5f5d8bbf313a57d01574194f84abed68447fbb6/case_converter-1.2.0.tar.gz", hash = "sha256:4e0281ae60d4335e57300bafd61cfb3fa65734587fe9efd32f6cec1a506685c5", size = 8760, upload-time = "2025-02-19T16:49:34.891Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/42/8e/32a7ab1ac97de46e6a0d45b1fcfe1ad7ba9a523a6fb449662ccf39b9591e/case_converter-1.2.0-py3-none-any.whl", hash = "sha256:bb5bc6b1e121c394a6de6526cd3f8be0f5c5817c40d32251cce28a2cf4a72d8c", size = 16250, upload-time = "2025-02-19T16:49:30.48Z" },
+]
+
+[[package]]
 name = "cocotb"
 version = "2.0.0"
 source = { registry = "https://pypi.org/simple" }
@@ -284,6 +293,7 @@ dependencies = [
     { name = "peakrdl" },
     { name = "peakrdl-markdown" },
     { name = "peakrdl-regblock-vhdl" },
+    { name = "peakrdl-rust", extra = ["cli"] },
     { name = "pytest" },
 ]
 
@@ -297,6 +307,7 @@ requires-dist = [
     { name = "peakrdl", specifier = ">=1.5.0" },
     { name = "peakrdl-markdown", specifier = ">=1.0.3" },
     { name = "peakrdl-regblock-vhdl", git = "https://github.com/SystemRDL/PeakRDL-regblock-vhdl.git" },
+    { name = "peakrdl-rust", extras = ["cli"], specifier = ">=0.4.0" },
     { name = "pytest", specifier = ">=8.4.2" },
 ]
 
@@ -415,6 +426,25 @@ source = { git = "https://github.com/SystemRDL/PeakRDL-regblock-vhdl.git#0743208
 dependencies = [
     { name = "jinja2" },
     { name = "systemrdl-compiler" },
+]
+
+[[package]]
+name = "peakrdl-rust"
+version = "0.4.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "case-converter" },
+    { name = "jinja2" },
+    { name = "systemrdl-compiler" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/fa/fb/4b5feb641ccf5bcb3e6bc0a2f76640f41a2eb28e5fca424fe97501fc725c/peakrdl_rust-0.4.0.tar.gz", hash = "sha256:1db55f14414dd326b892cf8d92776c4a50cde326a23e89e17b9cccf035762a7d", size = 24261, upload-time = "2025-11-27T19:09:16.375Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/35/af/45eb5202cb50c1fd2c248b87989fedc1b1e885baf17ce48a83f05e160696/peakrdl_rust-0.4.0-py3-none-any.whl", hash = "sha256:484bfd1a51649dcac544693727bd3957084f64d5ae901710ac43a6bffb0ae645", size = 34915, upload-time = "2025-11-27T19:09:15.459Z" },
+]
+
+[package.optional-dependencies]
+cli = [
+    { name = "peakrdl-cli" },
 ]
 
 [[package]]

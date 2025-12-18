@@ -469,9 +469,15 @@ begin
         field_combo.status.rxr.load_next <= load_next_c;
     end process;
     process(clk) begin
-        if rising_edge(clk) then
-            if field_combo.status.rxr.load_next then
-                field_storage.status.rxr.value <= field_combo.status.rxr.next_q;
+        if false then -- async reset
+            field_storage.status.rxr.value <= '0';
+        elsif rising_edge(clk) then
+            if rst then -- sync reset
+                field_storage.status.rxr.value <= '0';
+            else
+                if field_combo.status.rxr.load_next then
+                    field_storage.status.rxr.value <= field_combo.status.rxr.next_q;
+                end if;
             end if;
         end if;
     end process;

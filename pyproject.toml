@@ -13,6 +13,7 @@ dependencies = [
     "peakrdl>=1.5.0",
     "peakrdl-markdown>=1.0.3",
     "peakrdl-regblock-vhdl>=1.1.1.0",
+    "peakrdl-rust[cli]>=0.4.0",
     "pytest>=8.4.2",
 ]
 
