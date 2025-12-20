@@ -67,6 +67,7 @@ impl Cpu {
         let arch = elf::to_str::e_machine_to_str(elf.ehdr.e_machine).unwrap();
         ensure!(arch == "EM_RISCV", "elf of arch {arch} was not RISC-V");
 
+        // Load required sections to their addresses
         for segment in elf.segments().unwrap() {
             let flags_str = elf::to_str::p_flags_to_string(segment.p_flags);
             let type_str = elf::to_str::p_type_to_string(segment.p_type);
@@ -94,6 +95,8 @@ impl Cpu {
 
             memory_slice.copy_from_slice(segment_data);
         }
+
+        // Relocations
 
         let entry_addr: u32 = elf.ehdr.e_entry.try_into()?;
         assert!(memory.contains(entry_addr));
