@@ -18,18 +18,20 @@ fn main() -> Result<(), anyhow::Error> {
     //     .current_dir("../rust")
     //     .status()
     //     .context("failed to build the binary")?;
-    let bin_path = elf_path.with_extension("bin");
+    // let bin_path = elf_path.with_extension("bin");
 
-    // Make flat file
-    Command::new("riscv64-unknown-elf-objcopy")
-        .args(["-O", "binary"])
-        .arg(elf_path)
-        .arg(&bin_path)
-        .status()
-        .context("could not create flat file")?;
+    // // Make flat file
+    // Command::new("riscv64-unknown-elf-objcopy")
+    //     .args(["-O", "binary"])
+    //     .arg(elf_path)
+    //     .arg(&bin_path)
+    //     .status()
+    //     .context("could not create flat file")?;
 
-    // Create CPU
-    let mut cpu = Cpu::from_flat_file(&bin_path).context("could not load cpu")?;
+    // // Create CPU
+    // let mut cpu = Cpu::from_flat_file(&bin_path).context("could not load cpu")?;
+
+    let mut cpu = Cpu::from_elf(&elf_path).context("could not load cpu")?;
 
     // Run
     while cpu.status().is_none() {

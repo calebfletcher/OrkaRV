@@ -1,10 +1,12 @@
 use std::path::Path;
 
-use anyhow::{bail, ensure, Context};
+use anyhow::{Context, bail, ensure};
+use elf::{ElfBytes, endian::LittleEndian};
 
-use crate::instructions::{immediate, rd, rs1, rs2, Instruction};
+use crate::instructions::{Instruction, immediate, rd, rs1, rs2};
 
-const MEM_SIZE: usize = 64 * 1024;
+const RAM_BASE: u32 = 0x01000000;
+const RAM_SIZE: usize = 64 * 1024;
 
 pub struct Cpu {
     pc: u32,
@@ -17,14 +19,14 @@ impl Cpu {
     pub fn from_flat_file(path: impl AsRef<Path>) -> Result<Self, anyhow::Error> {
         let file_contents = std::fs::read(path).context("could not load binary path")?;
 
-        let mut memory: Box<[u8; MEM_SIZE]> = vec![0u8; MEM_SIZE]
+        let mut memory: Box<[u8; RAM_SIZE]> = vec![0u8; RAM_SIZE]
             .into_boxed_slice()
             .try_into()
             .expect("same size");
 
         ensure!(
-            file_contents.len() < MEM_SIZE,
-            "file is too large for memory ({} > {MEM_SIZE})",
+            file_contents.len() < RAM_SIZE,
+            "file is too large for memory ({} > {RAM_SIZE})",
             file_contents.len()
         );
         memory[..file_contents.len()].copy_from_slice(&file_contents);
@@ -36,6 +38,70 @@ impl Cpu {
                 base: 0x01000000,
                 data: memory,
             },
+            debug: DebugPeripheral {
+                base: 0x03000000,
+                status: None,
+            },
+        })
+    }
+
+    pub fn from_elf(path: impl AsRef<Path>) -> Result<Self, anyhow::Error> {
+        // Prepare RAM so we can load data to it
+        let memory_data: Box<[u8; RAM_SIZE]> = vec![0u8; RAM_SIZE]
+            .into_boxed_slice()
+            .try_into()
+            .expect("same size");
+        let mut memory = Ram {
+            base: RAM_BASE,
+            data: memory_data,
+        };
+
+        let file_contents = std::fs::read(path).context("could not load elf path")?;
+        let elf = ElfBytes::<LittleEndian>::minimal_parse(&file_contents)?;
+
+        let elf_type = elf::to_str::e_type_to_str(elf.ehdr.e_type).unwrap();
+        ensure!(
+            elf_type == "ET_EXEC",
+            "elf of type {elf_type} was not an executable"
+        );
+        let arch = elf::to_str::e_machine_to_str(elf.ehdr.e_machine).unwrap();
+        ensure!(arch == "EM_RISCV", "elf of arch {arch} was not RISC-V");
+
+        for segment in elf.segments().unwrap() {
+            let flags_str = elf::to_str::p_flags_to_string(segment.p_flags);
+            let type_str = elf::to_str::p_type_to_string(segment.p_type);
+            println!(
+                "{type_str:20} 0x{:08X} 0x{:08X} 0x{:08X} 0x{:08X} 0x{:08X} {:3} 0x{:X}",
+                segment.p_offset,
+                segment.p_vaddr,
+                segment.p_paddr,
+                segment.p_filesz,
+                segment.p_memsz,
+                flags_str,
+                segment.p_align
+            );
+
+            if type_str != "PT_LOAD" {
+                continue;
+            }
+
+            let segment_data = elf.segment_data(&segment)?;
+
+            let memory_slice = memory.slice_mut(
+                segment.p_vaddr.try_into().unwrap(),
+                segment.p_filesz.try_into().unwrap(),
+            );
+
+            memory_slice.copy_from_slice(segment_data);
+        }
+
+        let entry_addr: u32 = elf.ehdr.e_entry.try_into()?;
+        assert!(memory.contains(entry_addr));
+
+        Ok(Self {
+            pc: entry_addr,
+            registers: Registers::default(),
+            memory,
             debug: DebugPeripheral {
                 base: 0x03000000,
                 status: None,
@@ -284,12 +350,12 @@ impl Registers {
 
 struct Ram {
     base: u32,
-    data: Box<[u8; MEM_SIZE]>,
+    data: Box<[u8; RAM_SIZE]>,
 }
 
 impl Ram {
     fn contains(&self, addr: u32) -> bool {
-        (self.base..self.base + MEM_SIZE as u32).contains(&addr)
+        (self.base..self.base + RAM_SIZE as u32).contains(&addr)
     }
 
     fn read(&self, addr: u32) -> Result<u32, anyhow::Error> {
@@ -304,6 +370,14 @@ impl Ram {
     fn write(&mut self, addr: u32, value: u32) {
         let addr = (addr - self.base) as usize;
         self.data[addr..addr + 4].copy_from_slice(&value.to_le_bytes());
+    }
+
+    fn slice_mut(&mut self, addr: u32, length: u32) -> &mut [u8] {
+        let start = addr.checked_sub(self.base).unwrap() as usize;
+        let end = start.checked_add(length as usize).unwrap();
+        assert!(start < self.data.len());
+        assert!(end <= self.data.len());
+        &mut self.data[start..end]
     }
 }
 
@@ -322,7 +396,7 @@ impl DebugPeripheral {
         unimplemented!()
     }
 
-    fn write(&mut self, addr: u32, value: u32) {
+    fn write(&mut self, addr: u32, _value: u32) {
         let addr = (addr - self.base) as usize;
         match addr {
             0x0 => self.status = Some(Status::Success),
