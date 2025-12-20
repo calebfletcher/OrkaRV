@@ -1,8 +1,8 @@
 use std::path::Path;
 
-use anyhow::{Context, bail, ensure};
+use anyhow::{bail, ensure, Context};
 
-use crate::instructions::{Instruction, Opcode, immediate, opcode, rd, rs1, rs2};
+use crate::instructions::{immediate, rd, rs1, rs2, Instruction};
 
 const MEM_SIZE: usize = 64 * 1024;
 
@@ -11,7 +11,6 @@ pub struct Cpu {
     registers: Registers,
     memory: Ram,
     debug: DebugPeripheral,
-    pub halted: bool,
 }
 
 impl Cpu {
@@ -37,8 +36,10 @@ impl Cpu {
                 base: 0x01000000,
                 data: memory,
             },
-            debug: DebugPeripheral { base: 0x03000000 },
-            halted: false,
+            debug: DebugPeripheral {
+                base: 0x03000000,
+                status: None,
+            },
         })
     }
 
@@ -65,12 +66,12 @@ impl Cpu {
         match inst {
             Lui => {
                 self.registers.write(rd, immediate);
-                println!("writing {immediate} to register {rd}");
+                //println!("writing {immediate} to register {rd}");
             }
             Auipc => {
                 let value = self.pc.wrapping_add(immediate);
                 self.registers.write(rd, value);
-                println!("writing {value} to register {rd}");
+                //println!("writing {value} to register {rd}");
             }
             Jal => {
                 let next_inst_addr = self.pc + 4;
@@ -78,7 +79,7 @@ impl Cpu {
                 self.pc = raw_address & 0xFFFFFFFE;
                 self.registers.write(rd, next_inst_addr);
                 advance_pc = false;
-                println!("jumping to addr {:08X}", self.pc);
+                //println!("jumping to addr {:08X}", self.pc);
             }
             Jalr => {
                 let next_inst_addr = self.pc + 4;
@@ -86,22 +87,22 @@ impl Cpu {
                 self.pc = raw_address & 0xFFFFFFFE;
                 self.registers.write(rd, next_inst_addr);
                 advance_pc = false;
-                println!("jumping to addr {:08X}", self.pc);
+                //println!("jumping to addr {:08X}", self.pc);
             }
             Add => {
                 let value = rs1_value.wrapping_add(rs2_value);
                 self.registers.write(rd, value);
-                println!("writing {value} to register {rd}");
+                //println!("writing {value} to register {rd}");
             }
             Sub => {
                 let value = rs1_value.wrapping_sub(rs2_value);
                 self.registers.write(rd, value);
-                println!("writing {value} to register {rd}");
+                //println!("writing {value} to register {rd}");
             }
             Xor => {
                 let value = rs1_value ^ rs2_value;
                 self.registers.write(rd, value);
-                println!("writing {value} to register {rd}");
+                //println!("writing {value} to register {rd}");
             }
             And => {
                 self.registers.write(rd, rs1_value & rs2_value);
@@ -125,7 +126,7 @@ impl Cpu {
             Addi => {
                 let value = rs1_value.wrapping_add(immediate);
                 self.registers.write(rd, value);
-                println!("writing {value} to register {rd}");
+                //println!("writing {value} to register {rd}");
             }
             Andi => {
                 self.registers.write(rd, rs1_value & immediate);
@@ -162,18 +163,18 @@ impl Cpu {
                 if (rs1_value as i32) >= (rs2_value as i32) {
                     self.pc = self.pc.wrapping_add(immediate);
                     advance_pc = false;
-                    println!("{rs1_value} >= {rs2_value}, taking branch");
+                    //println!("{rs1_value} >= {rs2_value}, taking branch");
                 } else {
-                    println!("{rs1_value} < {rs2_value}, not taking branch");
+                    //println!("{rs1_value} < {rs2_value}, not taking branch");
                 }
             }
             Bgeu => {
                 if rs1_value >= rs2_value {
                     self.pc = self.pc.wrapping_add(immediate);
                     advance_pc = false;
-                    println!("{rs1_value} >= {rs2_value}, taking branch");
+                    //println!("{rs1_value} >= {rs2_value}, taking branch");
                 } else {
-                    println!("{rs1_value} < {rs2_value}, not taking branch");
+                    //println!("{rs1_value} < {rs2_value}, not taking branch");
                 }
             }
             Blt => {
@@ -204,19 +205,19 @@ impl Cpu {
                 let addr = rs1_value.wrapping_add(immediate);
                 self.write(addr, rs2_value)
                     .context("could not store word")?;
-                println!("writing {rs2_value} to {addr:08x}");
+                //println!("writing {rs2_value} to {addr:08x}");
             }
             Lw => {
                 let addr = rs1_value.wrapping_add(immediate);
                 let value = self.read(addr)?;
                 self.registers.write(rd, value);
-                println!("writing {value} from addr {addr:08X} to reg {rd}");
+                //println!("writing {value} from addr {addr:08X} to reg {rd}");
             }
             Lhu => {
                 let addr = rs1_value.wrapping_add(immediate);
                 let value = self.read(addr)? & 0x0000FFFF;
                 self.registers.write(rd, value);
-                println!("writing {value} from addr {addr:08X} to reg {rd}");
+                //println!("writing {value} from addr {addr:08X} to reg {rd}");
             }
             _ => bail!("unexpected opcode: {inst:?}"),
         }
@@ -232,17 +233,35 @@ impl Cpu {
         if self.memory.contains(addr) {
             return self.memory.read(addr);
         }
+        if self.debug.contains(addr) {
+            return self.debug.read(addr);
+        }
 
         bail!("invalid read address: {addr:08X}")
     }
 
     fn write(&mut self, addr: u32, value: u32) -> Result<(), anyhow::Error> {
         if self.memory.contains(addr) {
-            return Ok(self.memory.write(addr, value));
+            self.memory.write(addr, value);
+            return Ok(());
+        }
+        if self.debug.contains(addr) {
+            self.debug.write(addr, value);
+            return Ok(());
         }
 
         bail!("invalid write address: {addr:08X}");
     }
+
+    pub fn status(&self) -> Option<Status> {
+        self.debug.status
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Status {
+    Success,
+    Failure,
 }
 
 #[derive(Default)]
@@ -290,11 +309,12 @@ impl Ram {
 
 struct DebugPeripheral {
     base: u32,
+    status: Option<Status>,
 }
 
 impl DebugPeripheral {
     fn contains(&self, addr: u32) -> bool {
-        (self.base..self.base + MEM_SIZE as u32).contains(&addr)
+        (self.base..self.base + 0x4).contains(&addr)
     }
 
     fn read(&self, addr: u32) -> Result<u32, anyhow::Error> {
@@ -304,6 +324,10 @@ impl DebugPeripheral {
 
     fn write(&mut self, addr: u32, value: u32) {
         let addr = (addr - self.base) as usize;
-        unimplemented!()
+        match addr {
+            0x0 => self.status = Some(Status::Success),
+            0x4 => self.status = Some(Status::Failure),
+            _ => unimplemented!(),
+        }
     }
 }
