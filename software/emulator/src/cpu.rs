@@ -1,12 +1,14 @@
 use std::path::Path;
 
-use anyhow::{Context, bail, ensure};
-use elf::{ElfBytes, endian::LittleEndian};
+use anyhow::{bail, ensure, Context};
+use elf::{endian::LittleEndian, section::SectionHeader, ElfBytes};
 
-use crate::instructions::{Instruction, immediate, rd, rs1, rs2};
+use crate::instructions::{immediate, rd, rs1, rs2, Instruction};
 
-const RAM_BASE: u32 = 0x01000000;
-const RAM_SIZE: usize = 64 * 1024;
+const RAM_BASE: u32 = 0xE0000000;
+const RAM_SIZE: usize = 0x10000000;
+
+const LOAD_OFFSET: u32 = 0xE0000000;
 
 pub struct Cpu {
     pc: u32,
@@ -67,6 +69,8 @@ impl Cpu {
         let arch = elf::to_str::e_machine_to_str(elf.ehdr.e_machine).unwrap();
         ensure!(arch == "EM_RISCV", "elf of arch {arch} was not RISC-V");
 
+        let mut loaded_segments = Vec::new();
+
         // Load required sections to their addresses
         for segment in elf.segments().unwrap() {
             let flags_str = elf::to_str::p_flags_to_string(segment.p_flags);
@@ -83,22 +87,58 @@ impl Cpu {
             );
 
             if type_str != "PT_LOAD" {
+                dbg!(type_str);
                 continue;
             }
 
             let segment_data = elf.segment_data(&segment)?;
 
             let memory_slice = memory.slice_mut(
-                segment.p_vaddr.try_into().unwrap(),
+                LOAD_OFFSET + u32::try_from(segment.p_vaddr).unwrap(),
                 segment.p_filesz.try_into().unwrap(),
             );
 
             memory_slice.copy_from_slice(segment_data);
+
+            loaded_segments.push((segment.p_offset, segment.p_filesz));
         }
 
         // Relocations
+        let (section_headers, str_tab) = elf.section_headers_with_strtab().unwrap();
+        let str_tab = str_tab.unwrap();
+        for section in section_headers.unwrap() {
+            // Find relocation sections
+            let header_type = elf::to_str::sh_type_to_string(section.sh_type);
+            assert_ne!(header_type, "SHT_REL");
+            if header_type != "SHT_RELA" {
+                continue;
+            }
 
-        let entry_addr: u32 = elf.ehdr.e_entry.try_into()?;
+            // Check if the relocations are for a section that is loaded
+            let associated_header = section_headers.unwrap().get(section.sh_info as usize)?;
+            let is_assoc_section_loaded =
+                is_section_in_loaded_segments(&associated_header, &loaded_segments);
+            if !is_assoc_section_loaded {
+                continue;
+            }
+
+            println!(
+                "Section {} - {header_type}",
+                str_tab.get(section.sh_name as usize)?
+            );
+            println!(
+                "Assoc section: {} - {is_assoc_section_loaded}",
+                str_tab.get(associated_header.sh_name as usize)?
+            );
+
+            let mut count = 0;
+            for rela in elf.section_data_as_relas(&section)? {
+                count += 1;
+            }
+            dbg!(count);
+        }
+
+        let entry_addr: u32 = LOAD_OFFSET + u32::try_from(elf.ehdr.e_entry)?;
         assert!(memory.contains(entry_addr));
 
         Ok(Self {
@@ -325,6 +365,17 @@ impl Cpu {
     pub fn status(&self) -> Option<Status> {
         self.debug.status
     }
+}
+
+fn is_section_in_loaded_segments(
+    associated_header: &SectionHeader,
+    loaded_segments: &[(u64, u64)],
+) -> bool {
+    loaded_segments.iter().any(|(seg_p_offset, seg_p_filesz)| {
+        (associated_header.sh_offset >= *seg_p_offset)
+            && (associated_header.sh_offset + associated_header.sh_size
+                <= seg_p_offset + seg_p_filesz)
+    })
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

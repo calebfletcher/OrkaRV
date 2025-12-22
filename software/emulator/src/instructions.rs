@@ -1,4 +1,4 @@
-use anyhow::{Context, bail, ensure};
+use anyhow::{bail, ensure, Context};
 
 /// 7-bit opcode (includes length bits)
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

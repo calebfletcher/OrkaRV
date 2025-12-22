@@ -1,0 +1,16 @@
+[package]
+name = "samples"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+common = { path = "../common" }
+
+[dev-dependencies]
+riscv-rt = { version = "0.16.0", features = [
+    "single-hart",
+    "memory",
+    "no-xie-xip",
+    "no-xtvec",
+    "no-mhartid",
+] }

@@ -1,6 +1,6 @@
 use std::{path::PathBuf, process::Command};
 
-use anyhow::{Context, anyhow};
+use anyhow::{anyhow, Context};
 
 use crate::cpu::Cpu;
 

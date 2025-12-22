@@ -1,7 +1,7 @@
 #![no_std]
 #![no_main]
 
-use rust::{
+use common::{
     debug,
     gpio::{Direction, Gpio},
 };

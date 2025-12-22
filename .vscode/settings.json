@@ -1,6 +1,6 @@
 {
     "rust-analyzer.linkedProjects": [
-        "software/rust/Cargo.toml"
+        "software/Cargo.toml"
     ],
     "rust-analyzer.cargo.target": "riscv32i-unknown-none-elf",
     "rust-analyzer.cargo.allTargets": false
