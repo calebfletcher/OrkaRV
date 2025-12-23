@@ -6,7 +6,7 @@ edition = "2024"
 [dependencies]
 bit_field = "0.10.3"
 riscv = { version = "0.15.0" }
-riscv-rt = { version = "0.16.0", features = [
+riscv-rt = { version = "0.17.0", features = [
     "single-hart",
     "memory",
     "no-xie-xip",
