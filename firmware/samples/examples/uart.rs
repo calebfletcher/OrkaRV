@@ -1,8 +1,8 @@
 #![no_std]
 #![no_main]
 
+use common::{debug, uart::Uart};
 use heapless::Deque;
-use rust::{debug, uart::Uart};
 
 use riscv_rt::entry;
 

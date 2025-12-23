@@ -1,8 +1,8 @@
 #![no_std]
 #![no_main]
 
+use common::debug;
 use riscv_rt::entry;
-use rust::debug;
 
 static RODATA: &[u8] = b"Hello, world!";
 static mut BSS: [u8; 16] = [0; 16];

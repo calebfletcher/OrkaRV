@@ -1,12 +1,11 @@
 [package]
-name = "samples"
+name = "rust"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-common = { path = "../common" }
-
-[dev-dependencies]
+bit_field = "0.10.3"
+riscv = { version = "0.15.0" }
 riscv-rt = { version = "0.16.0", features = [
     "single-hart",
     "memory",
@@ -14,3 +13,7 @@ riscv-rt = { version = "0.16.0", features = [
     "no-xtvec",
     "no-mhartid",
 ] }
+common = { path = "../common" }
+
+[build-dependencies]
+cc = "1.0"

@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["common", "samples", "bootloader"]
+members = ["common", "samples", "bootloader", "nightly_pie"]
 
 [patch.crates-io]
 riscv-rt = { git = 'https://github.com/rust-embedded/riscv' }
