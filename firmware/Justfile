@@ -4,12 +4,6 @@ _default:
 clean:
     rm -rf build sim_build
 
-# Assemble a file for the processor
-assemble file:
-    mkdir -p build
-    riscv32-unknown-elf-as -march=rv32i -o build/program.o {{file}}
-    riscv32-unknown-elf-ld -m elf32lriscv -T linker.ld -o build/program.elf build/program.o
-
 simulate: && gui
     mkdir -p build/sim
     riscv32-unknown-elf-objcopy -O binary build/program.elf build/program.bin
@@ -18,10 +12,6 @@ simulate: && gui
 
 gui:       
     surfer -s cpu.surf.ron build/sim/out.ghw
-
-compile file:
-    mkdir -p build
-    riscv32-unknown-elf-gcc -mabi=ilp32 -march=rv32i -nostdlib -nostartfiles -T linker.ld -o build/program.elf {{file}}
 
 [no-cd]
 rust path: && simulate
