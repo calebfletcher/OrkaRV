@@ -1,10 +1,32 @@
 addrmap CsrRegisters {
     name = "CSRs";
 
-    default sw = rw;
+    default sw = r;
     default hw = r;
     
     reg {
+        field {} offset[7] = 0;
+        field {} bank[25] = 0;
+    } mvendorid @ 0xF11 << 2;
+    
+    reg {
+        field {} marchid[32] = 0;
+    } marchid @ 0xF12 << 2;
+    
+    reg {
+        field {} mimpid[32] = 0;
+    } mimpid @ 0xF13 << 2;
+    
+    reg {
+        field {} mhartid[32] = 0;
+    } mhartid @ 0xF14 << 2;
+    
+    reg {
+        field {} mconfigptr[32] = 0;
+    } mconfigptr @ 0xF15 << 2;
+
+    reg {
+        default sw = rw;
         field {
             hw = rw;
         } sie[1:1];
@@ -14,39 +36,111 @@ addrmap CsrRegisters {
         field {
             hw = rw;
         } spie[5:5];
-        field {} ube[6:6];
+        field {
+            sw = r;
+        } ube[6:6] = 0;
         field {
             hw = rw;
         } mpie[7:7];
         field {
             hw = rw;
         } spp[8:8];
-        field {} vs[10:9];
+        field {
+            sw = r;
+        } vs[10:9] = 0;
         field {
             hw = rw;
         } mpp[12:11];
-        field {} fs[14:13];
-        field {} xs[16:15];
-        field {} mprv[17:17];
-        field {} sum[18:18];
-        field {} mxr[19:19];
-        field {} tvm[20:20];
-        field {} tw[21:21];
-        field {} tsr[22:22];
-        field {} spelp[23:23];
-        field {} sdt[24:24];
-        field {} sd[31:31];
+        field {
+            sw = r;
+        } fs[14:13] = 0;
+        field {
+            sw = r;
+        } xs[16:15] = 0;
+        field {
+            sw = r;
+        } mprv[17:17] = 0;
+        field {
+            sw = r;
+        } sum[18:18] = 0;
+        field {
+            sw = r;
+        } mxr[19:19] = 0;
+        field {
+            sw = r;
+        } tvm[20:20] = 0;
+        field {
+            sw = r;
+        } tw[21:21] = 0;
+        field {
+            sw = r;
+        } tsr[22:22] = 0;
+        field {
+            sw = r;
+        } sd[31:31] = 0;
     } mstatus @ 0x300 << 2;
     
     reg {
-        field {} misa[32];
+        field {} a[0:0] = 0;
+        field {} b[1:1] = 0;
+        field {} c[2:2] = 0;
+        field {} d[3:3] = 0;
+        field {} e[4:4] = 0;
+        field {} f[5:5] = 0;
+        field {} h[7:7] = 0;
+        field {} i[8:8] = 1;
+        field {} m[12:12] = 0;
+        field {} n[13:13] = 0;
+        field {} p[15:15] = 0;
+        field {} q[16:16] = 0;
+        field {} s[18:18] = 0;
+        field {} u[20:20] = 0;
+        field {} v[21:21] = 0;
+        field {} x[23:23] = 0;
+        field {} mxl[31:30] = 1;
     } misa @ 0x301 << 2;
+    
+    // todo
+    reg {
+        field {} medeleg[32];
+    } medeleg @ 0x302 << 2;
+    
+    // todo
+    reg {
+        field {} mideleg[32];
+    } mideleg @ 0x303 << 2;
 
+    // todo
     reg {
         field {} mie[32];
     } mie @ 0x304 << 2;
     
+    // todo
     reg {
         field {} mtvec[32];
     } mtvec @ 0x305 << 2;
+
+    // todo
+    reg {
+        field {} mcounteren[32];
+    } mcounteren @ 0x306 << 2;
+    
+    reg {
+        default sw = rw;
+        field {
+            sw = r;
+        } sbe[4:4] = 0;
+        field {
+            sw = r;
+        } mbe[5:5] = 0;
+        field {} gva[6:6];
+        field {} mpv[7:7];
+        field {} mpelp[9:9];
+        field {} mdt[10:10];
+    } mstatush @ 0x310 << 2;
+    
+    // todo
+    reg {
+        field {} medelegh[32];
+    } medelegh @ 0x312 << 2;
 };

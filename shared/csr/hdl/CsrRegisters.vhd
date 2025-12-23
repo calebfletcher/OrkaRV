@@ -14,7 +14,7 @@ entity CsrRegisters is
 
         s_cpuif_req : in std_logic;
         s_cpuif_req_is_wr : in std_logic;
-        s_cpuif_addr : in std_logic_vector(11 downto 0);
+        s_cpuif_addr : in std_logic_vector(13 downto 0);
         s_cpuif_wr_data : in std_logic_vector(31 downto 0);
         s_cpuif_wr_biten : in std_logic_vector(31 downto 0);
         s_cpuif_req_stall_wr : out std_logic;
@@ -36,7 +36,7 @@ architecture rtl of CsrRegisters is
     ----------------------------------------------------------------------------
     signal cpuif_req : std_logic;
     signal cpuif_req_is_wr : std_logic;
-    signal cpuif_addr : std_logic_vector(11 downto 0);
+    signal cpuif_addr : std_logic_vector(13 downto 0);
     signal cpuif_wr_data : std_logic_vector(31 downto 0);
     signal cpuif_wr_biten : std_logic_vector(31 downto 0);
     signal cpuif_req_stall_wr : std_logic;
@@ -59,8 +59,18 @@ architecture rtl of CsrRegisters is
     type decoded_reg_strb_t is record
         mstatus : std_logic;
         misa : std_logic;
+        medeleg : std_logic;
+        mideleg : std_logic;
         mie : std_logic;
         mtvec : std_logic;
+        mcounteren : std_logic;
+        mstatush : std_logic;
+        medelegh : std_logic;
+        mvendorid : std_logic;
+        marchid : std_logic;
+        mimpid : std_logic;
+        mhartid : std_logic;
+        mconfigptr : std_logic;
     end record;
     signal decoded_reg_strb : decoded_reg_strb_t;
     signal decoded_req : std_logic;
@@ -87,11 +97,6 @@ architecture rtl of CsrRegisters is
         load_next : std_logic;
     end record;
 
-    type \CsrRegisters.mstatus.ube_combo_t\ is record
-        next_q : std_logic;
-        load_next : std_logic;
-    end record;
-
     type \CsrRegisters.mstatus.mpie_combo_t\ is record
         next_q : std_logic;
         load_next : std_logic;
@@ -102,68 +107,8 @@ architecture rtl of CsrRegisters is
         load_next : std_logic;
     end record;
 
-    type \CsrRegisters.mstatus.vs_combo_t\ is record
-        next_q : std_logic_vector(1 downto 0);
-        load_next : std_logic;
-    end record;
-
     type \CsrRegisters.mstatus.mpp_combo_t\ is record
         next_q : std_logic_vector(1 downto 0);
-        load_next : std_logic;
-    end record;
-
-    type \CsrRegisters.mstatus.fs_combo_t\ is record
-        next_q : std_logic_vector(1 downto 0);
-        load_next : std_logic;
-    end record;
-
-    type \CsrRegisters.mstatus.xs_combo_t\ is record
-        next_q : std_logic_vector(1 downto 0);
-        load_next : std_logic;
-    end record;
-
-    type \CsrRegisters.mstatus.mprv_combo_t\ is record
-        next_q : std_logic;
-        load_next : std_logic;
-    end record;
-
-    type \CsrRegisters.mstatus.sum_combo_t\ is record
-        next_q : std_logic;
-        load_next : std_logic;
-    end record;
-
-    type \CsrRegisters.mstatus.mxr_combo_t\ is record
-        next_q : std_logic;
-        load_next : std_logic;
-    end record;
-
-    type \CsrRegisters.mstatus.tvm_combo_t\ is record
-        next_q : std_logic;
-        load_next : std_logic;
-    end record;
-
-    type \CsrRegisters.mstatus.tw_combo_t\ is record
-        next_q : std_logic;
-        load_next : std_logic;
-    end record;
-
-    type \CsrRegisters.mstatus.tsr_combo_t\ is record
-        next_q : std_logic;
-        load_next : std_logic;
-    end record;
-
-    type \CsrRegisters.mstatus.spelp_combo_t\ is record
-        next_q : std_logic;
-        load_next : std_logic;
-    end record;
-
-    type \CsrRegisters.mstatus.sdt_combo_t\ is record
-        next_q : std_logic;
-        load_next : std_logic;
-    end record;
-
-    type \CsrRegisters.mstatus.sd_combo_t\ is record
-        next_q : std_logic;
         load_next : std_logic;
     end record;
 
@@ -171,56 +116,41 @@ architecture rtl of CsrRegisters is
         sie : \CsrRegisters.mstatus.sie_combo_t\;
         mie : \CsrRegisters.mstatus.mie_combo_t\;
         spie : \CsrRegisters.mstatus.spie_combo_t\;
-        ube : \CsrRegisters.mstatus.ube_combo_t\;
         mpie : \CsrRegisters.mstatus.mpie_combo_t\;
         spp : \CsrRegisters.mstatus.spp_combo_t\;
-        vs : \CsrRegisters.mstatus.vs_combo_t\;
         mpp : \CsrRegisters.mstatus.mpp_combo_t\;
-        fs : \CsrRegisters.mstatus.fs_combo_t\;
-        xs : \CsrRegisters.mstatus.xs_combo_t\;
-        mprv : \CsrRegisters.mstatus.mprv_combo_t\;
-        sum : \CsrRegisters.mstatus.sum_combo_t\;
-        mxr : \CsrRegisters.mstatus.mxr_combo_t\;
-        tvm : \CsrRegisters.mstatus.tvm_combo_t\;
-        tw : \CsrRegisters.mstatus.tw_combo_t\;
-        tsr : \CsrRegisters.mstatus.tsr_combo_t\;
-        spelp : \CsrRegisters.mstatus.spelp_combo_t\;
-        sdt : \CsrRegisters.mstatus.sdt_combo_t\;
-        sd : \CsrRegisters.mstatus.sd_combo_t\;
     end record;
 
-    type \CsrRegisters.misa.misa_combo_t\ is record
-        next_q : std_logic_vector(31 downto 0);
+    type \CsrRegisters.mstatush.gva_combo_t\ is record
+        next_q : std_logic;
         load_next : std_logic;
     end record;
 
-    type \CsrRegisters.misa_combo_t\ is record
-        misa : \CsrRegisters.misa.misa_combo_t\;
-    end record;
-
-    type \CsrRegisters.mie.mie_combo_t\ is record
-        next_q : std_logic_vector(31 downto 0);
+    type \CsrRegisters.mstatush.mpv_combo_t\ is record
+        next_q : std_logic;
         load_next : std_logic;
     end record;
 
-    type \CsrRegisters.mie_combo_t\ is record
-        mie : \CsrRegisters.mie.mie_combo_t\;
-    end record;
-
-    type \CsrRegisters.mtvec.mtvec_combo_t\ is record
-        next_q : std_logic_vector(31 downto 0);
+    type \CsrRegisters.mstatush.mpelp_combo_t\ is record
+        next_q : std_logic;
         load_next : std_logic;
     end record;
 
-    type \CsrRegisters.mtvec_combo_t\ is record
-        mtvec : \CsrRegisters.mtvec.mtvec_combo_t\;
+    type \CsrRegisters.mstatush.mdt_combo_t\ is record
+        next_q : std_logic;
+        load_next : std_logic;
+    end record;
+
+    type \CsrRegisters.mstatush_combo_t\ is record
+        gva : \CsrRegisters.mstatush.gva_combo_t\;
+        mpv : \CsrRegisters.mstatush.mpv_combo_t\;
+        mpelp : \CsrRegisters.mstatush.mpelp_combo_t\;
+        mdt : \CsrRegisters.mstatush.mdt_combo_t\;
     end record;
 
     type field_combo_t is record
         mstatus : \CsrRegisters.mstatus_combo_t\;
-        misa : \CsrRegisters.misa_combo_t\;
-        mie : \CsrRegisters.mie_combo_t\;
-        mtvec : \CsrRegisters.mtvec_combo_t\;
+        mstatush : \CsrRegisters.mstatush_combo_t\;
     end record;
     signal field_combo : field_combo_t;
 
@@ -237,10 +167,6 @@ architecture rtl of CsrRegisters is
         value : std_logic;
     end record;
 
-    type \CsrRegisters.mstatus.ube_storage_t\ is record
-        value : std_logic;
-    end record;
-
     type \CsrRegisters.mstatus.mpie_storage_t\ is record
         value : std_logic;
     end record;
@@ -249,109 +175,45 @@ architecture rtl of CsrRegisters is
         value : std_logic;
     end record;
 
-    type \CsrRegisters.mstatus.vs_storage_t\ is record
-        value : std_logic_vector(1 downto 0);
-    end record;
-
     type \CsrRegisters.mstatus.mpp_storage_t\ is record
         value : std_logic_vector(1 downto 0);
-    end record;
-
-    type \CsrRegisters.mstatus.fs_storage_t\ is record
-        value : std_logic_vector(1 downto 0);
-    end record;
-
-    type \CsrRegisters.mstatus.xs_storage_t\ is record
-        value : std_logic_vector(1 downto 0);
-    end record;
-
-    type \CsrRegisters.mstatus.mprv_storage_t\ is record
-        value : std_logic;
-    end record;
-
-    type \CsrRegisters.mstatus.sum_storage_t\ is record
-        value : std_logic;
-    end record;
-
-    type \CsrRegisters.mstatus.mxr_storage_t\ is record
-        value : std_logic;
-    end record;
-
-    type \CsrRegisters.mstatus.tvm_storage_t\ is record
-        value : std_logic;
-    end record;
-
-    type \CsrRegisters.mstatus.tw_storage_t\ is record
-        value : std_logic;
-    end record;
-
-    type \CsrRegisters.mstatus.tsr_storage_t\ is record
-        value : std_logic;
-    end record;
-
-    type \CsrRegisters.mstatus.spelp_storage_t\ is record
-        value : std_logic;
-    end record;
-
-    type \CsrRegisters.mstatus.sdt_storage_t\ is record
-        value : std_logic;
-    end record;
-
-    type \CsrRegisters.mstatus.sd_storage_t\ is record
-        value : std_logic;
     end record;
 
     type \CsrRegisters.mstatus_storage_t\ is record
         sie : \CsrRegisters.mstatus.sie_storage_t\;
         mie : \CsrRegisters.mstatus.mie_storage_t\;
         spie : \CsrRegisters.mstatus.spie_storage_t\;
-        ube : \CsrRegisters.mstatus.ube_storage_t\;
         mpie : \CsrRegisters.mstatus.mpie_storage_t\;
         spp : \CsrRegisters.mstatus.spp_storage_t\;
-        vs : \CsrRegisters.mstatus.vs_storage_t\;
         mpp : \CsrRegisters.mstatus.mpp_storage_t\;
-        fs : \CsrRegisters.mstatus.fs_storage_t\;
-        xs : \CsrRegisters.mstatus.xs_storage_t\;
-        mprv : \CsrRegisters.mstatus.mprv_storage_t\;
-        sum : \CsrRegisters.mstatus.sum_storage_t\;
-        mxr : \CsrRegisters.mstatus.mxr_storage_t\;
-        tvm : \CsrRegisters.mstatus.tvm_storage_t\;
-        tw : \CsrRegisters.mstatus.tw_storage_t\;
-        tsr : \CsrRegisters.mstatus.tsr_storage_t\;
-        spelp : \CsrRegisters.mstatus.spelp_storage_t\;
-        sdt : \CsrRegisters.mstatus.sdt_storage_t\;
-        sd : \CsrRegisters.mstatus.sd_storage_t\;
     end record;
 
-    type \CsrRegisters.misa.misa_storage_t\ is record
-        value : std_logic_vector(31 downto 0);
+    type \CsrRegisters.mstatush.gva_storage_t\ is record
+        value : std_logic;
     end record;
 
-    type \CsrRegisters.misa_storage_t\ is record
-        misa : \CsrRegisters.misa.misa_storage_t\;
+    type \CsrRegisters.mstatush.mpv_storage_t\ is record
+        value : std_logic;
     end record;
 
-    type \CsrRegisters.mie.mie_storage_t\ is record
-        value : std_logic_vector(31 downto 0);
+    type \CsrRegisters.mstatush.mpelp_storage_t\ is record
+        value : std_logic;
     end record;
 
-    type \CsrRegisters.mie_storage_t\ is record
-        mie : \CsrRegisters.mie.mie_storage_t\;
+    type \CsrRegisters.mstatush.mdt_storage_t\ is record
+        value : std_logic;
     end record;
 
-    type \CsrRegisters.mtvec.mtvec_storage_t\ is record
-        value : std_logic_vector(31 downto 0);
-    end record;
-
-    type \CsrRegisters.mtvec_storage_t\ is record
-        mtvec : \CsrRegisters.mtvec.mtvec_storage_t\;
+    type \CsrRegisters.mstatush_storage_t\ is record
+        gva : \CsrRegisters.mstatush.gva_storage_t\;
+        mpv : \CsrRegisters.mstatush.mpv_storage_t\;
+        mpelp : \CsrRegisters.mstatush.mpelp_storage_t\;
+        mdt : \CsrRegisters.mstatush.mdt_storage_t\;
     end record;
 
     type field_storage_t is record
         mstatus : \CsrRegisters.mstatus_storage_t\;
-        misa : \CsrRegisters.misa_storage_t\;
-        mie : \CsrRegisters.mie_storage_t\;
-        mtvec : \CsrRegisters.mtvec_storage_t\;
+        mstatush : \CsrRegisters.mstatush_storage_t\;
     end record;
     signal field_storage : field_storage_t;
 
@@ -361,7 +223,7 @@ architecture rtl of CsrRegisters is
     signal readback_err : std_logic;
     signal readback_done : std_logic;
     signal readback_data : std_logic_vector(31 downto 0);
-    signal readback_array : std_logic_vector_array1(0 to 3)(31 downto 0);
+    signal readback_array : std_logic_vector_array1(0 to 13)(31 downto 0);
 
 begin
 
@@ -402,8 +264,18 @@ begin
     begin
         decoded_reg_strb.mstatus <= cpuif_req_masked and (cpuif_addr = 16#C00#);
         decoded_reg_strb.misa <= cpuif_req_masked and (cpuif_addr = 16#C04#);
+        decoded_reg_strb.medeleg <= cpuif_req_masked and (cpuif_addr = 16#C08#);
+        decoded_reg_strb.mideleg <= cpuif_req_masked and (cpuif_addr = 16#C0C#);
         decoded_reg_strb.mie <= cpuif_req_masked and (cpuif_addr = 16#C10#);
         decoded_reg_strb.mtvec <= cpuif_req_masked and (cpuif_addr = 16#C14#);
+        decoded_reg_strb.mcounteren <= cpuif_req_masked and (cpuif_addr = 16#C18#);
+        decoded_reg_strb.mstatush <= cpuif_req_masked and (cpuif_addr = 16#C40#);
+        decoded_reg_strb.medelegh <= cpuif_req_masked and (cpuif_addr = 16#C48#);
+        decoded_reg_strb.mvendorid <= cpuif_req_masked and (cpuif_addr = 16#3C44#);
+        decoded_reg_strb.marchid <= cpuif_req_masked and (cpuif_addr = 16#3C48#);
+        decoded_reg_strb.mimpid <= cpuif_req_masked and (cpuif_addr = 16#3C4C#);
+        decoded_reg_strb.mhartid <= cpuif_req_masked and (cpuif_addr = 16#3C50#);
+        decoded_reg_strb.mconfigptr <= cpuif_req_masked and (cpuif_addr = 16#3C54#);
     end process;
 
     -- Pass down signals to next stage
@@ -495,29 +367,7 @@ begin
         end if;
     end process;
     hwif_out.mstatus.spie.value <= field_storage.mstatus.spie.value;
-
-    -- Field: CsrRegisters.mstatus.ube
-    process(all)
-        variable next_c: std_logic;
-        variable load_next_c: std_logic;
-    begin
-        next_c := field_storage.mstatus.ube.value;
-        load_next_c := '0';
-        if decoded_reg_strb.mstatus and decoded_req_is_wr then -- SW write
-            next_c := (field_storage.mstatus.ube.value and not decoded_wr_biten(6)) or (decoded_wr_data(6) and decoded_wr_biten(6));
-            load_next_c := '1';
-        end if;
-        field_combo.mstatus.ube.next_q <= next_c;
-        field_combo.mstatus.ube.load_next <= load_next_c;
-    end process;
-    process(clk) begin
-        if rising_edge(clk) then
-            if field_combo.mstatus.ube.load_next then
-                field_storage.mstatus.ube.value <= field_combo.mstatus.ube.next_q;
-            end if;
-        end if;
-    end process;
-    hwif_out.mstatus.ube.value <= field_storage.mstatus.ube.value;
+    hwif_out.mstatus.ube.value <= '0';
 
     -- Field: CsrRegisters.mstatus.mpie
     process(all)
@@ -570,29 +420,7 @@ begin
         end if;
     end process;
     hwif_out.mstatus.spp.value <= field_storage.mstatus.spp.value;
-
-    -- Field: CsrRegisters.mstatus.vs
-    process(all)
-        variable next_c: std_logic_vector(1 downto 0);
-        variable load_next_c: std_logic;
-    begin
-        next_c := field_storage.mstatus.vs.value;
-        load_next_c := '0';
-        if decoded_reg_strb.mstatus and decoded_req_is_wr then -- SW write
-            next_c := (field_storage.mstatus.vs.value and not decoded_wr_biten(10 downto 9)) or (decoded_wr_data(10 downto 9) and decoded_wr_biten(10 downto 9));
-            load_next_c := '1';
-        end if;
-        field_combo.mstatus.vs.next_q <= next_c;
-        field_combo.mstatus.vs.load_next <= load_next_c;
-    end process;
-    process(clk) begin
-        if rising_edge(clk) then
-            if field_combo.mstatus.vs.load_next then
-                field_storage.mstatus.vs.value <= field_combo.mstatus.vs.next_q;
-            end if;
-        end if;
-    end process;
-    hwif_out.mstatus.vs.value <= field_storage.mstatus.vs.value;
+    hwif_out.mstatus.vs.value <= 2x"0";
 
     -- Field: CsrRegisters.mstatus.mpp
     process(all)
@@ -619,328 +447,138 @@ begin
         end if;
     end process;
     hwif_out.mstatus.mpp.value <= field_storage.mstatus.mpp.value;
+    hwif_out.mstatus.fs.value <= 2x"0";
+    hwif_out.mstatus.xs.value <= 2x"0";
+    hwif_out.mstatus.mprv.value <= '0';
+    hwif_out.mstatus.sum.value <= '0';
+    hwif_out.mstatus.mxr.value <= '0';
+    hwif_out.mstatus.tvm.value <= '0';
+    hwif_out.mstatus.tw.value <= '0';
+    hwif_out.mstatus.tsr.value <= '0';
+    hwif_out.mstatus.sd.value <= '0';
+    hwif_out.misa.a.value <= '0';
+    hwif_out.misa.b.value <= '0';
+    hwif_out.misa.c.value <= '0';
+    hwif_out.misa.d.value <= '0';
+    hwif_out.misa.e.value <= '0';
+    hwif_out.misa.f.value <= '0';
+    hwif_out.misa.h.value <= '0';
+    hwif_out.misa.i.value <= '1';
+    hwif_out.misa.m.value <= '0';
+    hwif_out.misa.n.value <= '0';
+    hwif_out.misa.p.value <= '0';
+    hwif_out.misa.q.value <= '0';
+    hwif_out.misa.s.value <= '0';
+    hwif_out.misa.u.value <= '0';
+    hwif_out.misa.v.value <= '0';
+    hwif_out.misa.x.value <= '0';
+    hwif_out.misa.mxl.value <= 2x"1";
+    hwif_out.medeleg.medeleg.value <= 'X;
+    hwif_out.mideleg.mideleg.value <= 'X;
+    hwif_out.mie.mie.value <= 'X;
+    hwif_out.mtvec.mtvec.value <= 'X;
+    hwif_out.mcounteren.mcounteren.value <= 'X;
+    hwif_out.mstatush.sbe.value <= '0';
+    hwif_out.mstatush.mbe.value <= '0';
 
-    -- Field: CsrRegisters.mstatus.fs
-    process(all)
-        variable next_c: std_logic_vector(1 downto 0);
-        variable load_next_c: std_logic;
-    begin
-        next_c := field_storage.mstatus.fs.value;
-        load_next_c := '0';
-        if decoded_reg_strb.mstatus and decoded_req_is_wr then -- SW write
-            next_c := (field_storage.mstatus.fs.value and not decoded_wr_biten(14 downto 13)) or (decoded_wr_data(14 downto 13) and decoded_wr_biten(14 downto 13));
-            load_next_c := '1';
-        end if;
-        field_combo.mstatus.fs.next_q <= next_c;
-        field_combo.mstatus.fs.load_next <= load_next_c;
-    end process;
-    process(clk) begin
-        if rising_edge(clk) then
-            if field_combo.mstatus.fs.load_next then
-                field_storage.mstatus.fs.value <= field_combo.mstatus.fs.next_q;
-            end if;
-        end if;
-    end process;
-    hwif_out.mstatus.fs.value <= field_storage.mstatus.fs.value;
-
-    -- Field: CsrRegisters.mstatus.xs
-    process(all)
-        variable next_c: std_logic_vector(1 downto 0);
-        variable load_next_c: std_logic;
-    begin
-        next_c := field_storage.mstatus.xs.value;
-        load_next_c := '0';
-        if decoded_reg_strb.mstatus and decoded_req_is_wr then -- SW write
-            next_c := (field_storage.mstatus.xs.value and not decoded_wr_biten(16 downto 15)) or (decoded_wr_data(16 downto 15) and decoded_wr_biten(16 downto 15));
-            load_next_c := '1';
-        end if;
-        field_combo.mstatus.xs.next_q <= next_c;
-        field_combo.mstatus.xs.load_next <= load_next_c;
-    end process;
-    process(clk) begin
-        if rising_edge(clk) then
-            if field_combo.mstatus.xs.load_next then
-                field_storage.mstatus.xs.value <= field_combo.mstatus.xs.next_q;
-            end if;
-        end if;
-    end process;
-    hwif_out.mstatus.xs.value <= field_storage.mstatus.xs.value;
-
-    -- Field: CsrRegisters.mstatus.mprv
+    -- Field: CsrRegisters.mstatush.gva
     process(all)
         variable next_c: std_logic;
         variable load_next_c: std_logic;
     begin
-        next_c := field_storage.mstatus.mprv.value;
+        next_c := field_storage.mstatush.gva.value;
         load_next_c := '0';
-        if decoded_reg_strb.mstatus and decoded_req_is_wr then -- SW write
-            next_c := (field_storage.mstatus.mprv.value and not decoded_wr_biten(17)) or (decoded_wr_data(17) and decoded_wr_biten(17));
+        if decoded_reg_strb.mstatush and decoded_req_is_wr then -- SW write
+            next_c := (field_storage.mstatush.gva.value and not decoded_wr_biten(6)) or (decoded_wr_data(6) and decoded_wr_biten(6));
             load_next_c := '1';
         end if;
-        field_combo.mstatus.mprv.next_q <= next_c;
-        field_combo.mstatus.mprv.load_next <= load_next_c;
+        field_combo.mstatush.gva.next_q <= next_c;
+        field_combo.mstatush.gva.load_next <= load_next_c;
     end process;
     process(clk) begin
         if rising_edge(clk) then
-            if field_combo.mstatus.mprv.load_next then
-                field_storage.mstatus.mprv.value <= field_combo.mstatus.mprv.next_q;
+            if field_combo.mstatush.gva.load_next then
+                field_storage.mstatush.gva.value <= field_combo.mstatush.gva.next_q;
             end if;
         end if;
     end process;
-    hwif_out.mstatus.mprv.value <= field_storage.mstatus.mprv.value;
+    hwif_out.mstatush.gva.value <= field_storage.mstatush.gva.value;
 
-    -- Field: CsrRegisters.mstatus.sum
+    -- Field: CsrRegisters.mstatush.mpv
     process(all)
         variable next_c: std_logic;
         variable load_next_c: std_logic;
     begin
-        next_c := field_storage.mstatus.sum.value;
+        next_c := field_storage.mstatush.mpv.value;
         load_next_c := '0';
-        if decoded_reg_strb.mstatus and decoded_req_is_wr then -- SW write
-            next_c := (field_storage.mstatus.sum.value and not decoded_wr_biten(18)) or (decoded_wr_data(18) and decoded_wr_biten(18));
+        if decoded_reg_strb.mstatush and decoded_req_is_wr then -- SW write
+            next_c := (field_storage.mstatush.mpv.value and not decoded_wr_biten(7)) or (decoded_wr_data(7) and decoded_wr_biten(7));
             load_next_c := '1';
         end if;
-        field_combo.mstatus.sum.next_q <= next_c;
-        field_combo.mstatus.sum.load_next <= load_next_c;
+        field_combo.mstatush.mpv.next_q <= next_c;
+        field_combo.mstatush.mpv.load_next <= load_next_c;
     end process;
     process(clk) begin
         if rising_edge(clk) then
-            if field_combo.mstatus.sum.load_next then
-                field_storage.mstatus.sum.value <= field_combo.mstatus.sum.next_q;
+            if field_combo.mstatush.mpv.load_next then
+                field_storage.mstatush.mpv.value <= field_combo.mstatush.mpv.next_q;
             end if;
         end if;
     end process;
-    hwif_out.mstatus.sum.value <= field_storage.mstatus.sum.value;
+    hwif_out.mstatush.mpv.value <= field_storage.mstatush.mpv.value;
 
-    -- Field: CsrRegisters.mstatus.mxr
+    -- Field: CsrRegisters.mstatush.mpelp
     process(all)
         variable next_c: std_logic;
         variable load_next_c: std_logic;
     begin
-        next_c := field_storage.mstatus.mxr.value;
+        next_c := field_storage.mstatush.mpelp.value;
         load_next_c := '0';
-        if decoded_reg_strb.mstatus and decoded_req_is_wr then -- SW write
-            next_c := (field_storage.mstatus.mxr.value and not decoded_wr_biten(19)) or (decoded_wr_data(19) and decoded_wr_biten(19));
+        if decoded_reg_strb.mstatush and decoded_req_is_wr then -- SW write
+            next_c := (field_storage.mstatush.mpelp.value and not decoded_wr_biten(9)) or (decoded_wr_data(9) and decoded_wr_biten(9));
             load_next_c := '1';
         end if;
-        field_combo.mstatus.mxr.next_q <= next_c;
-        field_combo.mstatus.mxr.load_next <= load_next_c;
+        field_combo.mstatush.mpelp.next_q <= next_c;
+        field_combo.mstatush.mpelp.load_next <= load_next_c;
     end process;
     process(clk) begin
         if rising_edge(clk) then
-            if field_combo.mstatus.mxr.load_next then
-                field_storage.mstatus.mxr.value <= field_combo.mstatus.mxr.next_q;
+            if field_combo.mstatush.mpelp.load_next then
+                field_storage.mstatush.mpelp.value <= field_combo.mstatush.mpelp.next_q;
             end if;
         end if;
     end process;
-    hwif_out.mstatus.mxr.value <= field_storage.mstatus.mxr.value;
+    hwif_out.mstatush.mpelp.value <= field_storage.mstatush.mpelp.value;
 
-    -- Field: CsrRegisters.mstatus.tvm
+    -- Field: CsrRegisters.mstatush.mdt
     process(all)
         variable next_c: std_logic;
         variable load_next_c: std_logic;
     begin
-        next_c := field_storage.mstatus.tvm.value;
+        next_c := field_storage.mstatush.mdt.value;
         load_next_c := '0';
-        if decoded_reg_strb.mstatus and decoded_req_is_wr then -- SW write
-            next_c := (field_storage.mstatus.tvm.value and not decoded_wr_biten(20)) or (decoded_wr_data(20) and decoded_wr_biten(20));
+        if decoded_reg_strb.mstatush and decoded_req_is_wr then -- SW write
+            next_c := (field_storage.mstatush.mdt.value and not decoded_wr_biten(10)) or (decoded_wr_data(10) and decoded_wr_biten(10));
             load_next_c := '1';
         end if;
-        field_combo.mstatus.tvm.next_q <= next_c;
-        field_combo.mstatus.tvm.load_next <= load_next_c;
+        field_combo.mstatush.mdt.next_q <= next_c;
+        field_combo.mstatush.mdt.load_next <= load_next_c;
     end process;
     process(clk) begin
         if rising_edge(clk) then
-            if field_combo.mstatus.tvm.load_next then
-                field_storage.mstatus.tvm.value <= field_combo.mstatus.tvm.next_q;
+            if field_combo.mstatush.mdt.load_next then
+                field_storage.mstatush.mdt.value <= field_combo.mstatush.mdt.next_q;
             end if;
         end if;
     end process;
-    hwif_out.mstatus.tvm.value <= field_storage.mstatus.tvm.value;
-
-    -- Field: CsrRegisters.mstatus.tw
-    process(all)
-        variable next_c: std_logic;
-        variable load_next_c: std_logic;
-    begin
-        next_c := field_storage.mstatus.tw.value;
-        load_next_c := '0';
-        if decoded_reg_strb.mstatus and decoded_req_is_wr then -- SW write
-            next_c := (field_storage.mstatus.tw.value and not decoded_wr_biten(21)) or (decoded_wr_data(21) and decoded_wr_biten(21));
-            load_next_c := '1';
-        end if;
-        field_combo.mstatus.tw.next_q <= next_c;
-        field_combo.mstatus.tw.load_next <= load_next_c;
-    end process;
-    process(clk) begin
-        if rising_edge(clk) then
-            if field_combo.mstatus.tw.load_next then
-                field_storage.mstatus.tw.value <= field_combo.mstatus.tw.next_q;
-            end if;
-        end if;
-    end process;
-    hwif_out.mstatus.tw.value <= field_storage.mstatus.tw.value;
-
-    -- Field: CsrRegisters.mstatus.tsr
-    process(all)
-        variable next_c: std_logic;
-        variable load_next_c: std_logic;
-    begin
-        next_c := field_storage.mstatus.tsr.value;
-        load_next_c := '0';
-        if decoded_reg_strb.mstatus and decoded_req_is_wr then -- SW write
-            next_c := (field_storage.mstatus.tsr.value and not decoded_wr_biten(22)) or (decoded_wr_data(22) and decoded_wr_biten(22));
-            load_next_c := '1';
-        end if;
-        field_combo.mstatus.tsr.next_q <= next_c;
-        field_combo.mstatus.tsr.load_next <= load_next_c;
-    end process;
-    process(clk) begin
-        if rising_edge(clk) then
-            if field_combo.mstatus.tsr.load_next then
-                field_storage.mstatus.tsr.value <= field_combo.mstatus.tsr.next_q;
-            end if;
-        end if;
-    end process;
-    hwif_out.mstatus.tsr.value <= field_storage.mstatus.tsr.value;
-
-    -- Field: CsrRegisters.mstatus.spelp
-    process(all)
-        variable next_c: std_logic;
-        variable load_next_c: std_logic;
-    begin
-        next_c := field_storage.mstatus.spelp.value;
-        load_next_c := '0';
-        if decoded_reg_strb.mstatus and decoded_req_is_wr then -- SW write
-            next_c := (field_storage.mstatus.spelp.value and not decoded_wr_biten(23)) or (decoded_wr_data(23) and decoded_wr_biten(23));
-            load_next_c := '1';
-        end if;
-        field_combo.mstatus.spelp.next_q <= next_c;
-        field_combo.mstatus.spelp.load_next <= load_next_c;
-    end process;
-    process(clk) begin
-        if rising_edge(clk) then
-            if field_combo.mstatus.spelp.load_next then
-                field_storage.mstatus.spelp.value <= field_combo.mstatus.spelp.next_q;
-            end if;
-        end if;
-    end process;
-    hwif_out.mstatus.spelp.value <= field_storage.mstatus.spelp.value;
-
-    -- Field: CsrRegisters.mstatus.sdt
-    process(all)
-        variable next_c: std_logic;
-        variable load_next_c: std_logic;
-    begin
-        next_c := field_storage.mstatus.sdt.value;
-        load_next_c := '0';
-        if decoded_reg_strb.mstatus and decoded_req_is_wr then -- SW write
-            next_c := (field_storage.mstatus.sdt.value and not decoded_wr_biten(24)) or (decoded_wr_data(24) and decoded_wr_biten(24));
-            load_next_c := '1';
-        end if;
-        field_combo.mstatus.sdt.next_q <= next_c;
-        field_combo.mstatus.sdt.load_next <= load_next_c;
-    end process;
-    process(clk) begin
-        if rising_edge(clk) then
-            if field_combo.mstatus.sdt.load_next then
-                field_storage.mstatus.sdt.value <= field_combo.mstatus.sdt.next_q;
-            end if;
-        end if;
-    end process;
-    hwif_out.mstatus.sdt.value <= field_storage.mstatus.sdt.value;
-
-    -- Field: CsrRegisters.mstatus.sd
-    process(all)
-        variable next_c: std_logic;
-        variable load_next_c: std_logic;
-    begin
-        next_c := field_storage.mstatus.sd.value;
-        load_next_c := '0';
-        if decoded_reg_strb.mstatus and decoded_req_is_wr then -- SW write
-            next_c := (field_storage.mstatus.sd.value and not decoded_wr_biten(31)) or (decoded_wr_data(31) and decoded_wr_biten(31));
-            load_next_c := '1';
-        end if;
-        field_combo.mstatus.sd.next_q <= next_c;
-        field_combo.mstatus.sd.load_next <= load_next_c;
-    end process;
-    process(clk) begin
-        if rising_edge(clk) then
-            if field_combo.mstatus.sd.load_next then
-                field_storage.mstatus.sd.value <= field_combo.mstatus.sd.next_q;
-            end if;
-        end if;
-    end process;
-    hwif_out.mstatus.sd.value <= field_storage.mstatus.sd.value;
-
-    -- Field: CsrRegisters.misa.misa
-    process(all)
-        variable next_c: std_logic_vector(31 downto 0);
-        variable load_next_c: std_logic;
-    begin
-        next_c := field_storage.misa.misa.value;
-        load_next_c := '0';
-        if decoded_reg_strb.misa and decoded_req_is_wr then -- SW write
-            next_c := (field_storage.misa.misa.value and not decoded_wr_biten(31 downto 0)) or (decoded_wr_data(31 downto 0) and decoded_wr_biten(31 downto 0));
-            load_next_c := '1';
-        end if;
-        field_combo.misa.misa.next_q <= next_c;
-        field_combo.misa.misa.load_next <= load_next_c;
-    end process;
-    process(clk) begin
-        if rising_edge(clk) then
-            if field_combo.misa.misa.load_next then
-                field_storage.misa.misa.value <= field_combo.misa.misa.next_q;
-            end if;
-        end if;
-    end process;
-    hwif_out.misa.misa.value <= field_storage.misa.misa.value;
-
-    -- Field: CsrRegisters.mie.mie
-    process(all)
-        variable next_c: std_logic_vector(31 downto 0);
-        variable load_next_c: std_logic;
-    begin
-        next_c := field_storage.mie.mie.value;
-        load_next_c := '0';
-        if decoded_reg_strb.mie and decoded_req_is_wr then -- SW write
-            next_c := (field_storage.mie.mie.value and not decoded_wr_biten(31 downto 0)) or (decoded_wr_data(31 downto 0) and decoded_wr_biten(31 downto 0));
-            load_next_c := '1';
-        end if;
-        field_combo.mie.mie.next_q <= next_c;
-        field_combo.mie.mie.load_next <= load_next_c;
-    end process;
-    process(clk) begin
-        if rising_edge(clk) then
-            if field_combo.mie.mie.load_next then
-                field_storage.mie.mie.value <= field_combo.mie.mie.next_q;
-            end if;
-        end if;
-    end process;
-    hwif_out.mie.mie.value <= field_storage.mie.mie.value;
-
-    -- Field: CsrRegisters.mtvec.mtvec
-    process(all)
-        variable next_c: std_logic_vector(31 downto 0);
-        variable load_next_c: std_logic;
-    begin
-        next_c := field_storage.mtvec.mtvec.value;
-        load_next_c := '0';
-        if decoded_reg_strb.mtvec and decoded_req_is_wr then -- SW write
-            next_c := (field_storage.mtvec.mtvec.value and not decoded_wr_biten(31 downto 0)) or (decoded_wr_data(31 downto 0) and decoded_wr_biten(31 downto 0));
-            load_next_c := '1';
-        end if;
-        field_combo.mtvec.mtvec.next_q <= next_c;
-        field_combo.mtvec.mtvec.load_next <= load_next_c;
-    end process;
-    process(clk) begin
-        if rising_edge(clk) then
-            if field_combo.mtvec.mtvec.load_next then
-                field_storage.mtvec.mtvec.value <= field_combo.mtvec.mtvec.next_q;
-            end if;
-        end if;
-    end process;
-    hwif_out.mtvec.mtvec.value <= field_storage.mtvec.mtvec.value;
+    hwif_out.mstatush.mdt.value <= field_storage.mstatush.mdt.value;
+    hwif_out.medelegh.medelegh.value <= 'X;
+    hwif_out.mvendorid.offset.value <= 7x"0";
+    hwif_out.mvendorid.bank.value <= 25x"0";
+    hwif_out.marchid.marchid.value <= 32x"0";
+    hwif_out.mimpid.mimpid.value <= 32x"0";
+    hwif_out.mhartid.mhartid.value <= 32x"0";
+    hwif_out.mconfigptr.mconfigptr.value <= 32x"0";
 
     ----------------------------------------------------------------------------
     -- Write response
@@ -960,26 +598,66 @@ begin
     readback_array(0)(3 downto 3) <= to_std_logic_vector(field_storage.mstatus.mie.value) when (decoded_reg_strb.mstatus and not decoded_req_is_wr) else (others => '0');
     readback_array(0)(4 downto 4) <= (others => '0');
     readback_array(0)(5 downto 5) <= to_std_logic_vector(field_storage.mstatus.spie.value) when (decoded_reg_strb.mstatus and not decoded_req_is_wr) else (others => '0');
-    readback_array(0)(6 downto 6) <= to_std_logic_vector(field_storage.mstatus.ube.value) when (decoded_reg_strb.mstatus and not decoded_req_is_wr) else (others => '0');
+    readback_array(0)(6 downto 6) <= '0' when (decoded_reg_strb.mstatus and not decoded_req_is_wr) else (others => '0');
     readback_array(0)(7 downto 7) <= to_std_logic_vector(field_storage.mstatus.mpie.value) when (decoded_reg_strb.mstatus and not decoded_req_is_wr) else (others => '0');
     readback_array(0)(8 downto 8) <= to_std_logic_vector(field_storage.mstatus.spp.value) when (decoded_reg_strb.mstatus and not decoded_req_is_wr) else (others => '0');
-    readback_array(0)(10 downto 9) <= field_storage.mstatus.vs.value when (decoded_reg_strb.mstatus and not decoded_req_is_wr) else (others => '0');
+    readback_array(0)(10 downto 9) <= 2x"0" when (decoded_reg_strb.mstatus and not decoded_req_is_wr) else (others => '0');
     readback_array(0)(12 downto 11) <= field_storage.mstatus.mpp.value when (decoded_reg_strb.mstatus and not decoded_req_is_wr) else (others => '0');
-    readback_array(0)(14 downto 13) <= field_storage.mstatus.fs.value when (decoded_reg_strb.mstatus and not decoded_req_is_wr) else (others => '0');
-    readback_array(0)(16 downto 15) <= field_storage.mstatus.xs.value when (decoded_reg_strb.mstatus and not decoded_req_is_wr) else (others => '0');
-    readback_array(0)(17 downto 17) <= to_std_logic_vector(field_storage.mstatus.mprv.value) when (decoded_reg_strb.mstatus and not decoded_req_is_wr) else (others => '0');
-    readback_array(0)(18 downto 18) <= to_std_logic_vector(field_storage.mstatus.sum.value) when (decoded_reg_strb.mstatus and not decoded_req_is_wr) else (others => '0');
-    readback_array(0)(19 downto 19) <= to_std_logic_vector(field_storage.mstatus.mxr.value) when (decoded_reg_strb.mstatus and not decoded_req_is_wr) else (others => '0');
-    readback_array(0)(20 downto 20) <= to_std_logic_vector(field_storage.mstatus.tvm.value) when (decoded_reg_strb.mstatus and not decoded_req_is_wr) else (others => '0');
-    readback_array(0)(21 downto 21) <= to_std_logic_vector(field_storage.mstatus.tw.value) when (decoded_reg_strb.mstatus and not decoded_req_is_wr) else (others => '0');
-    readback_array(0)(22 downto 22) <= to_std_logic_vector(field_storage.mstatus.tsr.value) when (decoded_reg_strb.mstatus and not decoded_req_is_wr) else (others => '0');
-    readback_array(0)(23 downto 23) <= to_std_logic_vector(field_storage.mstatus.spelp.value) when (decoded_reg_strb.mstatus and not decoded_req_is_wr) else (others => '0');
-    readback_array(0)(24 downto 24) <= to_std_logic_vector(field_storage.mstatus.sdt.value) when (decoded_reg_strb.mstatus and not decoded_req_is_wr) else (others => '0');
-    readback_array(0)(30 downto 25) <= (others => '0');
-    readback_array(0)(31 downto 31) <= to_std_logic_vector(field_storage.mstatus.sd.value) when (decoded_reg_strb.mstatus and not decoded_req_is_wr) else (others => '0');
-    readback_array(1)(31 downto 0) <= field_storage.misa.misa.value when (decoded_reg_strb.misa and not decoded_req_is_wr) else (others => '0');
-    readback_array(2)(31 downto 0) <= field_storage.mie.mie.value when (decoded_reg_strb.mie and not decoded_req_is_wr) else (others => '0');
-    readback_array(3)(31 downto 0) <= field_storage.mtvec.mtvec.value when (decoded_reg_strb.mtvec and not decoded_req_is_wr) else (others => '0');
+    readback_array(0)(14 downto 13) <= 2x"0" when (decoded_reg_strb.mstatus and not decoded_req_is_wr) else (others => '0');
+    readback_array(0)(16 downto 15) <= 2x"0" when (decoded_reg_strb.mstatus and not decoded_req_is_wr) else (others => '0');
+    readback_array(0)(17 downto 17) <= '0' when (decoded_reg_strb.mstatus and not decoded_req_is_wr) else (others => '0');
+    readback_array(0)(18 downto 18) <= '0' when (decoded_reg_strb.mstatus and not decoded_req_is_wr) else (others => '0');
+    readback_array(0)(19 downto 19) <= '0' when (decoded_reg_strb.mstatus and not decoded_req_is_wr) else (others => '0');
+    readback_array(0)(20 downto 20) <= '0' when (decoded_reg_strb.mstatus and not decoded_req_is_wr) else (others => '0');
+    readback_array(0)(21 downto 21) <= '0' when (decoded_reg_strb.mstatus and not decoded_req_is_wr) else (others => '0');
+    readback_array(0)(22 downto 22) <= '0' when (decoded_reg_strb.mstatus and not decoded_req_is_wr) else (others => '0');
+    readback_array(0)(30 downto 23) <= (others => '0');
+    readback_array(0)(31 downto 31) <= '0' when (decoded_reg_strb.mstatus and not decoded_req_is_wr) else (others => '0');
+    readback_array(1)(0 downto 0) <= '0' when (decoded_reg_strb.misa and not decoded_req_is_wr) else (others => '0');
+    readback_array(1)(1 downto 1) <= '0' when (decoded_reg_strb.misa and not decoded_req_is_wr) else (others => '0');
+    readback_array(1)(2 downto 2) <= '0' when (decoded_reg_strb.misa and not decoded_req_is_wr) else (others => '0');
+    readback_array(1)(3 downto 3) <= '0' when (decoded_reg_strb.misa and not decoded_req_is_wr) else (others => '0');
+    readback_array(1)(4 downto 4) <= '0' when (decoded_reg_strb.misa and not decoded_req_is_wr) else (others => '0');
+    readback_array(1)(5 downto 5) <= '0' when (decoded_reg_strb.misa and not decoded_req_is_wr) else (others => '0');
+    readback_array(1)(6 downto 6) <= (others => '0');
+    readback_array(1)(7 downto 7) <= '0' when (decoded_reg_strb.misa and not decoded_req_is_wr) else (others => '0');
+    readback_array(1)(8 downto 8) <= '1' when (decoded_reg_strb.misa and not decoded_req_is_wr) else (others => '0');
+    readback_array(1)(11 downto 9) <= (others => '0');
+    readback_array(1)(12 downto 12) <= '0' when (decoded_reg_strb.misa and not decoded_req_is_wr) else (others => '0');
+    readback_array(1)(13 downto 13) <= '0' when (decoded_reg_strb.misa and not decoded_req_is_wr) else (others => '0');
+    readback_array(1)(14 downto 14) <= (others => '0');
+    readback_array(1)(15 downto 15) <= '0' when (decoded_reg_strb.misa and not decoded_req_is_wr) else (others => '0');
+    readback_array(1)(16 downto 16) <= '0' when (decoded_reg_strb.misa and not decoded_req_is_wr) else (others => '0');
+    readback_array(1)(17 downto 17) <= (others => '0');
+    readback_array(1)(18 downto 18) <= '0' when (decoded_reg_strb.misa and not decoded_req_is_wr) else (others => '0');
+    readback_array(1)(19 downto 19) <= (others => '0');
+    readback_array(1)(20 downto 20) <= '0' when (decoded_reg_strb.misa and not decoded_req_is_wr) else (others => '0');
+    readback_array(1)(21 downto 21) <= '0' when (decoded_reg_strb.misa and not decoded_req_is_wr) else (others => '0');
+    readback_array(1)(22 downto 22) <= (others => '0');
+    readback_array(1)(23 downto 23) <= '0' when (decoded_reg_strb.misa and not decoded_req_is_wr) else (others => '0');
+    readback_array(1)(29 downto 24) <= (others => '0');
+    readback_array(1)(31 downto 30) <= 2x"1" when (decoded_reg_strb.misa and not decoded_req_is_wr) else (others => '0');
+    readback_array(2)(31 downto 0) <= 'X when (decoded_reg_strb.medeleg and not decoded_req_is_wr) else (others => '0');
+    readback_array(3)(31 downto 0) <= 'X when (decoded_reg_strb.mideleg and not decoded_req_is_wr) else (others => '0');
+    readback_array(4)(31 downto 0) <= 'X when (decoded_reg_strb.mie and not decoded_req_is_wr) else (others => '0');
+    readback_array(5)(31 downto 0) <= 'X when (decoded_reg_strb.mtvec and not decoded_req_is_wr) else (others => '0');
+    readback_array(6)(31 downto 0) <= 'X when (decoded_reg_strb.mcounteren and not decoded_req_is_wr) else (others => '0');
+    readback_array(7)(3 downto 0) <= (others => '0');
+    readback_array(7)(4 downto 4) <= '0' when (decoded_reg_strb.mstatush and not decoded_req_is_wr) else (others => '0');
+    readback_array(7)(5 downto 5) <= '0' when (decoded_reg_strb.mstatush and not decoded_req_is_wr) else (others => '0');
+    readback_array(7)(6 downto 6) <= to_std_logic_vector(field_storage.mstatush.gva.value) when (decoded_reg_strb.mstatush and not decoded_req_is_wr) else (others => '0');
+    readback_array(7)(7 downto 7) <= to_std_logic_vector(field_storage.mstatush.mpv.value) when (decoded_reg_strb.mstatush and not decoded_req_is_wr) else (others => '0');
+    readback_array(7)(8 downto 8) <= (others => '0');
+    readback_array(7)(9 downto 9) <= to_std_logic_vector(field_storage.mstatush.mpelp.value) when (decoded_reg_strb.mstatush and not decoded_req_is_wr) else (others => '0');
+    readback_array(7)(10 downto 10) <= to_std_logic_vector(field_storage.mstatush.mdt.value) when (decoded_reg_strb.mstatush and not decoded_req_is_wr) else (others => '0');
+    readback_array(7)(31 downto 11) <= (others => '0');
+    readback_array(8)(31 downto 0) <= 'X when (decoded_reg_strb.medelegh and not decoded_req_is_wr) else (others => '0');
+    readback_array(9)(6 downto 0) <= 7x"0" when (decoded_reg_strb.mvendorid and not decoded_req_is_wr) else (others => '0');
+    readback_array(9)(31 downto 7) <= 25x"0" when (decoded_reg_strb.mvendorid and not decoded_req_is_wr) else (others => '0');
+    readback_array(10)(31 downto 0) <= 32x"0" when (decoded_reg_strb.marchid and not decoded_req_is_wr) else (others => '0');
+    readback_array(11)(31 downto 0) <= 32x"0" when (decoded_reg_strb.mimpid and not decoded_req_is_wr) else (others => '0');
+    readback_array(12)(31 downto 0) <= 32x"0" when (decoded_reg_strb.mhartid and not decoded_req_is_wr) else (others => '0');
+    readback_array(13)(31 downto 0) <= 32x"0" when (decoded_reg_strb.mconfigptr and not decoded_req_is_wr) else (others => '0');
 
     -- Reduce the array
     process(all)

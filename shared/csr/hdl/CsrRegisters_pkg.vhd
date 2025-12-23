@@ -8,8 +8,8 @@ use ieee.fixed_pkg.all;
 package CsrRegisters_pkg is
 
     constant CSRREGISTERS_DATA_WIDTH : positive := 32;
-    constant CSRREGISTERS_MIN_ADDR_WIDTH : positive := 12;
-    constant CSRREGISTERS_SIZE : positive := 3096;
+    constant CSRREGISTERS_MIN_ADDR_WIDTH : positive := 14;
+    constant CSRREGISTERS_SIZE : positive := 15448;
 
     type \CsrRegisters.mstatus.sie_in_t\ is record
         next_q : std_logic;
@@ -112,14 +112,6 @@ package CsrRegisters_pkg is
         value : std_logic;
     end record;
 
-    type \CsrRegisters.mstatus.spelp_out_t\ is record
-        value : std_logic;
-    end record;
-
-    type \CsrRegisters.mstatus.sdt_out_t\ is record
-        value : std_logic;
-    end record;
-
     type \CsrRegisters.mstatus.sd_out_t\ is record
         value : std_logic;
     end record;
@@ -141,17 +133,111 @@ package CsrRegisters_pkg is
         tvm : \CsrRegisters.mstatus.tvm_out_t\;
         tw : \CsrRegisters.mstatus.tw_out_t\;
         tsr : \CsrRegisters.mstatus.tsr_out_t\;
-        spelp : \CsrRegisters.mstatus.spelp_out_t\;
-        sdt : \CsrRegisters.mstatus.sdt_out_t\;
         sd : \CsrRegisters.mstatus.sd_out_t\;
     end record;
 
-    type \CsrRegisters.misa.misa_out_t\ is record
-        value : std_logic_vector(31 downto 0);
+    type \CsrRegisters.misa.a_out_t\ is record
+        value : std_logic;
+    end record;
+
+    type \CsrRegisters.misa.b_out_t\ is record
+        value : std_logic;
+    end record;
+
+    type \CsrRegisters.misa.c_out_t\ is record
+        value : std_logic;
+    end record;
+
+    type \CsrRegisters.misa.d_out_t\ is record
+        value : std_logic;
+    end record;
+
+    type \CsrRegisters.misa.e_out_t\ is record
+        value : std_logic;
+    end record;
+
+    type \CsrRegisters.misa.f_out_t\ is record
+        value : std_logic;
+    end record;
+
+    type \CsrRegisters.misa.h_out_t\ is record
+        value : std_logic;
+    end record;
+
+    type \CsrRegisters.misa.i_out_t\ is record
+        value : std_logic;
+    end record;
+
+    type \CsrRegisters.misa.m_out_t\ is record
+        value : std_logic;
+    end record;
+
+    type \CsrRegisters.misa.n_out_t\ is record
+        value : std_logic;
+    end record;
+
+    type \CsrRegisters.misa.p_out_t\ is record
+        value : std_logic;
+    end record;
+
+    type \CsrRegisters.misa.q_out_t\ is record
+        value : std_logic;
+    end record;
+
+    type \CsrRegisters.misa.s_out_t\ is record
+        value : std_logic;
+    end record;
+
+    type \CsrRegisters.misa.u_out_t\ is record
+        value : std_logic;
+    end record;
+
+    type \CsrRegisters.misa.v_out_t\ is record
+        value : std_logic;
+    end record;
+
+    type \CsrRegisters.misa.x_out_t\ is record
+        value : std_logic;
+    end record;
+
+    type \CsrRegisters.misa.mxl_out_t\ is record
+        value : std_logic_vector(1 downto 0);
     end record;
 
     type \CsrRegisters.misa_out_t\ is record
-        misa : \CsrRegisters.misa.misa_out_t\;
+        a : \CsrRegisters.misa.a_out_t\;
+        b : \CsrRegisters.misa.b_out_t\;
+        c : \CsrRegisters.misa.c_out_t\;
+        d : \CsrRegisters.misa.d_out_t\;
+        e : \CsrRegisters.misa.e_out_t\;
+        f : \CsrRegisters.misa.f_out_t\;
+        h : \CsrRegisters.misa.h_out_t\;
+        i : \CsrRegisters.misa.i_out_t\;
+        m : \CsrRegisters.misa.m_out_t\;
+        n : \CsrRegisters.misa.n_out_t\;
+        p : \CsrRegisters.misa.p_out_t\;
+        q : \CsrRegisters.misa.q_out_t\;
+        s : \CsrRegisters.misa.s_out_t\;
+        u : \CsrRegisters.misa.u_out_t\;
+        v : \CsrRegisters.misa.v_out_t\;
+        x : \CsrRegisters.misa.x_out_t\;
+        mxl : \CsrRegisters.misa.mxl_out_t\;
+    end record;
+
+    type \CsrRegisters.medeleg.medeleg_out_t\ is record
+        value : std_logic_vector(31 downto 0);
+    end record;
+
+    type \CsrRegisters.medeleg_out_t\ is record
+        medeleg : \CsrRegisters.medeleg.medeleg_out_t\;
+    end record;
+
+    type \CsrRegisters.mideleg.mideleg_out_t\ is record
+        value : std_logic_vector(31 downto 0);
+    end record;
+
+    type \CsrRegisters.mideleg_out_t\ is record
+        mideleg : \CsrRegisters.mideleg.mideleg_out_t\;
     end record;
 
     type \CsrRegisters.mie.mie_out_t\ is record
@@ -170,10 +256,114 @@ package CsrRegisters_pkg is
         mtvec : \CsrRegisters.mtvec.mtvec_out_t\;
     end record;
 
+    type \CsrRegisters.mcounteren.mcounteren_out_t\ is record
+        value : std_logic_vector(31 downto 0);
+    end record;
+
+    type \CsrRegisters.mcounteren_out_t\ is record
+        mcounteren : \CsrRegisters.mcounteren.mcounteren_out_t\;
+    end record;
+
+    type \CsrRegisters.mstatush.sbe_out_t\ is record
+        value : std_logic;
+    end record;
+
+    type \CsrRegisters.mstatush.mbe_out_t\ is record
+        value : std_logic;
+    end record;
+
+    type \CsrRegisters.mstatush.gva_out_t\ is record
+        value : std_logic;
+    end record;
+
+    type \CsrRegisters.mstatush.mpv_out_t\ is record
+        value : std_logic;
+    end record;
+
+    type \CsrRegisters.mstatush.mpelp_out_t\ is record
+        value : std_logic;
+    end record;
+
+    type \CsrRegisters.mstatush.mdt_out_t\ is record
+        value : std_logic;
+    end record;
+
+    type \CsrRegisters.mstatush_out_t\ is record
+        sbe : \CsrRegisters.mstatush.sbe_out_t\;
+        mbe : \CsrRegisters.mstatush.mbe_out_t\;
+        gva : \CsrRegisters.mstatush.gva_out_t\;
+        mpv : \CsrRegisters.mstatush.mpv_out_t\;
+        mpelp : \CsrRegisters.mstatush.mpelp_out_t\;
+        mdt : \CsrRegisters.mstatush.mdt_out_t\;
+    end record;
+
+    type \CsrRegisters.medelegh.medelegh_out_t\ is record
+        value : std_logic_vector(31 downto 0);
+    end record;
+
+    type \CsrRegisters.medelegh_out_t\ is record
+        medelegh : \CsrRegisters.medelegh.medelegh_out_t\;
+    end record;
+
+    type \CsrRegisters.mvendorid.offset_out_t\ is record
+        value : std_logic_vector(6 downto 0);
+    end record;
+
+    type \CsrRegisters.mvendorid.bank_out_t\ is record
+        value : std_logic_vector(24 downto 0);
+    end record;
+
+    type \CsrRegisters.mvendorid_out_t\ is record
+        offset : \CsrRegisters.mvendorid.offset_out_t\;
+        bank : \CsrRegisters.mvendorid.bank_out_t\;
+    end record;
+
+    type \CsrRegisters.marchid.marchid_out_t\ is record
+        value : std_logic_vector(31 downto 0);
+    end record;
+
+    type \CsrRegisters.marchid_out_t\ is record
+        marchid : \CsrRegisters.marchid.marchid_out_t\;
+    end record;
+
+    type \CsrRegisters.mimpid.mimpid_out_t\ is record
+        value : std_logic_vector(31 downto 0);
+    end record;
+
+    type \CsrRegisters.mimpid_out_t\ is record
+        mimpid : \CsrRegisters.mimpid.mimpid_out_t\;
+    end record;
+
+    type \CsrRegisters.mhartid.mhartid_out_t\ is record
+        value : std_logic_vector(31 downto 0);
+    end record;
+
+    type \CsrRegisters.mhartid_out_t\ is record
+        mhartid : \CsrRegisters.mhartid.mhartid_out_t\;
+    end record;
+
+    type \CsrRegisters.mconfigptr.mconfigptr_out_t\ is record
+        value : std_logic_vector(31 downto 0);
+    end record;
+
+    type \CsrRegisters.mconfigptr_out_t\ is record
+        mconfigptr : \CsrRegisters.mconfigptr.mconfigptr_out_t\;
+    end record;
+
     type CsrRegisters_out_t is record
         mstatus : \CsrRegisters.mstatus_out_t\;
         misa : \CsrRegisters.misa_out_t\;
+        medeleg : \CsrRegisters.medeleg_out_t\;
+        mideleg : \CsrRegisters.mideleg_out_t\;
         mie : \CsrRegisters.mie_out_t\;
         mtvec : \CsrRegisters.mtvec_out_t\;
+        mcounteren : \CsrRegisters.mcounteren_out_t\;
+        mstatush : \CsrRegisters.mstatush_out_t\;
+        medelegh : \CsrRegisters.medelegh_out_t\;
+        mvendorid : \CsrRegisters.mvendorid_out_t\;
+        marchid : \CsrRegisters.marchid_out_t\;
+        mimpid : \CsrRegisters.mimpid_out_t\;
+        mhartid : \CsrRegisters.mhartid_out_t\;
+        mconfigptr : \CsrRegisters.mconfigptr_out_t\;
     end record;
 end package;

@@ -9,14 +9,24 @@ Don't override. Generated from: CsrRegisters
 
 - Absolute Address: 0x0
 - Base Offset: 0x0
-- Size: 0xC18
+- Size: 0x3C58
 
 |Offset|Identifier|Name|
 |------|----------|----|
-| 0xC00|  mstatus |  — |
-| 0xC04|   misa   |  — |
-| 0xC10|    mie   |  — |
-| 0xC14|   mtvec  |  — |
+|0x0C00|  mstatus |  — |
+|0x0C04|   misa   |  — |
+|0x0C08|  medeleg |  — |
+|0x0C0C|  mideleg |  — |
+|0x0C10|    mie   |  — |
+|0x0C14|   mtvec  |  — |
+|0x0C18|mcounteren|  — |
+|0x0C40| mstatush |  — |
+|0x0C48| medelegh |  — |
+|0x3C44| mvendorid|  — |
+|0x3C48|  marchid |  — |
+|0x3C4C|  mimpid  |  — |
+|0x3C50|  mhartid |  — |
+|0x3C54|mconfigptr|  — |
 
 ### mstatus register
 
@@ -29,22 +39,20 @@ Don't override. Generated from: CsrRegisters
 |  1  |    sie   |  rw  |  —  |  — |
 |  3  |    mie   |  rw  |  —  |  — |
 |  5  |   spie   |  rw  |  —  |  — |
-|  6  |    ube   |  rw  |  —  |  — |
+|  6  |    ube   |   r  | 0x0 |  — |
 |  7  |   mpie   |  rw  |  —  |  — |
 |  8  |    spp   |  rw  |  —  |  — |
-| 10:9|    vs    |  rw  |  —  |  — |
+| 10:9|    vs    |   r  | 0x0 |  — |
 |12:11|    mpp   |  rw  |  —  |  — |
-|14:13|    fs    |  rw  |  —  |  — |
-|16:15|    xs    |  rw  |  —  |  — |
-|  17 |   mprv   |  rw  |  —  |  — |
-|  18 |    sum   |  rw  |  —  |  — |
-|  19 |    mxr   |  rw  |  —  |  — |
-|  20 |    tvm   |  rw  |  —  |  — |
-|  21 |    tw    |  rw  |  —  |  — |
-|  22 |    tsr   |  rw  |  —  |  — |
-|  23 |   spelp  |  rw  |  —  |  — |
-|  24 |    sdt   |  rw  |  —  |  — |
-|  31 |    sd    |  rw  |  —  |  — |
+|14:13|    fs    |   r  | 0x0 |  — |
+|16:15|    xs    |   r  | 0x0 |  — |
+|  17 |   mprv   |   r  | 0x0 |  — |
+|  18 |    sum   |   r  | 0x0 |  — |
+|  19 |    mxr   |   r  | 0x0 |  — |
+|  20 |    tvm   |   r  | 0x0 |  — |
+|  21 |    tw    |   r  | 0x0 |  — |
+|  22 |    tsr   |   r  | 0x0 |  — |
+|  31 |    sd    |   r  | 0x0 |  — |
 
 ### misa register
 
@@ -52,9 +60,45 @@ Don't override. Generated from: CsrRegisters
 - Base Offset: 0xC04
 - Size: 0x4
 
+| Bits|Identifier|Access|Reset|Name|
+|-----|----------|------|-----|----|
+|  0  |     a    |   r  | 0x0 |  — |
+|  1  |     b    |   r  | 0x0 |  — |
+|  2  |     c    |   r  | 0x0 |  — |
+|  3  |     d    |   r  | 0x0 |  — |
+|  4  |     e    |   r  | 0x0 |  — |
+|  5  |     f    |   r  | 0x0 |  — |
+|  7  |     h    |   r  | 0x0 |  — |
+|  8  |     i    |   r  | 0x1 |  — |
+|  12 |     m    |   r  | 0x0 |  — |
+|  13 |     n    |   r  | 0x0 |  — |
+|  15 |     p    |   r  | 0x0 |  — |
+|  16 |     q    |   r  | 0x0 |  — |
+|  18 |     s    |   r  | 0x0 |  — |
+|  20 |     u    |   r  | 0x0 |  — |
+|  21 |     v    |   r  | 0x0 |  — |
+|  23 |     x    |   r  | 0x0 |  — |
+|31:30|    mxl   |   r  | 0x1 |  — |
+
+### medeleg register
+
+- Absolute Address: 0xC08
+- Base Offset: 0xC08
+- Size: 0x4
+
 |Bits|Identifier|Access|Reset|Name|
 |----|----------|------|-----|----|
-|31:0|   misa   |  rw  |  —  |  — |
+|31:0|  medeleg |   r  |  —  |  — |
+
+### mideleg register
+
+- Absolute Address: 0xC0C
+- Base Offset: 0xC0C
+- Size: 0x4
+
+|Bits|Identifier|Access|Reset|Name|
+|----|----------|------|-----|----|
+|31:0|  mideleg |   r  |  —  |  — |
 
 ### mie register
 
@@ -64,7 +108,7 @@ Don't override. Generated from: CsrRegisters
 
 |Bits|Identifier|Access|Reset|Name|
 |----|----------|------|-----|----|
-|31:0|    mie   |  rw  |  —  |  — |
+|31:0|    mie   |   r  |  —  |  — |
 
 ### mtvec register
 
@@ -74,4 +118,90 @@ Don't override. Generated from: CsrRegisters
 
 |Bits|Identifier|Access|Reset|Name|
 |----|----------|------|-----|----|
-|31:0|   mtvec  |  rw  |  —  |  — |
+|31:0|   mtvec  |   r  |  —  |  — |
+
+### mcounteren register
+
+- Absolute Address: 0xC18
+- Base Offset: 0xC18
+- Size: 0x4
+
+|Bits|Identifier|Access|Reset|Name|
+|----|----------|------|-----|----|
+|31:0|mcounteren|   r  |  —  |  — |
+
+### mstatush register
+
+- Absolute Address: 0xC40
+- Base Offset: 0xC40
+- Size: 0x4
+
+|Bits|Identifier|Access|Reset|Name|
+|----|----------|------|-----|----|
+|  4 |    sbe   |   r  | 0x0 |  — |
+|  5 |    mbe   |   r  | 0x0 |  — |
+|  6 |    gva   |  rw  |  —  |  — |
+|  7 |    mpv   |  rw  |  —  |  — |
+|  9 |   mpelp  |  rw  |  —  |  — |
+| 10 |    mdt   |  rw  |  —  |  — |
+
+### medelegh register
+
+- Absolute Address: 0xC48
+- Base Offset: 0xC48
+- Size: 0x4
+
+|Bits|Identifier|Access|Reset|Name|
+|----|----------|------|-----|----|
+|31:0| medelegh |   r  |  —  |  — |
+
+### mvendorid register
+
+- Absolute Address: 0x3C44
+- Base Offset: 0x3C44
+- Size: 0x4
+
+|Bits|Identifier|Access|Reset|Name|
+|----|----------|------|-----|----|
+| 6:0|  offset  |   r  | 0x0 |  — |
+|31:7|   bank   |   r  | 0x0 |  — |
+
+### marchid register
+
+- Absolute Address: 0x3C48
+- Base Offset: 0x3C48
+- Size: 0x4
+
+|Bits|Identifier|Access|Reset|Name|
+|----|----------|------|-----|----|
+|31:0|  marchid |   r  | 0x0 |  — |
+
+### mimpid register
+
+- Absolute Address: 0x3C4C
+- Base Offset: 0x3C4C
+- Size: 0x4
+
+|Bits|Identifier|Access|Reset|Name|
+|----|----------|------|-----|----|
+|31:0|  mimpid  |   r  | 0x0 |  — |
+
+### mhartid register
+
+- Absolute Address: 0x3C50
+- Base Offset: 0x3C50
+- Size: 0x4
+
+|Bits|Identifier|Access|Reset|Name|
+|----|----------|------|-----|----|
+|31:0|  mhartid |   r  | 0x0 |  — |
+
+### mconfigptr register
+
+- Absolute Address: 0x3C54
+- Base Offset: 0x3C54
+- Size: 0x4
+
+|Bits|Identifier|Access|Reset|Name|
+|----|----------|------|-----|----|
+|31:0|mconfigptr|   r  | 0x0 |  — |
