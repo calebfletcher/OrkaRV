@@ -81,6 +81,7 @@ architecture rtl of UartRegisters is
         status : std_logic;
     end record;
     signal decoded_reg_strb : decoded_reg_strb_t;
+    signal decoded_err : std_logic;
     signal decoded_req : std_logic;
     signal decoded_req_is_wr : std_logic;
     signal decoded_wr_data : std_logic_vector(31 downto 0);
@@ -375,11 +376,16 @@ begin
             result := '1' when unsigned(L) = R else '0';
             return result;
         end;
+        variable is_valid_addr : std_logic;
+        variable is_invalid_rw : std_logic;
     begin
-        decoded_reg_strb.rx <= cpuif_req_masked and (cpuif_addr = 16#0#);
-        decoded_reg_strb.tx <= cpuif_req_masked and (cpuif_addr = 16#4#);
+        is_valid_addr := '1'; -- No error checking on valid address access
+        is_invalid_rw := '0';
+        decoded_reg_strb.rx <= cpuif_req_masked and (cpuif_addr = 16#0#) and not cpuif_req_is_wr;
+        decoded_reg_strb.tx <= cpuif_req_masked and (cpuif_addr = 16#4#) and cpuif_req_is_wr;
         decoded_reg_strb.ctrl <= cpuif_req_masked and (cpuif_addr = 16#8#);
-        decoded_reg_strb.status <= cpuif_req_masked and (cpuif_addr = 16#C#);
+        decoded_reg_strb.status <= cpuif_req_masked and (cpuif_addr = 16#C#) and not cpuif_req_is_wr;
+        decoded_err <= (not is_valid_addr or is_invalid_rw) and decoded_req;
     end process;
 
     -- Pass down signals to next stage

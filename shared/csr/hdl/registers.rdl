@@ -29,27 +29,33 @@ addrmap CsrRegisters {
         default sw = rw;
         field {
             hw = rw;
+            we;
         } sie[1:1];
         field {
             hw = rw;
+            we;
         } mie[3:3];
         field {
             hw = rw;
+            we;
         } spie[5:5];
         field {
             sw = r;
         } ube[6:6] = 0;
         field {
             hw = rw;
+            we;
         } mpie[7:7];
         field {
             hw = rw;
+            we;
         } spp[8:8];
         field {
             sw = r;
         } vs[10:9] = 0;
         field {
             hw = rw;
+            we;
         } mpp[12:11];
         field {
             sw = r;
@@ -100,30 +106,34 @@ addrmap CsrRegisters {
         field {} mxl[31:30] = 1;
     } misa @ 0x301 << 2;
     
-    // todo
     reg {
-        field {} medeleg[32];
+        field {} medeleg[32] = 0;
     } medeleg @ 0x302 << 2;
     
-    // todo
     reg {
-        field {} mideleg[32];
+        field {} mideleg[32] = 0;
     } mideleg @ 0x303 << 2;
 
-    // todo
     reg {
-        field {} mie[32];
+        default sw = rw;
+        field {
+            sw = r;
+        } ssie[1:1] = 0;
+        field {} msie[3:3];
+        field {
+            sw = r;
+        } stie[5:5] = 0;
+        field {} mtie[7:7];
+        field {
+            sw = r;
+        } seie[9:9] = 0;
+        field {} meie[11:11];
     } mie @ 0x304 << 2;
     
-    // todo
     reg {
-        field {} mtvec[32];
+        field {} mode[2] = 0;
+        field {} base[30] = 0;
     } mtvec @ 0x305 << 2;
-
-    // todo
-    reg {
-        field {} mcounteren[32];
-    } mcounteren @ 0x306 << 2;
     
     reg {
         default sw = rw;
@@ -139,8 +149,54 @@ addrmap CsrRegisters {
         field {} mdt[10:10];
     } mstatush @ 0x310 << 2;
     
-    // todo
     reg {
-        field {} medelegh[32];
+        field {} medelegh[32] = 0;
     } medelegh @ 0x312 << 2;
+    
+    reg {
+        field {
+            hw = na;
+            sw = rw;
+        } mscratch[32] = 0;
+    } mscratch @ 0x340 << 2;
+    
+    reg {
+        field {
+            sw = rw;
+            hw = rw;
+            we;
+        } mepc[32] = 0;
+    } mepc @ 0x341 << 2;
+    
+    reg {
+        default sw = rw;
+        default hw = rw;
+        default we;
+        field {} code[31] = 0;
+        field {} interrupt[1] = 0;
+    } mcause @ 0x342 << 2;
+    
+    reg {
+        field {
+            sw = rw;
+            hw = rw;
+            we;
+        } mtval[32] = 0;
+    } mtval @ 0x343 << 2;
+
+    reg {
+        default sw = rw;
+        field {
+            sw = r;
+        } ssip[1:1] = 0;
+        field {} msip[3:3];
+        field {
+            sw = r;
+        } stip[5:5] = 0;
+        field {} mtip[7:7];
+        field {
+            sw = r;
+        } seip[9:9] = 0;
+        field {} meip[11:11];
+    } mip @ 0x344 << 2;
 };

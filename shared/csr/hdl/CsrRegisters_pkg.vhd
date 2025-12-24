@@ -13,26 +13,32 @@ package CsrRegisters_pkg is
 
     type \CsrRegisters.mstatus.sie_in_t\ is record
         next_q : std_logic;
+        we : std_logic;
     end record;
 
     type \CsrRegisters.mstatus.mie_in_t\ is record
         next_q : std_logic;
+        we : std_logic;
     end record;
 
     type \CsrRegisters.mstatus.spie_in_t\ is record
         next_q : std_logic;
+        we : std_logic;
     end record;
 
     type \CsrRegisters.mstatus.mpie_in_t\ is record
         next_q : std_logic;
+        we : std_logic;
     end record;
 
     type \CsrRegisters.mstatus.spp_in_t\ is record
         next_q : std_logic;
+        we : std_logic;
     end record;
 
     type \CsrRegisters.mstatus.mpp_in_t\ is record
         next_q : std_logic_vector(1 downto 0);
+        we : std_logic;
     end record;
 
     type \CsrRegisters.mstatus_in_t\ is record
@@ -44,8 +50,44 @@ package CsrRegisters_pkg is
         mpp : \CsrRegisters.mstatus.mpp_in_t\;
     end record;
 
+    type \CsrRegisters.mepc.mepc_in_t\ is record
+        next_q : std_logic_vector(31 downto 0);
+        we : std_logic;
+    end record;
+
+    type \CsrRegisters.mepc_in_t\ is record
+        mepc : \CsrRegisters.mepc.mepc_in_t\;
+    end record;
+
+    type \CsrRegisters.mcause.code_in_t\ is record
+        next_q : std_logic_vector(30 downto 0);
+        we : std_logic;
+    end record;
+
+    type \CsrRegisters.mcause.interrupt_in_t\ is record
+        next_q : std_logic;
+        we : std_logic;
+    end record;
+
+    type \CsrRegisters.mcause_in_t\ is record
+        code : \CsrRegisters.mcause.code_in_t\;
+        interrupt : \CsrRegisters.mcause.interrupt_in_t\;
+    end record;
+
+    type \CsrRegisters.mtval.mtval_in_t\ is record
+        next_q : std_logic_vector(31 downto 0);
+        we : std_logic;
+    end record;
+
+    type \CsrRegisters.mtval_in_t\ is record
+        mtval : \CsrRegisters.mtval.mtval_in_t\;
+    end record;
+
     type CsrRegisters_in_t is record
         mstatus : \CsrRegisters.mstatus_in_t\;
+        mepc : \CsrRegisters.mepc_in_t\;
+        mcause : \CsrRegisters.mcause_in_t\;
+        mtval : \CsrRegisters.mtval_in_t\;
     end record;
 
     type \CsrRegisters.mstatus.sie_out_t\ is record
@@ -240,28 +282,50 @@ package CsrRegisters_pkg is
         mideleg : \CsrRegisters.mideleg.mideleg_out_t\;
     end record;
 
-    type \CsrRegisters.mie.mie_out_t\ is record
-        value : std_logic_vector(31 downto 0);
+    type \CsrRegisters.mie.ssie_out_t\ is record
+        value : std_logic;
+    end record;
+
+    type \CsrRegisters.mie.msie_out_t\ is record
+        value : std_logic;
+    end record;
+
+    type \CsrRegisters.mie.stie_out_t\ is record
+        value : std_logic;
+    end record;
+
+    type \CsrRegisters.mie.mtie_out_t\ is record
+        value : std_logic;
+    end record;
+
+    type \CsrRegisters.mie.seie_out_t\ is record
+        value : std_logic;
+    end record;
+
+    type \CsrRegisters.mie.meie_out_t\ is record
+        value : std_logic;
     end record;
 
     type \CsrRegisters.mie_out_t\ is record
-        mie : \CsrRegisters.mie.mie_out_t\;
+        ssie : \CsrRegisters.mie.ssie_out_t\;
+        msie : \CsrRegisters.mie.msie_out_t\;
+        stie : \CsrRegisters.mie.stie_out_t\;
+        mtie : \CsrRegisters.mie.mtie_out_t\;
+        seie : \CsrRegisters.mie.seie_out_t\;
+        meie : \CsrRegisters.mie.meie_out_t\;
     end record;
 
-    type \CsrRegisters.mtvec.mtvec_out_t\ is record
-        value : std_logic_vector(31 downto 0);
+    type \CsrRegisters.mtvec.mode_out_t\ is record
+        value : std_logic_vector(1 downto 0);
+    end record;
+
+    type \CsrRegisters.mtvec.base_out_t\ is record
+        value : std_logic_vector(29 downto 0);
     end record;
 
     type \CsrRegisters.mtvec_out_t\ is record
-        mtvec : \CsrRegisters.mtvec.mtvec_out_t\;
-    end record;
-
-    type \CsrRegisters.mcounteren.mcounteren_out_t\ is record
-        value : std_logic_vector(31 downto 0);
-    end record;
-
-    type \CsrRegisters.mcounteren_out_t\ is record
-        mcounteren : \CsrRegisters.mcounteren.mcounteren_out_t\;
+        mode : \CsrRegisters.mtvec.mode_out_t\;
+        base : \CsrRegisters.mtvec.base_out_t\;
     end record;
 
     type \CsrRegisters.mstatush.sbe_out_t\ is record
@@ -303,6 +367,68 @@ package CsrRegisters_pkg is
 
     type \CsrRegisters.medelegh_out_t\ is record
         medelegh : \CsrRegisters.medelegh.medelegh_out_t\;
+    end record;
+
+    type \CsrRegisters.mepc.mepc_out_t\ is record
+        value : std_logic_vector(31 downto 0);
+    end record;
+
+    type \CsrRegisters.mepc_out_t\ is record
+        mepc : \CsrRegisters.mepc.mepc_out_t\;
+    end record;
+
+    type \CsrRegisters.mcause.code_out_t\ is record
+        value : std_logic_vector(30 downto 0);
+    end record;
+
+    type \CsrRegisters.mcause.interrupt_out_t\ is record
+        value : std_logic;
+    end record;
+
+    type \CsrRegisters.mcause_out_t\ is record
+        code : \CsrRegisters.mcause.code_out_t\;
+        interrupt : \CsrRegisters.mcause.interrupt_out_t\;
+    end record;
+
+    type \CsrRegisters.mtval.mtval_out_t\ is record
+        value : std_logic_vector(31 downto 0);
+    end record;
+
+    type \CsrRegisters.mtval_out_t\ is record
+        mtval : \CsrRegisters.mtval.mtval_out_t\;
+    end record;
+
+    type \CsrRegisters.mip.ssip_out_t\ is record
+        value : std_logic;
+    end record;
+
+    type \CsrRegisters.mip.msip_out_t\ is record
+        value : std_logic;
+    end record;
+
+    type \CsrRegisters.mip.stip_out_t\ is record
+        value : std_logic;
+    end record;
+
+    type \CsrRegisters.mip.mtip_out_t\ is record
+        value : std_logic;
+    end record;
+
+    type \CsrRegisters.mip.seip_out_t\ is record
+        value : std_logic;
+    end record;
+
+    type \CsrRegisters.mip.meip_out_t\ is record
+        value : std_logic;
+    end record;
+
+    type \CsrRegisters.mip_out_t\ is record
+        ssip : \CsrRegisters.mip.ssip_out_t\;
+        msip : \CsrRegisters.mip.msip_out_t\;
+        stip : \CsrRegisters.mip.stip_out_t\;
+        mtip : \CsrRegisters.mip.mtip_out_t\;
+        seip : \CsrRegisters.mip.seip_out_t\;
+        meip : \CsrRegisters.mip.meip_out_t\;
     end record;
 
     type \CsrRegisters.mvendorid.offset_out_t\ is record
@@ -357,9 +483,12 @@ package CsrRegisters_pkg is
         mideleg : \CsrRegisters.mideleg_out_t\;
         mie : \CsrRegisters.mie_out_t\;
         mtvec : \CsrRegisters.mtvec_out_t\;
-        mcounteren : \CsrRegisters.mcounteren_out_t\;
         mstatush : \CsrRegisters.mstatush_out_t\;
         medelegh : \CsrRegisters.medelegh_out_t\;
+        mepc : \CsrRegisters.mepc_out_t\;
+        mcause : \CsrRegisters.mcause_out_t\;
+        mtval : \CsrRegisters.mtval_out_t\;
+        mip : \CsrRegisters.mip_out_t\;
         mvendorid : \CsrRegisters.mvendorid_out_t\;
         marchid : \CsrRegisters.marchid_out_t\;
         mimpid : \CsrRegisters.mimpid_out_t\;

@@ -19,9 +19,13 @@ Don't override. Generated from: CsrRegisters
 |0x0C0C|  mideleg |  — |
 |0x0C10|    mie   |  — |
 |0x0C14|   mtvec  |  — |
-|0x0C18|mcounteren|  — |
 |0x0C40| mstatush |  — |
 |0x0C48| medelegh |  — |
+|0x0D00| mscratch |  — |
+|0x0D04|   mepc   |  — |
+|0x0D08|  mcause  |  — |
+|0x0D0C|   mtval  |  — |
+|0x0D10|    mip   |  — |
 |0x3C44| mvendorid|  — |
 |0x3C48|  marchid |  — |
 |0x3C4C|  mimpid  |  — |
@@ -88,7 +92,7 @@ Don't override. Generated from: CsrRegisters
 
 |Bits|Identifier|Access|Reset|Name|
 |----|----------|------|-----|----|
-|31:0|  medeleg |   r  |  —  |  — |
+|31:0|  medeleg |   r  | 0x0 |  — |
 
 ### mideleg register
 
@@ -98,7 +102,7 @@ Don't override. Generated from: CsrRegisters
 
 |Bits|Identifier|Access|Reset|Name|
 |----|----------|------|-----|----|
-|31:0|  mideleg |   r  |  —  |  — |
+|31:0|  mideleg |   r  | 0x0 |  — |
 
 ### mie register
 
@@ -108,7 +112,12 @@ Don't override. Generated from: CsrRegisters
 
 |Bits|Identifier|Access|Reset|Name|
 |----|----------|------|-----|----|
-|31:0|    mie   |   r  |  —  |  — |
+|  1 |   ssie   |   r  | 0x0 |  — |
+|  3 |   msie   |  rw  |  —  |  — |
+|  5 |   stie   |   r  | 0x0 |  — |
+|  7 |   mtie   |  rw  |  —  |  — |
+|  9 |   seie   |   r  | 0x0 |  — |
+| 11 |   meie   |  rw  |  —  |  — |
 
 ### mtvec register
 
@@ -118,17 +127,8 @@ Don't override. Generated from: CsrRegisters
 
 |Bits|Identifier|Access|Reset|Name|
 |----|----------|------|-----|----|
-|31:0|   mtvec  |   r  |  —  |  — |
-
-### mcounteren register
-
-- Absolute Address: 0xC18
-- Base Offset: 0xC18
-- Size: 0x4
-
-|Bits|Identifier|Access|Reset|Name|
-|----|----------|------|-----|----|
-|31:0|mcounteren|   r  |  —  |  — |
+| 1:0|   mode   |   r  | 0x0 |  — |
+|31:2|   base   |   r  | 0x0 |  — |
 
 ### mstatush register
 
@@ -153,7 +153,63 @@ Don't override. Generated from: CsrRegisters
 
 |Bits|Identifier|Access|Reset|Name|
 |----|----------|------|-----|----|
-|31:0| medelegh |   r  |  —  |  — |
+|31:0| medelegh |   r  | 0x0 |  — |
+
+### mscratch register
+
+- Absolute Address: 0xD00
+- Base Offset: 0xD00
+- Size: 0x4
+
+|Bits|Identifier|Access|Reset|Name|
+|----|----------|------|-----|----|
+|31:0| mscratch |  rw  | 0x0 |  — |
+
+### mepc register
+
+- Absolute Address: 0xD04
+- Base Offset: 0xD04
+- Size: 0x4
+
+|Bits|Identifier|Access|Reset|Name|
+|----|----------|------|-----|----|
+|31:0|   mepc   |  rw  | 0x0 |  — |
+
+### mcause register
+
+- Absolute Address: 0xD08
+- Base Offset: 0xD08
+- Size: 0x4
+
+|Bits|Identifier|Access|Reset|Name|
+|----|----------|------|-----|----|
+|30:0|   code   |  rw  | 0x0 |  — |
+| 31 | interrupt|  rw  | 0x0 |  — |
+
+### mtval register
+
+- Absolute Address: 0xD0C
+- Base Offset: 0xD0C
+- Size: 0x4
+
+|Bits|Identifier|Access|Reset|Name|
+|----|----------|------|-----|----|
+|31:0|   mtval  |  rw  | 0x0 |  — |
+
+### mip register
+
+- Absolute Address: 0xD10
+- Base Offset: 0xD10
+- Size: 0x4
+
+|Bits|Identifier|Access|Reset|Name|
+|----|----------|------|-----|----|
+|  1 |   ssip   |   r  | 0x0 |  — |
+|  3 |   msip   |  rw  |  —  |  — |
+|  5 |   stip   |   r  | 0x0 |  — |
+|  7 |   mtip   |  rw  |  —  |  — |
+|  9 |   seip   |   r  | 0x0 |  — |
+| 11 |   meip   |  rw  |  —  |  — |
 
 ### mvendorid register
 
