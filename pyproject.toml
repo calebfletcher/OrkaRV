@@ -22,5 +22,4 @@ dependencies = [
 testpaths = ["tests"]
 
 [tool.uv.sources]
-#peakrdl-regblock-vhdl = { git = "https://github.com/SystemRDL/PeakRDL-regblock-vhdl.git" }
 peakrdl-regblock-vhdl-csr = { path = "./submodules/PeakRDL-regblock-vhdl", editable = true }

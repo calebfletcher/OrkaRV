@@ -11,7 +11,7 @@ USE surf.StdRtlPkg.ALL;
 ENTITY Ram IS
     GENERIC (
         RAM_FILE_PATH_G : STRING;
-        LENGTH_WORDS_G : INTEGER := 4096;
+        LENGTH_WORDS_G : INTEGER := 16384;
         AXI_BASE_ADDR_G : UNSIGNED(31 DOWNTO 0)
     );
     PORT (
