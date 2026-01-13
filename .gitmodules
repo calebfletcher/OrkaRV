@@ -4,3 +4,6 @@
 [submodule "submodules/surf"]
 	path = submodules/surf
 	url = https://github.com/slaclab/surf.git
+[submodule "submodules/PeakRDL-regblock-vhdl"]
+	path = submodules/PeakRDL-regblock-vhdl
+	url = git@github.com:calebfletcher/PeakRDL-regblock-vhdl.git
