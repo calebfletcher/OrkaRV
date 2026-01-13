@@ -5,6 +5,7 @@ context ieee.ieee_std_context;
 use ieee.fixed_pkg.all;
 
 use work.CsrRegisters_pkg.all;
+use work.csrif_pkg.all;
 use work.reg_utils.all;
 
 entity CsrRegisters is
@@ -13,7 +14,7 @@ entity CsrRegisters is
         rst : in std_logic;
 
         s_cpuif_req : in std_logic;
-        s_cpuif_req_is_wr : in std_logic;
+        s_cpuif_req_op : in csr_access_op;
         s_cpuif_addr : in std_logic_vector(13 downto 0);
         s_cpuif_wr_data : in std_logic_vector(31 downto 0);
         s_cpuif_wr_biten : in std_logic_vector(31 downto 0);
@@ -35,7 +36,7 @@ architecture rtl of CsrRegisters is
     -- CPU Bus interface signals
     ----------------------------------------------------------------------------
     signal cpuif_req : std_logic;
-    signal cpuif_req_is_wr : std_logic;
+    signal cpuif_req_op : csr_access_op;
     signal cpuif_addr : std_logic_vector(13 downto 0);
     signal cpuif_wr_data : std_logic_vector(31 downto 0);
     signal cpuif_wr_biten : std_logic_vector(31 downto 0);
@@ -75,7 +76,7 @@ architecture rtl of CsrRegisters is
     signal decoded_reg_strb : decoded_reg_strb_t;
     signal decoded_err : std_logic;
     signal decoded_req : std_logic;
-    signal decoded_req_is_wr : std_logic;
+    signal decoded_req_op : std_logic;
     signal decoded_wr_data : std_logic_vector(31 downto 0);
     signal decoded_wr_biten : std_logic_vector(31 downto 0);
 
@@ -232,7 +233,7 @@ begin
     -- CPU Bus interface
     ----------------------------------------------------------------------------
     cpuif_req <= s_cpuif_req;
-    cpuif_req_is_wr <= s_cpuif_req_is_wr;
+    cpuif_req_op <= s_cpuif_req_op;
     cpuif_addr <= s_cpuif_addr;
     cpuif_wr_data <= s_cpuif_wr_data;
     cpuif_wr_biten <= s_cpuif_wr_biten;
@@ -247,9 +248,7 @@ begin
     -- Read & write latencies are balanced. Stalls not required
     cpuif_req_stall_rd <= '0';
     cpuif_req_stall_wr <= '0';
-    cpuif_req_masked <= cpuif_req
-                        and not (not cpuif_req_is_wr and cpuif_req_stall_rd)
-                        and not (cpuif_req_is_wr and cpuif_req_stall_wr);
+    cpuif_req_masked <= cpuif_req;
 
     ----------------------------------------------------------------------------
     -- Address Decode
@@ -268,26 +267,26 @@ begin
         is_valid_addr := '1'; -- No error checking on valid address access
         is_invalid_rw := '0';
         decoded_reg_strb.mstatus <= cpuif_req_masked and (cpuif_addr = 16#C00#);
-        decoded_reg_strb.misa <= cpuif_req_masked and (cpuif_addr = 16#C04#) and not cpuif_req_is_wr;
-        decoded_reg_strb.medeleg <= cpuif_req_masked and (cpuif_addr = 16#C08#) and not cpuif_req_is_wr;
-        decoded_reg_strb.mideleg <= cpuif_req_masked and (cpuif_addr = 16#C0C#) and not cpuif_req_is_wr;
-        decoded_reg_strb.mie <= cpuif_req_masked and (cpuif_addr = 16#C10#) and not cpuif_req_is_wr;
-        decoded_reg_strb.mtvec <= cpuif_req_masked and (cpuif_addr = 16#C14#) and not cpuif_req_is_wr;
-        decoded_reg_strb.mcounteren <= cpuif_req_masked and (cpuif_addr = 16#C18#) and not cpuif_req_is_wr;
+        decoded_reg_strb.misa <= cpuif_req_masked and (cpuif_addr = 16#C04#) and cpuif_req_op = OP_READ;
+        decoded_reg_strb.medeleg <= cpuif_req_masked and (cpuif_addr = 16#C08#) and cpuif_req_op = OP_READ;
+        decoded_reg_strb.mideleg <= cpuif_req_masked and (cpuif_addr = 16#C0C#) and cpuif_req_op = OP_READ;
+        decoded_reg_strb.mie <= cpuif_req_masked and (cpuif_addr = 16#C10#) and cpuif_req_op = OP_READ;
+        decoded_reg_strb.mtvec <= cpuif_req_masked and (cpuif_addr = 16#C14#) and cpuif_req_op = OP_READ;
+        decoded_reg_strb.mcounteren <= cpuif_req_masked and (cpuif_addr = 16#C18#) and cpuif_req_op = OP_READ;
         decoded_reg_strb.mstatush <= cpuif_req_masked and (cpuif_addr = 16#C40#);
-        decoded_reg_strb.medelegh <= cpuif_req_masked and (cpuif_addr = 16#C48#) and not cpuif_req_is_wr;
-        decoded_reg_strb.mvendorid <= cpuif_req_masked and (cpuif_addr = 16#3C44#) and not cpuif_req_is_wr;
-        decoded_reg_strb.marchid <= cpuif_req_masked and (cpuif_addr = 16#3C48#) and not cpuif_req_is_wr;
-        decoded_reg_strb.mimpid <= cpuif_req_masked and (cpuif_addr = 16#3C4C#) and not cpuif_req_is_wr;
-        decoded_reg_strb.mhartid <= cpuif_req_masked and (cpuif_addr = 16#3C50#) and not cpuif_req_is_wr;
-        decoded_reg_strb.mconfigptr <= cpuif_req_masked and (cpuif_addr = 16#3C54#) and not cpuif_req_is_wr;
+        decoded_reg_strb.medelegh <= cpuif_req_masked and (cpuif_addr = 16#C48#) and cpuif_req_op = OP_READ;
+        decoded_reg_strb.mvendorid <= cpuif_req_masked and (cpuif_addr = 16#3C44#) and cpuif_req_op = OP_READ;
+        decoded_reg_strb.marchid <= cpuif_req_masked and (cpuif_addr = 16#3C48#) and cpuif_req_op = OP_READ;
+        decoded_reg_strb.mimpid <= cpuif_req_masked and (cpuif_addr = 16#3C4C#) and cpuif_req_op = OP_READ;
+        decoded_reg_strb.mhartid <= cpuif_req_masked and (cpuif_addr = 16#3C50#) and cpuif_req_op = OP_READ;
+        decoded_reg_strb.mconfigptr <= cpuif_req_masked and (cpuif_addr = 16#3C54#) and cpuif_req_op = OP_READ;
         decoded_err <= (not is_valid_addr or is_invalid_rw) and decoded_req;
     end process;
 
     -- Pass down signals to next stage
     process(all) begin
         decoded_req <= cpuif_req_masked;
-        decoded_req_is_wr <= cpuif_req_is_wr;
+        decoded_req_op <= cpuif_req_op;
         decoded_wr_data <= cpuif_wr_data;
         decoded_wr_biten <= cpuif_wr_biten;
     end process;
@@ -303,7 +302,13 @@ begin
     begin
         next_c := field_storage.mstatus.sie.value;
         load_next_c := '0';
-        if decoded_reg_strb.mstatus and decoded_req_is_wr then -- SW write
+        if decoded_reg_strb.mstatus and decoded_req_op = OP_READ_SET then -- SW write custom 1 set
+            next_c := field_storage.mstatus.sie.value or (decoded_wr_data(1) and decoded_wr_biten(1));
+            load_next_c := '1';
+        elsif decoded_reg_strb.mstatus and decoded_req_op = OP_READ_CLEAR then -- SW write custom 1 clear
+            next_c := field_storage.mstatus.sie.value and not (decoded_wr_data(1) and decoded_wr_biten(1));
+            load_next_c := '1';
+        elsif decoded_reg_strb.mstatus and (decoded_req_op = OP_WRITE or decoded_req_op = OP_READ_WRITE) then -- SW write
             next_c := (field_storage.mstatus.sie.value and not decoded_wr_biten(1)) or (decoded_wr_data(1) and decoded_wr_biten(1));
             load_next_c := '1';
         else -- HW Write
@@ -329,7 +334,13 @@ begin
     begin
         next_c := field_storage.mstatus.mie.value;
         load_next_c := '0';
-        if decoded_reg_strb.mstatus and decoded_req_is_wr then -- SW write
+        if decoded_reg_strb.mstatus and decoded_req_op = OP_READ_SET then -- SW write custom 1 set
+            next_c := field_storage.mstatus.mie.value or (decoded_wr_data(3) and decoded_wr_biten(3));
+            load_next_c := '1';
+        elsif decoded_reg_strb.mstatus and decoded_req_op = OP_READ_CLEAR then -- SW write custom 1 clear
+            next_c := field_storage.mstatus.mie.value and not (decoded_wr_data(3) and decoded_wr_biten(3));
+            load_next_c := '1';
+        elsif decoded_reg_strb.mstatus and (decoded_req_op = OP_WRITE or decoded_req_op = OP_READ_WRITE) then -- SW write
             next_c := (field_storage.mstatus.mie.value and not decoded_wr_biten(3)) or (decoded_wr_data(3) and decoded_wr_biten(3));
             load_next_c := '1';
         else -- HW Write
@@ -355,7 +366,13 @@ begin
     begin
         next_c := field_storage.mstatus.spie.value;
         load_next_c := '0';
-        if decoded_reg_strb.mstatus and decoded_req_is_wr then -- SW write
+        if decoded_reg_strb.mstatus and decoded_req_op = OP_READ_SET then -- SW write custom 1 set
+            next_c := field_storage.mstatus.spie.value or (decoded_wr_data(5) and decoded_wr_biten(5));
+            load_next_c := '1';
+        elsif decoded_reg_strb.mstatus and decoded_req_op = OP_READ_CLEAR then -- SW write custom 1 clear
+            next_c := field_storage.mstatus.spie.value and not (decoded_wr_data(5) and decoded_wr_biten(5));
+            load_next_c := '1';
+        elsif decoded_reg_strb.mstatus and (decoded_req_op = OP_WRITE or decoded_req_op = OP_READ_WRITE) then -- SW write
             next_c := (field_storage.mstatus.spie.value and not decoded_wr_biten(5)) or (decoded_wr_data(5) and decoded_wr_biten(5));
             load_next_c := '1';
         else -- HW Write
@@ -382,7 +399,13 @@ begin
     begin
         next_c := field_storage.mstatus.mpie.value;
         load_next_c := '0';
-        if decoded_reg_strb.mstatus and decoded_req_is_wr then -- SW write
+        if decoded_reg_strb.mstatus and decoded_req_op = OP_READ_SET then -- SW write custom 1 set
+            next_c := field_storage.mstatus.mpie.value or (decoded_wr_data(7) and decoded_wr_biten(7));
+            load_next_c := '1';
+        elsif decoded_reg_strb.mstatus and decoded_req_op = OP_READ_CLEAR then -- SW write custom 1 clear
+            next_c := field_storage.mstatus.mpie.value and not (decoded_wr_data(7) and decoded_wr_biten(7));
+            load_next_c := '1';
+        elsif decoded_reg_strb.mstatus and (decoded_req_op = OP_WRITE or decoded_req_op = OP_READ_WRITE) then -- SW write
             next_c := (field_storage.mstatus.mpie.value and not decoded_wr_biten(7)) or (decoded_wr_data(7) and decoded_wr_biten(7));
             load_next_c := '1';
         else -- HW Write
@@ -408,7 +431,13 @@ begin
     begin
         next_c := field_storage.mstatus.spp.value;
         load_next_c := '0';
-        if decoded_reg_strb.mstatus and decoded_req_is_wr then -- SW write
+        if decoded_reg_strb.mstatus and decoded_req_op = OP_READ_SET then -- SW write custom 1 set
+            next_c := field_storage.mstatus.spp.value or (decoded_wr_data(8) and decoded_wr_biten(8));
+            load_next_c := '1';
+        elsif decoded_reg_strb.mstatus and decoded_req_op = OP_READ_CLEAR then -- SW write custom 1 clear
+            next_c := field_storage.mstatus.spp.value and not (decoded_wr_data(8) and decoded_wr_biten(8));
+            load_next_c := '1';
+        elsif decoded_reg_strb.mstatus and (decoded_req_op = OP_WRITE or decoded_req_op = OP_READ_WRITE) then -- SW write
             next_c := (field_storage.mstatus.spp.value and not decoded_wr_biten(8)) or (decoded_wr_data(8) and decoded_wr_biten(8));
             load_next_c := '1';
         else -- HW Write
@@ -435,7 +464,13 @@ begin
     begin
         next_c := field_storage.mstatus.mpp.value;
         load_next_c := '0';
-        if decoded_reg_strb.mstatus and decoded_req_is_wr then -- SW write
+        if decoded_reg_strb.mstatus and decoded_req_op = OP_READ_SET then -- SW write custom 1 set
+            next_c := field_storage.mstatus.mpp.value or (decoded_wr_data(12 downto 11) and decoded_wr_biten(12 downto 11));
+            load_next_c := '1';
+        elsif decoded_reg_strb.mstatus and decoded_req_op = OP_READ_CLEAR then -- SW write custom 1 clear
+            next_c := field_storage.mstatus.mpp.value and not (decoded_wr_data(12 downto 11) and decoded_wr_biten(12 downto 11));
+            load_next_c := '1';
+        elsif decoded_reg_strb.mstatus and (decoded_req_op = OP_WRITE or decoded_req_op = OP_READ_WRITE) then -- SW write
             next_c := (field_storage.mstatus.mpp.value and not decoded_wr_biten(12 downto 11)) or (decoded_wr_data(12 downto 11) and decoded_wr_biten(12 downto 11));
             load_next_c := '1';
         else -- HW Write
@@ -494,7 +529,13 @@ begin
     begin
         next_c := field_storage.mstatush.gva.value;
         load_next_c := '0';
-        if decoded_reg_strb.mstatush and decoded_req_is_wr then -- SW write
+        if decoded_reg_strb.mstatush and decoded_req_op = OP_READ_SET then -- SW write custom 1 set
+            next_c := field_storage.mstatush.gva.value or (decoded_wr_data(6) and decoded_wr_biten(6));
+            load_next_c := '1';
+        elsif decoded_reg_strb.mstatush and decoded_req_op = OP_READ_CLEAR then -- SW write custom 1 clear
+            next_c := field_storage.mstatush.gva.value and not (decoded_wr_data(6) and decoded_wr_biten(6));
+            load_next_c := '1';
+        elsif decoded_reg_strb.mstatush and (decoded_req_op = OP_WRITE or decoded_req_op = OP_READ_WRITE) then -- SW write
             next_c := (field_storage.mstatush.gva.value and not decoded_wr_biten(6)) or (decoded_wr_data(6) and decoded_wr_biten(6));
             load_next_c := '1';
         end if;
@@ -517,7 +558,13 @@ begin
     begin
         next_c := field_storage.mstatush.mpv.value;
         load_next_c := '0';
-        if decoded_reg_strb.mstatush and decoded_req_is_wr then -- SW write
+        if decoded_reg_strb.mstatush and decoded_req_op = OP_READ_SET then -- SW write custom 1 set
+            next_c := field_storage.mstatush.mpv.value or (decoded_wr_data(7) and decoded_wr_biten(7));
+            load_next_c := '1';
+        elsif decoded_reg_strb.mstatush and decoded_req_op = OP_READ_CLEAR then -- SW write custom 1 clear
+            next_c := field_storage.mstatush.mpv.value and not (decoded_wr_data(7) and decoded_wr_biten(7));
+            load_next_c := '1';
+        elsif decoded_reg_strb.mstatush and (decoded_req_op = OP_WRITE or decoded_req_op = OP_READ_WRITE) then -- SW write
             next_c := (field_storage.mstatush.mpv.value and not decoded_wr_biten(7)) or (decoded_wr_data(7) and decoded_wr_biten(7));
             load_next_c := '1';
         end if;
@@ -540,7 +587,13 @@ begin
     begin
         next_c := field_storage.mstatush.mpelp.value;
         load_next_c := '0';
-        if decoded_reg_strb.mstatush and decoded_req_is_wr then -- SW write
+        if decoded_reg_strb.mstatush and decoded_req_op = OP_READ_SET then -- SW write custom 1 set
+            next_c := field_storage.mstatush.mpelp.value or (decoded_wr_data(9) and decoded_wr_biten(9));
+            load_next_c := '1';
+        elsif decoded_reg_strb.mstatush and decoded_req_op = OP_READ_CLEAR then -- SW write custom 1 clear
+            next_c := field_storage.mstatush.mpelp.value and not (decoded_wr_data(9) and decoded_wr_biten(9));
+            load_next_c := '1';
+        elsif decoded_reg_strb.mstatush and (decoded_req_op = OP_WRITE or decoded_req_op = OP_READ_WRITE) then -- SW write
             next_c := (field_storage.mstatush.mpelp.value and not decoded_wr_biten(9)) or (decoded_wr_data(9) and decoded_wr_biten(9));
             load_next_c := '1';
         end if;
@@ -563,7 +616,13 @@ begin
     begin
         next_c := field_storage.mstatush.mdt.value;
         load_next_c := '0';
-        if decoded_reg_strb.mstatush and decoded_req_is_wr then -- SW write
+        if decoded_reg_strb.mstatush and decoded_req_op = OP_READ_SET then -- SW write custom 1 set
+            next_c := field_storage.mstatush.mdt.value or (decoded_wr_data(10) and decoded_wr_biten(10));
+            load_next_c := '1';
+        elsif decoded_reg_strb.mstatush and decoded_req_op = OP_READ_CLEAR then -- SW write custom 1 clear
+            next_c := field_storage.mstatush.mdt.value and not (decoded_wr_data(10) and decoded_wr_biten(10));
+            load_next_c := '1';
+        elsif decoded_reg_strb.mstatush and (decoded_req_op = OP_WRITE or decoded_req_op = OP_READ_WRITE) then -- SW write
             next_c := (field_storage.mstatush.mdt.value and not decoded_wr_biten(10)) or (decoded_wr_data(10) and decoded_wr_biten(10));
             load_next_c := '1';
         end if;
@@ -589,7 +648,7 @@ begin
     ----------------------------------------------------------------------------
     -- Write response
     ----------------------------------------------------------------------------
-    cpuif_wr_ack <= decoded_req and decoded_req_is_wr;
+    cpuif_wr_ack <= decoded_req and decoded_req_op /= OP_READ;
     -- Writes are always granted with no error response
     cpuif_wr_err <= '0';
 
@@ -599,77 +658,77 @@ begin
 
     -- Assign readback values to a flattened array
     readback_array(0)(0 downto 0) <= (others => '0');
-    readback_array(0)(1 downto 1) <= to_std_logic_vector(field_storage.mstatus.sie.value) when (decoded_reg_strb.mstatus and not decoded_req_is_wr) else (others => '0');
+    readback_array(0)(1 downto 1) <= to_std_logic_vector(field_storage.mstatus.sie.value) when (decoded_reg_strb.mstatus and decoded_req_op /= OP_WRITE) else (others => '0');
     readback_array(0)(2 downto 2) <= (others => '0');
-    readback_array(0)(3 downto 3) <= to_std_logic_vector(field_storage.mstatus.mie.value) when (decoded_reg_strb.mstatus and not decoded_req_is_wr) else (others => '0');
+    readback_array(0)(3 downto 3) <= to_std_logic_vector(field_storage.mstatus.mie.value) when (decoded_reg_strb.mstatus and decoded_req_op /= OP_WRITE) else (others => '0');
     readback_array(0)(4 downto 4) <= (others => '0');
-    readback_array(0)(5 downto 5) <= to_std_logic_vector(field_storage.mstatus.spie.value) when (decoded_reg_strb.mstatus and not decoded_req_is_wr) else (others => '0');
-    readback_array(0)(6 downto 6) <= 1x"0" when (decoded_reg_strb.mstatus and not decoded_req_is_wr) else (others => '0');
-    readback_array(0)(7 downto 7) <= to_std_logic_vector(field_storage.mstatus.mpie.value) when (decoded_reg_strb.mstatus and not decoded_req_is_wr) else (others => '0');
-    readback_array(0)(8 downto 8) <= to_std_logic_vector(field_storage.mstatus.spp.value) when (decoded_reg_strb.mstatus and not decoded_req_is_wr) else (others => '0');
-    readback_array(0)(10 downto 9) <= 2x"0" when (decoded_reg_strb.mstatus and not decoded_req_is_wr) else (others => '0');
-    readback_array(0)(12 downto 11) <= field_storage.mstatus.mpp.value when (decoded_reg_strb.mstatus and not decoded_req_is_wr) else (others => '0');
-    readback_array(0)(14 downto 13) <= 2x"0" when (decoded_reg_strb.mstatus and not decoded_req_is_wr) else (others => '0');
-    readback_array(0)(16 downto 15) <= 2x"0" when (decoded_reg_strb.mstatus and not decoded_req_is_wr) else (others => '0');
-    readback_array(0)(17 downto 17) <= 1x"0" when (decoded_reg_strb.mstatus and not decoded_req_is_wr) else (others => '0');
-    readback_array(0)(18 downto 18) <= 1x"0" when (decoded_reg_strb.mstatus and not decoded_req_is_wr) else (others => '0');
-    readback_array(0)(19 downto 19) <= 1x"0" when (decoded_reg_strb.mstatus and not decoded_req_is_wr) else (others => '0');
-    readback_array(0)(20 downto 20) <= 1x"0" when (decoded_reg_strb.mstatus and not decoded_req_is_wr) else (others => '0');
-    readback_array(0)(21 downto 21) <= 1x"0" when (decoded_reg_strb.mstatus and not decoded_req_is_wr) else (others => '0');
-    readback_array(0)(22 downto 22) <= 1x"0" when (decoded_reg_strb.mstatus and not decoded_req_is_wr) else (others => '0');
+    readback_array(0)(5 downto 5) <= to_std_logic_vector(field_storage.mstatus.spie.value) when (decoded_reg_strb.mstatus and decoded_req_op /= OP_WRITE) else (others => '0');
+    readback_array(0)(6 downto 6) <= 1x"0" when (decoded_reg_strb.mstatus and decoded_req_op /= OP_WRITE) else (others => '0');
+    readback_array(0)(7 downto 7) <= to_std_logic_vector(field_storage.mstatus.mpie.value) when (decoded_reg_strb.mstatus and decoded_req_op /= OP_WRITE) else (others => '0');
+    readback_array(0)(8 downto 8) <= to_std_logic_vector(field_storage.mstatus.spp.value) when (decoded_reg_strb.mstatus and decoded_req_op /= OP_WRITE) else (others => '0');
+    readback_array(0)(10 downto 9) <= 2x"0" when (decoded_reg_strb.mstatus and decoded_req_op /= OP_WRITE) else (others => '0');
+    readback_array(0)(12 downto 11) <= field_storage.mstatus.mpp.value when (decoded_reg_strb.mstatus and decoded_req_op /= OP_WRITE) else (others => '0');
+    readback_array(0)(14 downto 13) <= 2x"0" when (decoded_reg_strb.mstatus and decoded_req_op /= OP_WRITE) else (others => '0');
+    readback_array(0)(16 downto 15) <= 2x"0" when (decoded_reg_strb.mstatus and decoded_req_op /= OP_WRITE) else (others => '0');
+    readback_array(0)(17 downto 17) <= 1x"0" when (decoded_reg_strb.mstatus and decoded_req_op /= OP_WRITE) else (others => '0');
+    readback_array(0)(18 downto 18) <= 1x"0" when (decoded_reg_strb.mstatus and decoded_req_op /= OP_WRITE) else (others => '0');
+    readback_array(0)(19 downto 19) <= 1x"0" when (decoded_reg_strb.mstatus and decoded_req_op /= OP_WRITE) else (others => '0');
+    readback_array(0)(20 downto 20) <= 1x"0" when (decoded_reg_strb.mstatus and decoded_req_op /= OP_WRITE) else (others => '0');
+    readback_array(0)(21 downto 21) <= 1x"0" when (decoded_reg_strb.mstatus and decoded_req_op /= OP_WRITE) else (others => '0');
+    readback_array(0)(22 downto 22) <= 1x"0" when (decoded_reg_strb.mstatus and decoded_req_op /= OP_WRITE) else (others => '0');
     readback_array(0)(30 downto 23) <= (others => '0');
-    readback_array(0)(31 downto 31) <= 1x"0" when (decoded_reg_strb.mstatus and not decoded_req_is_wr) else (others => '0');
-    readback_array(1)(0 downto 0) <= 1x"0" when (decoded_reg_strb.misa and not decoded_req_is_wr) else (others => '0');
-    readback_array(1)(1 downto 1) <= 1x"0" when (decoded_reg_strb.misa and not decoded_req_is_wr) else (others => '0');
-    readback_array(1)(2 downto 2) <= 1x"0" when (decoded_reg_strb.misa and not decoded_req_is_wr) else (others => '0');
-    readback_array(1)(3 downto 3) <= 1x"0" when (decoded_reg_strb.misa and not decoded_req_is_wr) else (others => '0');
-    readback_array(1)(4 downto 4) <= 1x"0" when (decoded_reg_strb.misa and not decoded_req_is_wr) else (others => '0');
-    readback_array(1)(5 downto 5) <= 1x"0" when (decoded_reg_strb.misa and not decoded_req_is_wr) else (others => '0');
+    readback_array(0)(31 downto 31) <= 1x"0" when (decoded_reg_strb.mstatus and decoded_req_op /= OP_WRITE) else (others => '0');
+    readback_array(1)(0 downto 0) <= 1x"0" when (decoded_reg_strb.misa and decoded_req_op /= OP_WRITE) else (others => '0');
+    readback_array(1)(1 downto 1) <= 1x"0" when (decoded_reg_strb.misa and decoded_req_op /= OP_WRITE) else (others => '0');
+    readback_array(1)(2 downto 2) <= 1x"0" when (decoded_reg_strb.misa and decoded_req_op /= OP_WRITE) else (others => '0');
+    readback_array(1)(3 downto 3) <= 1x"0" when (decoded_reg_strb.misa and decoded_req_op /= OP_WRITE) else (others => '0');
+    readback_array(1)(4 downto 4) <= 1x"0" when (decoded_reg_strb.misa and decoded_req_op /= OP_WRITE) else (others => '0');
+    readback_array(1)(5 downto 5) <= 1x"0" when (decoded_reg_strb.misa and decoded_req_op /= OP_WRITE) else (others => '0');
     readback_array(1)(6 downto 6) <= (others => '0');
-    readback_array(1)(7 downto 7) <= 1x"0" when (decoded_reg_strb.misa and not decoded_req_is_wr) else (others => '0');
-    readback_array(1)(8 downto 8) <= 1x"1" when (decoded_reg_strb.misa and not decoded_req_is_wr) else (others => '0');
+    readback_array(1)(7 downto 7) <= 1x"0" when (decoded_reg_strb.misa and decoded_req_op /= OP_WRITE) else (others => '0');
+    readback_array(1)(8 downto 8) <= 1x"1" when (decoded_reg_strb.misa and decoded_req_op /= OP_WRITE) else (others => '0');
     readback_array(1)(11 downto 9) <= (others => '0');
-    readback_array(1)(12 downto 12) <= 1x"0" when (decoded_reg_strb.misa and not decoded_req_is_wr) else (others => '0');
-    readback_array(1)(13 downto 13) <= 1x"0" when (decoded_reg_strb.misa and not decoded_req_is_wr) else (others => '0');
+    readback_array(1)(12 downto 12) <= 1x"0" when (decoded_reg_strb.misa and decoded_req_op /= OP_WRITE) else (others => '0');
+    readback_array(1)(13 downto 13) <= 1x"0" when (decoded_reg_strb.misa and decoded_req_op /= OP_WRITE) else (others => '0');
     readback_array(1)(14 downto 14) <= (others => '0');
-    readback_array(1)(15 downto 15) <= 1x"0" when (decoded_reg_strb.misa and not decoded_req_is_wr) else (others => '0');
-    readback_array(1)(16 downto 16) <= 1x"0" when (decoded_reg_strb.misa and not decoded_req_is_wr) else (others => '0');
+    readback_array(1)(15 downto 15) <= 1x"0" when (decoded_reg_strb.misa and decoded_req_op /= OP_WRITE) else (others => '0');
+    readback_array(1)(16 downto 16) <= 1x"0" when (decoded_reg_strb.misa and decoded_req_op /= OP_WRITE) else (others => '0');
     readback_array(1)(17 downto 17) <= (others => '0');
-    readback_array(1)(18 downto 18) <= 1x"0" when (decoded_reg_strb.misa and not decoded_req_is_wr) else (others => '0');
+    readback_array(1)(18 downto 18) <= 1x"0" when (decoded_reg_strb.misa and decoded_req_op /= OP_WRITE) else (others => '0');
     readback_array(1)(19 downto 19) <= (others => '0');
-    readback_array(1)(20 downto 20) <= 1x"0" when (decoded_reg_strb.misa and not decoded_req_is_wr) else (others => '0');
-    readback_array(1)(21 downto 21) <= 1x"0" when (decoded_reg_strb.misa and not decoded_req_is_wr) else (others => '0');
+    readback_array(1)(20 downto 20) <= 1x"0" when (decoded_reg_strb.misa and decoded_req_op /= OP_WRITE) else (others => '0');
+    readback_array(1)(21 downto 21) <= 1x"0" when (decoded_reg_strb.misa and decoded_req_op /= OP_WRITE) else (others => '0');
     readback_array(1)(22 downto 22) <= (others => '0');
-    readback_array(1)(23 downto 23) <= 1x"0" when (decoded_reg_strb.misa and not decoded_req_is_wr) else (others => '0');
+    readback_array(1)(23 downto 23) <= 1x"0" when (decoded_reg_strb.misa and decoded_req_op /= OP_WRITE) else (others => '0');
     readback_array(1)(29 downto 24) <= (others => '0');
-    readback_array(1)(31 downto 30) <= 2x"1" when (decoded_reg_strb.misa and not decoded_req_is_wr) else (others => '0');
-    readback_array(2)(31 downto 0) <= 'X' when (decoded_reg_strb.medeleg and not decoded_req_is_wr) else (others => '0');
-    readback_array(3)(31 downto 0) <= 'X' when (decoded_reg_strb.mideleg and not decoded_req_is_wr) else (others => '0');
-    readback_array(4)(31 downto 0) <= 'X' when (decoded_reg_strb.mie and not decoded_req_is_wr) else (others => '0');
-    readback_array(5)(31 downto 0) <= 'X' when (decoded_reg_strb.mtvec and not decoded_req_is_wr) else (others => '0');
-    readback_array(6)(31 downto 0) <= 'X' when (decoded_reg_strb.mcounteren and not decoded_req_is_wr) else (others => '0');
+    readback_array(1)(31 downto 30) <= 2x"1" when (decoded_reg_strb.misa and decoded_req_op /= OP_WRITE) else (others => '0');
+    readback_array(2)(31 downto 0) <= 'X' when (decoded_reg_strb.medeleg and decoded_req_op /= OP_WRITE) else (others => '0');
+    readback_array(3)(31 downto 0) <= 'X' when (decoded_reg_strb.mideleg and decoded_req_op /= OP_WRITE) else (others => '0');
+    readback_array(4)(31 downto 0) <= 'X' when (decoded_reg_strb.mie and decoded_req_op /= OP_WRITE) else (others => '0');
+    readback_array(5)(31 downto 0) <= 'X' when (decoded_reg_strb.mtvec and decoded_req_op /= OP_WRITE) else (others => '0');
+    readback_array(6)(31 downto 0) <= 'X' when (decoded_reg_strb.mcounteren and decoded_req_op /= OP_WRITE) else (others => '0');
     readback_array(7)(3 downto 0) <= (others => '0');
-    readback_array(7)(4 downto 4) <= 1x"0" when (decoded_reg_strb.mstatush and not decoded_req_is_wr) else (others => '0');
-    readback_array(7)(5 downto 5) <= 1x"0" when (decoded_reg_strb.mstatush and not decoded_req_is_wr) else (others => '0');
-    readback_array(7)(6 downto 6) <= to_std_logic_vector(field_storage.mstatush.gva.value) when (decoded_reg_strb.mstatush and not decoded_req_is_wr) else (others => '0');
-    readback_array(7)(7 downto 7) <= to_std_logic_vector(field_storage.mstatush.mpv.value) when (decoded_reg_strb.mstatush and not decoded_req_is_wr) else (others => '0');
+    readback_array(7)(4 downto 4) <= 1x"0" when (decoded_reg_strb.mstatush and decoded_req_op /= OP_WRITE) else (others => '0');
+    readback_array(7)(5 downto 5) <= 1x"0" when (decoded_reg_strb.mstatush and decoded_req_op /= OP_WRITE) else (others => '0');
+    readback_array(7)(6 downto 6) <= to_std_logic_vector(field_storage.mstatush.gva.value) when (decoded_reg_strb.mstatush and decoded_req_op /= OP_WRITE) else (others => '0');
+    readback_array(7)(7 downto 7) <= to_std_logic_vector(field_storage.mstatush.mpv.value) when (decoded_reg_strb.mstatush and decoded_req_op /= OP_WRITE) else (others => '0');
     readback_array(7)(8 downto 8) <= (others => '0');
-    readback_array(7)(9 downto 9) <= to_std_logic_vector(field_storage.mstatush.mpelp.value) when (decoded_reg_strb.mstatush and not decoded_req_is_wr) else (others => '0');
-    readback_array(7)(10 downto 10) <= to_std_logic_vector(field_storage.mstatush.mdt.value) when (decoded_reg_strb.mstatush and not decoded_req_is_wr) else (others => '0');
+    readback_array(7)(9 downto 9) <= to_std_logic_vector(field_storage.mstatush.mpelp.value) when (decoded_reg_strb.mstatush and decoded_req_op /= OP_WRITE) else (others => '0');
+    readback_array(7)(10 downto 10) <= to_std_logic_vector(field_storage.mstatush.mdt.value) when (decoded_reg_strb.mstatush and decoded_req_op /= OP_WRITE) else (others => '0');
     readback_array(7)(31 downto 11) <= (others => '0');
-    readback_array(8)(31 downto 0) <= 'X' when (decoded_reg_strb.medelegh and not decoded_req_is_wr) else (others => '0');
-    readback_array(9)(6 downto 0) <= 7x"0" when (decoded_reg_strb.mvendorid and not decoded_req_is_wr) else (others => '0');
-    readback_array(9)(31 downto 7) <= 25x"0" when (decoded_reg_strb.mvendorid and not decoded_req_is_wr) else (others => '0');
-    readback_array(10)(31 downto 0) <= 32x"0" when (decoded_reg_strb.marchid and not decoded_req_is_wr) else (others => '0');
-    readback_array(11)(31 downto 0) <= 32x"0" when (decoded_reg_strb.mimpid and not decoded_req_is_wr) else (others => '0');
-    readback_array(12)(31 downto 0) <= 32x"0" when (decoded_reg_strb.mhartid and not decoded_req_is_wr) else (others => '0');
-    readback_array(13)(31 downto 0) <= 32x"0" when (decoded_reg_strb.mconfigptr and not decoded_req_is_wr) else (others => '0');
+    readback_array(8)(31 downto 0) <= 'X' when (decoded_reg_strb.medelegh and decoded_req_op /= OP_WRITE) else (others => '0');
+    readback_array(9)(6 downto 0) <= 7x"0" when (decoded_reg_strb.mvendorid and decoded_req_op /= OP_WRITE) else (others => '0');
+    readback_array(9)(31 downto 7) <= 25x"0" when (decoded_reg_strb.mvendorid and decoded_req_op /= OP_WRITE) else (others => '0');
+    readback_array(10)(31 downto 0) <= 32x"0" when (decoded_reg_strb.marchid and decoded_req_op /= OP_WRITE) else (others => '0');
+    readback_array(11)(31 downto 0) <= 32x"0" when (decoded_reg_strb.mimpid and decoded_req_op /= OP_WRITE) else (others => '0');
+    readback_array(12)(31 downto 0) <= 32x"0" when (decoded_reg_strb.mhartid and decoded_req_op /= OP_WRITE) else (others => '0');
+    readback_array(13)(31 downto 0) <= 32x"0" when (decoded_reg_strb.mconfigptr and decoded_req_op /= OP_WRITE) else (others => '0');
 
     -- Reduce the array
     process(all)
         variable readback_data_var : std_logic_vector(31 downto 0) := (others => '0');
     begin
-        readback_done <= decoded_req and not decoded_req_is_wr;
+        readback_done <= decoded_req and decoded_req_op /= OP_WRITE;
         readback_err <= '0';
         readback_data_var := (others => '0');
         for i in readback_array'RANGE loop
