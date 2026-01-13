@@ -3,7 +3,7 @@
 # cd to script dir
 cd "$(dirname "$0")"
 
-uv run peakrdl regblock-vhdl ../csr/hdl/registers.rdl -o ../csr/hdl --cpuif passthrough
+uv run peakrdl regblock-vhdl-csr ../csr/hdl/registers.rdl -o ../csr/hdl --cpuif passthrough
 uv run peakrdl markdown ../csr/hdl/registers.rdl -o ../csr/Registers.md
 
 for peripheral in gpio uart

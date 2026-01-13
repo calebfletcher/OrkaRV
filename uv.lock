@@ -302,6 +302,7 @@ dependencies = [
     { name = "peakrdl" },
     { name = "peakrdl-markdown" },
     { name = "peakrdl-regblock-vhdl" },
+    { name = "peakrdl-regblock-vhdl-csr" },
     { name = "peakrdl-rust", extra = ["cli"] },
     { name = "pytest" },
 ]
@@ -315,7 +316,8 @@ requires-dist = [
     { name = "cocotbext-uart", specifier = ">=0.1.4" },
     { name = "peakrdl", specifier = ">=1.5.0" },
     { name = "peakrdl-markdown", specifier = ">=1.0.3" },
-    { name = "peakrdl-regblock-vhdl", editable = "submodules/PeakRDL-regblock-vhdl" },
+    { name = "peakrdl-regblock-vhdl", specifier = ">=1.1.1.0" },
+    { name = "peakrdl-regblock-vhdl-csr", editable = "submodules/PeakRDL-regblock-vhdl" },
     { name = "peakrdl-rust", extras = ["cli"], specifier = ">=0.4.0" },
     { name = "pytest", specifier = ">=8.4.2" },
 ]
@@ -430,6 +432,20 @@ wheels = [
 
 [[package]]
 name = "peakrdl-regblock-vhdl"
+version = "1.2.0.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "importlib-resources" },
+    { name = "jinja2" },
+    { name = "systemrdl-compiler" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/1d/3b/5c199cdd47d4ff454acdc46f547db2a643416cf556f9a985435203b59350/peakrdl_regblock_vhdl-1.2.0.0.tar.gz", hash = "sha256:6bcec0c2bc94d21f0837c82ea7b92f71f9bcc89a90d6a7674f2ea2390c903779", size = 588830, upload-time = "2025-12-28T17:22:37.051Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/2b/f0/857dae396e592879d160c74a7ddbc375a774fd6efc0966a5facfe008c7e1/peakrdl_regblock_vhdl-1.2.0.0-py3-none-any.whl", hash = "sha256:9cfb368226a947bf0329d30fd29987a1a08f2e0a2b99e38c419b8ce1d97179ae", size = 93171, upload-time = "2025-12-28T17:22:35.515Z" },
+]
+
+[[package]]
+name = "peakrdl-regblock-vhdl-csr"
 source = { editable = "submodules/PeakRDL-regblock-vhdl" }
 dependencies = [
     { name = "importlib-resources" },
