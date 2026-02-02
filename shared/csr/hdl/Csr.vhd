@@ -7,7 +7,8 @@ library ieee;
 context ieee.ieee_std_context;
 
 use work.RiscVPkg.all;
-use work.CsrPkg.all;
+use work.csrif_pkg.all;
+use work.CsrRegisters_pkg.all;
 
 entity Csr is
   generic (
@@ -19,12 +20,17 @@ entity Csr is
 
     currentPrivilege : in Privilege;
 
-    op     : in CsrOp;
-    addr   : in std_logic_vector(11 downto 0);
-    wrData : in std_logic_vector(XLEN - 1 downto 0);
-    rdData : out std_logic_vector(XLEN - 1 downto 0) := (others => '0');
+    req     : in std_logic;
+    op      : in csr_access_op;
+    addr    : in std_logic_vector(11 downto 0);
+    wrData  : in std_logic_vector(XLEN - 1 downto 0);
+    rdData  : out std_logic_vector(XLEN - 1 downto 0);
+    rdValid : out std_logic;
     -- set high if the access was not permitted
-    illegalAccess : out std_logic := '0'
+    illegalAccess : out std_logic := '0';
+
+    hwif_in  : in CsrRegisters_in_t;
+    hwif_out : out CsrRegisters_out_t
   );
 end entity Csr;
 
@@ -40,16 +46,27 @@ architecture rtl of Csr is
 
   signal readRequested  : std_logic;
   signal writeRequested : std_logic;
+  signal invalidRequest : std_logic;
 
-  type STATE is (IDLE, READ_REQ, READ_ACK, WRITE_REQ, WRITE_ACK);
-
+  signal cpuif_req          : std_logic;
+  signal cpuif_req_op       : csr_access_op;
+  signal cpuif_addr         : std_logic_vector(13 downto 0);
+  signal cpuif_wr_data      : std_logic_vector(31 downto 0);
+  signal cpuif_wr_biten     : std_logic_vector(31 downto 0);
+  signal cpuif_req_stall_wr : std_logic;
+  signal cpuif_req_stall_rd : std_logic;
+  signal cpuif_rd_ack       : std_logic;
+  signal cpuif_rd_err       : std_logic;
+  signal cpuif_rd_data      : std_logic_vector(31 downto 0);
+  signal cpuif_wr_ack       : std_logic;
+  signal cpuif_wr_err       : std_logic;
 begin
   -- op decode
   process (all)
   begin
-    readRequested <= '1' when op = OP_READ or op = OP_READ_WRITE or op = OP_READ_SET or op = OP_READ_CLEAR else
+    readRequested <= '1' when req = '1' and op /= OP_WRITE else
       '0';
-    writeRequested <= '1' when op = OP_WRITE or op = OP_READ_WRITE or op = OP_READ_SET or op = OP_READ_CLEAR else
+    writeRequested <= '1' when req = '1' and op /= OP_READ else
       '0';
   end process;
 
@@ -67,41 +84,40 @@ begin
         '1';
     end if;
 
-    -- illegal access if perms are not correct or unknown csr
-    illegalAccess <= (writeRequested and not writePermitted)
+    -- illegal access if perms are not correct
+    invalidRequest <= (writeRequested and not writePermitted)
       or (readRequested and not readPermitted);
-    --OR ((readRequested OR writeRequested) AND NOT csrMatch);
+
+    cpuif_addr     <= (13 downto 2 => addr, others => '0');
+    cpuif_req      <= req and not invalidRequest;
+    cpuif_req_op   <= op;
+    cpuif_wr_data  <= wrData;
+    cpuif_wr_biten <= (others => '1');
+    rdData         <= cpuif_rd_data;
+    rdValid        <= cpuif_rd_ack;
+    -- todo: probably need to register invalidRequest to align this
+    illegalAccess <= invalidRequest or cpuif_rd_err or cpuif_wr_err;
+
   end process;
 
-  -- PROCESS (clk)
-  -- BEGIN
-  --     IF rising_edge(clk) THEN
-  --         IF reset = '1' THEN
-  --             csrReg <= INIT_TABLE_C;
-  --         ELSE
-  --             IF readRequested AND readPermitted AND csrMatch THEN
-  --                 rdData <= csrReg(csrIndex);
-  --             ELSE
-  --                 rdData <= (OTHERS => '0');
-  --             END IF;
-
-  --             IF writePermitted AND csrMatch THEN
-  --                 CASE op IS
-  --                     WHEN OP_WRITE =>
-  --                         csrReg(csrIndex) <= wrData;
-  --                     WHEN OP_READ_WRITE =>
-  --                         csrReg(csrIndex) <= wrData;
-  --                     WHEN OP_READ_SET =>
-  --                         -- set bits in csr that are set in wrdata
-  --                         csrReg(csrIndex) <= csrReg(csrIndex) OR wrData;
-  --                     WHEN OP_READ_CLEAR =>
-  --                         -- clear bits in csr that are set in wrdata
-  --                         csrReg(csrIndex) <= csrReg(csrIndex) AND NOT wrData;
-  --                     WHEN OTHERS =>
-  --                         NULL;
-  --                 END CASE;
-  --             END IF;
-  --         END IF;
-  --     END IF;
-  -- END PROCESS;
+  CsrRegisters_inst : entity work.CsrRegisters
+    port map
+    (
+      clk                  => clk,
+      rst                  => reset,
+      s_cpuif_req          => cpuif_req,
+      s_cpuif_req_op       => cpuif_req_op,
+      s_cpuif_addr         => cpuif_addr,
+      s_cpuif_wr_data      => cpuif_wr_data,
+      s_cpuif_wr_biten     => cpuif_wr_biten,
+      s_cpuif_req_stall_wr => cpuif_req_stall_wr,
+      s_cpuif_req_stall_rd => cpuif_req_stall_rd,
+      s_cpuif_rd_ack       => cpuif_rd_ack,
+      s_cpuif_rd_err       => cpuif_rd_err,
+      s_cpuif_rd_data      => cpuif_rd_data,
+      s_cpuif_wr_ack       => cpuif_wr_ack,
+      s_cpuif_wr_err       => cpuif_wr_err,
+      hwif_in              => hwif_in,
+      hwif_out             => hwif_out
+    );
 end architecture;

@@ -1,560 +1,575 @@
-LIBRARY ieee;
-CONTEXT ieee.ieee_std_context;
+library ieee;
+context ieee.ieee_std_context;
 
-USE work.RiscVPkg.ALL;
-USE work.CsrPkg.ALL;
+use work.RiscVPkg.all;
+use work.csrif_pkg.all;
+use work.CsrRegisters_pkg.all;
 
-LIBRARY surf;
-USE surf.AxiLitePkg.ALL;
+library surf;
+use surf.AxiLitePkg.all;
 
-ENTITY Cpu IS
-    GENERIC (
-        TPD_G : TIME := 1 ns
-    );
-    PORT (
-        clk   : IN STD_LOGIC;
-        reset : IN STD_LOGIC;
-        halt  : OUT STD_LOGIC := '0';
-        trap  : OUT STD_LOGIC := '0';
+entity Cpu is
+  generic (
+    TPD_G : time := 1 ns
+  );
+  port (
+    clk   : in std_logic;
+    reset : in std_logic;
+    halt  : out std_logic := '0';
+    trap  : out std_logic := '0';
 
-        -- memory interface
-        axiReadMaster  : OUT AxiLiteReadMasterType  := AXI_LITE_READ_MASTER_INIT_C;
-        axiReadSlave   : IN AxiLiteReadSlaveType    := AXI_LITE_READ_SLAVE_INIT_C;
-        axiWriteMaster : OUT AxiLiteWriteMasterType := AXI_LITE_WRITE_MASTER_INIT_C;
-        axiWriteSlave  : IN AxiLiteWriteSlaveType   := AXI_LITE_WRITE_SLAVE_INIT_C
-    );
-END ENTITY Cpu;
+    -- memory interface
+    axiReadMaster  : out AxiLiteReadMasterType  := AXI_LITE_READ_MASTER_INIT_C;
+    axiReadSlave   : in AxiLiteReadSlaveType    := AXI_LITE_READ_SLAVE_INIT_C;
+    axiWriteMaster : out AxiLiteWriteMasterType := AXI_LITE_WRITE_MASTER_INIT_C;
+    axiWriteSlave  : in AxiLiteWriteSlaveType   := AXI_LITE_WRITE_SLAVE_INIT_C
+  );
+end entity Cpu;
 
-ARCHITECTURE rtl OF Cpu IS
-    TYPE StageType IS (INIT, FETCH, DECODE, EXECUTE, MEMORY, WRITEBACK, HALTED, TRAPPED);
-    TYPE RegWriteSourceType IS (NONE_SRC, MEMORY_SRC, ALU_SRC, IMMEDIATE_SRC, SUCC_PC_SRC, CSR_SRC);
+architecture rtl of Cpu is
+  type StageType is (INIT, FETCH, DECODE, EXECUTE, MEMORY, WRITEBACK, HALTED, TRAPPED);
+  type RegWriteSourceType is (NONE_SRC, MEMORY_SRC, ALU_SRC, IMMEDIATE_SRC, SUCC_PC_SRC, CSR_SRC);
 
-    TYPE RegType IS RECORD
-        stage : StageType;
-        -- address of the current instruction, will be updated if there
-        -- are jumps
-        pc : STD_LOGIC_VECTOR(XLEN - 1 DOWNTO 0);
-        -- address of the instruction directly after the current one
-        successivePc : STD_LOGIC_VECTOR(XLEN - 1 DOWNTO 0);
+  type RegType is record
+    stage : StageType;
+    -- address of the current instruction, will be updated if there
+    -- are jumps
+    pc : std_logic_vector(XLEN - 1 downto 0);
+    -- address of the instruction directly after the current one
+    successivePc : std_logic_vector(XLEN - 1 downto 0);
 
-        instruction : STD_LOGIC_VECTOR(31 DOWNTO 0);
-        immediate   : STD_LOGIC_VECTOR(31 DOWNTO 0);
-        instType    : InstructionType;
-        rs1         : RegisterIndex;
-        rs2         : RegisterIndex;
-        rd          : RegisterIndex;
+    instruction : std_logic_vector(31 downto 0);
+    immediate   : std_logic_vector(31 downto 0);
+    instType    : InstructionType;
+    rs1         : RegisterIndex;
+    rs2         : RegisterIndex;
+    rd          : RegisterIndex;
 
-        -- ram write control
-        axiReadMaster  : AxiLiteReadMasterType;
-        axiWriteMaster : AxiLiteWriteMasterType;
-        memReadData    : STD_LOGIC_VECTOR(31 DOWNTO 0);
+    -- ram write control
+    axiReadMaster  : AxiLiteReadMasterType;
+    axiWriteMaster : AxiLiteWriteMasterType;
+    memReadData    : std_logic_vector(31 downto 0);
 
-        -- register write control
-        regWrAddr   : RegisterIndex;
-        regWrData   : STD_LOGIC_VECTOR(XLEN - 1 DOWNTO 0);
-        regWrStrobe : STD_LOGIC;
+    -- register write control
+    regWrAddr   : RegisterIndex;
+    regWrData   : std_logic_vector(XLEN - 1 downto 0);
+    regWrStrobe : std_logic;
 
-        -- csr write control
-        currentPrivilege : Privilege;
-        csrOp            : CsrOp;
-        csrAddr          : STD_LOGIC_VECTOR(11 DOWNTO 0);
-        csrWrData        : STD_LOGIC_VECTOR(XLEN - 1 DOWNTO 0);
-        csrRdData        : STD_LOGIC_VECTOR(XLEN - 1 DOWNTO 0);
+    -- csr write control
+    currentPrivilege : Privilege;
+    csrReq           : std_logic;
+    csrOp            : csr_access_op;
+    csrAddr          : std_logic_vector(11 downto 0);
+    csrWrData        : std_logic_vector(XLEN - 1 downto 0);
+    csrRdData        : std_logic_vector(XLEN - 1 downto 0);
 
-        -- alu
-        aluResult : STD_LOGIC_VECTOR(31 DOWNTO 0); -- todo: XLEN?
+    -- alu
+    aluResult : std_logic_vector(31 downto 0); -- todo: XLEN?
 
-        -- control signal
-        opMemRead            : STD_LOGIC;
-        opMemWrite           : STD_LOGIC;
-        opMemWriteWidthBytes : NATURAL RANGE 1 TO 4;
-        opRegWriteSource     : RegWriteSourceType;
-        opPcFromAlu          : STD_LOGIC;
-    END RECORD RegType;
+    -- control signal
+    opMemRead            : std_logic;
+    opMemWrite           : std_logic;
+    opMemWriteWidthBytes : natural range 1 to 4;
+    opRegWriteSource     : RegWriteSourceType;
+    opPcFromAlu          : std_logic;
+  end record RegType;
 
-    CONSTANT REG_INIT_C : RegType := (
-    stage    => INIT,
-    pc       => x"01000000", -- reset vector
-    successivePc => (OTHERS => '0'),
-    instruction => (OTHERS => '0'),
-    immediate => (OTHERS => '0'),
-    instType => UNKNOWN,
-    rs1      => 0,
-    rs2      => 0,
-    rd       => 0,
-    -- axi read master defaults to reading addr 0 for first fetch
-    axiReadMaster  => AXI_LITE_READ_MASTER_INIT_C,
-    axiWriteMaster => AXI_LITE_WRITE_MASTER_INIT_C,
-    memReadData => (OTHERS => '0'),
-    regWrAddr      => 0,
-    regWrData => (OTHERS => '0'),
-    regWrStrobe    => '0',
+  constant REG_INIT_C : RegType := (
+  stage    => INIT,
+  pc       => x"01000000", -- reset vector
+  successivePc => (others => '0'),
+  instruction => (others => '0'),
+  immediate => (others => '0'),
+  instType => UNKNOWN,
+  rs1      => 0,
+  rs2      => 0,
+  rd       => 0,
+  -- axi read master defaults to reading addr 0 for first fetch
+  axiReadMaster  => AXI_LITE_READ_MASTER_INIT_C,
+  axiWriteMaster => AXI_LITE_WRITE_MASTER_INIT_C,
+  memReadData => (others => '0'),
+  regWrAddr      => 0,
+  regWrData => (others => '0'),
+  regWrStrobe    => '0',
 
-    currentPrivilege => PRIV_MACHINE_C,
-    csrOp            => OP_NONE,
-    csrAddr => (OTHERS => '0'),
-    csrWrData => (OTHERS => '0'),
-    csrRdData => (OTHERS => '0'),
+  currentPrivilege => PRIV_MACHINE_C,
+  csrReq           => '0',
+  csrOp            => OP_READ,
+  csrAddr => (others => '0'),
+  csrWrData => (others => '0'),
+  csrRdData => (others => '0'),
 
-    aluResult => (OTHERS => '0'),
-    opMemRead            => '0',
-    opMemWrite           => '0',
-    opMemWriteWidthBytes => 1,
-    opRegWriteSource     => NONE_SRC,
-    opPcFromAlu          => '0'
-    );
+  aluResult => (others => '0'),
+  opMemRead            => '0',
+  opMemWrite           => '0',
+  opMemWriteWidthBytes => 1,
+  opRegWriteSource     => NONE_SRC,
+  opPcFromAlu          => '0'
+  );
 
-    SIGNAL r   : RegType := REG_INIT_C;
-    SIGNAL rin : RegType;
+  signal r   : RegType := REG_INIT_C;
+  signal rin : RegType;
 
-    -- intermediate signals
-    SIGNAL rs1       : RegisterIndex;
-    SIGNAL rs2       : RegisterIndex;
-    SIGNAL rd        : RegisterIndex;
-    SIGNAL rs1Value  : STD_LOGIC_VECTOR(XLEN - 1 DOWNTO 0);
-    SIGNAL rs2Value  : STD_LOGIC_VECTOR(XLEN - 1 DOWNTO 0);
-    SIGNAL immediate : STD_LOGIC_VECTOR(XLEN - 1 DOWNTO 0);
+  -- intermediate signals
+  signal rs1       : RegisterIndex;
+  signal rs2       : RegisterIndex;
+  signal rd        : RegisterIndex;
+  signal rs1Value  : std_logic_vector(XLEN - 1 downto 0);
+  signal rs2Value  : std_logic_vector(XLEN - 1 downto 0);
+  signal immediate : std_logic_vector(XLEN - 1 downto 0);
 
-    SIGNAL csrRdData        : STD_LOGIC_VECTOR(XLEN - 1 DOWNTO 0);
-    SIGNAL csrIllegalAccess : STD_LOGIC;
+  signal csrRdData        : std_logic_vector(XLEN - 1 downto 0);
+  signal csrIllegalAccess : std_logic;
 
-    SIGNAL instType : InstructionType;
-BEGIN
-    PROCESS (ALL)
-        VARIABLE v : regType;
-    BEGIN
-        -- initialise from existing state
-        v := r;
+  signal instType : InstructionType;
 
-        v.regWrStrobe := '0';
+  signal csrHwIn  : CsrRegisters_in_t;
+  signal csrHwOut : CsrRegisters_out_t;
+begin
+  process (all)
+    variable v : regType;
+  begin
+    -- initialise from existing state
+    v := r;
 
-        -- accept axi-lite transactions
-        IF (axiReadSlave.arready AND r.axiReadMaster.arvalid) THEN
-            v.axiReadMaster.arvalid := '0';
-            v.axiReadMaster.araddr  := (OTHERS => '0');
-        END IF;
-        IF (axiReadSlave.rvalid AND r.axiReadMaster.rready) THEN
-            v.axiReadMaster.rready := '0';
-        END IF;
-        IF (axiWriteSlave.awready AND r.axiWriteMaster.awvalid) THEN
-            v.axiWriteMaster.awvalid := '0';
-            v.axiWriteMaster.awaddr  := (OTHERS => '0');
-        END IF;
-        IF (axiWriteSlave.wready AND r.axiWriteMaster.wvalid) THEN
-            v.axiWriteMaster.wvalid := '0';
-            v.axiWriteMaster.wdata  := (OTHERS => '0');
-        END IF;
-        IF (axiWriteSlave.bvalid AND r.axiWriteMaster.bready) THEN
-            v.axiWriteMaster.bready := '0';
-        END IF;
+    v.regWrStrobe := '0';
 
-        CASE (r.stage) IS
-            WHEN INIT =>
-                -- initial read of the pc to start the cpu running
-                v.axiReadMaster.arvalid := '1';
-                v.axiReadMaster.araddr  := v.pc;
+    -- accept axi-lite transactions
+    if (axiReadSlave.arready and r.axiReadMaster.arvalid) then
+      v.axiReadMaster.arvalid := '0';
+      v.axiReadMaster.araddr  := (others => '0');
+    end if;
+    if (axiReadSlave.rvalid and r.axiReadMaster.rready) then
+      v.axiReadMaster.rready := '0';
+    end if;
+    if (axiWriteSlave.awready and r.axiWriteMaster.awvalid) then
+      v.axiWriteMaster.awvalid := '0';
+      v.axiWriteMaster.awaddr  := (others => '0');
+    end if;
+    if (axiWriteSlave.wready and r.axiWriteMaster.wvalid) then
+      v.axiWriteMaster.wvalid := '0';
+      v.axiWriteMaster.wdata  := (others => '0');
+    end if;
+    if (axiWriteSlave.bvalid and r.axiWriteMaster.bready) then
+      v.axiWriteMaster.bready := '0';
+    end if;
 
-                v.stage := FETCH;
-            WHEN FETCH =>
-                IF (r.axiReadMaster.rready AND axiReadSlave.rvalid) THEN
-                    IF axiReadSlave.rresp = AXI_RESP_OK_C THEN
-                        v.instruction := axiReadSlave.rdata;
-                        v.immediate   := immediate;
-                        v.instType    := instType;
-                        v.rs1         := rs1;
-                        v.rs2         := rs2;
-                        v.rd          := rd;
+    case (r.stage) is
+      when INIT =>
+        -- initial read of the pc to start the cpu running
+        v.axiReadMaster.arvalid := '1';
+        v.axiReadMaster.araddr  := v.pc;
 
-                        v.successivePc := STD_LOGIC_VECTOR(UNSIGNED(r.pc) + 4);
+        v.stage := FETCH;
+      when FETCH =>
+        if (r.axiReadMaster.rready and axiReadSlave.rvalid) then
+          if axiReadSlave.rresp = AXI_RESP_OK_C then
+            v.instruction := axiReadSlave.rdata;
+            v.immediate   := immediate;
+            v.instType    := instType;
+            v.rs1         := rs1;
+            v.rs2         := rs2;
+            v.rd          := rd;
 
-                        v.stage := DECODE;
-                    ELSE
-                        v.stage := TRAPPED;
-                    END IF;
-                END IF;
-            WHEN DECODE =>
-                -- todo: register decoded instruction here?
+            v.successivePc := std_logic_vector(UNSIGNED(r.pc) + 4);
 
-                v.opMemRead            := '0';
-                v.opRegWriteSource     := NONE_SRC;
-                v.opMemWrite           := '0';
-                v.opMemWriteWidthBytes := 1;
-                v.opPcFromAlu          := '0';
-                v.csrOp                := OP_NONE;
+            v.stage := DECODE;
+          else
+            v.stage := TRAPPED;
+          end if;
+        end if;
+      when DECODE =>
+        -- todo: register decoded instruction here?
 
-                v.stage := EXECUTE;
+        v.opMemRead            := '0';
+        v.opRegWriteSource     := NONE_SRC;
+        v.opMemWrite           := '0';
+        v.opMemWriteWidthBytes := 1;
+        v.opPcFromAlu          := '0';
+        v.csrReq               := '1';
 
-                CASE r.instType IS
-                    WHEN LUI =>
-                        v.opRegWriteSource := IMMEDIATE_SRC;
-                    WHEN AUIPC =>
-                        v.aluResult        := STD_LOGIC_VECTOR(unsigned(r.pc) + unsigned(r.immediate));
-                        v.opRegWriteSource := ALU_SRC;
-                    WHEN ADDI =>
-                        v.aluResult        := STD_LOGIC_VECTOR(unsigned(rs1Value) + unsigned(r.immediate));
-                        v.opRegWriteSource := ALU_SRC;
-                    WHEN SLTI                 =>
-                        v.aluResult    := (OTHERS => '0');
-                        v.aluResult(0) := '1' WHEN signed(rs1Value) < signed(r.immediate) ELSE
-                        '0';
-                        v.opRegWriteSource := ALU_SRC;
-                    WHEN SLTIU                =>
-                        v.aluResult    := (OTHERS => '0');
-                        v.aluResult(0) := '1' WHEN unsigned(rs1Value) < unsigned(r.immediate) ELSE
-                        '0';
-                        v.opRegWriteSource := ALU_SRC;
-                    WHEN ANDI =>
-                        v.aluResult        := rs1Value AND r.immediate;
-                        v.opRegWriteSource := ALU_SRC;
-                    WHEN ORI =>
-                        v.aluResult        := rs1Value OR r.immediate;
-                        v.opRegWriteSource := ALU_SRC;
-                    WHEN XORI =>
-                        v.aluResult        := rs1Value XOR r.immediate;
-                        v.opRegWriteSource := ALU_SRC;
-                    WHEN SLLI =>
-                        v.aluResult        := STD_LOGIC_VECTOR(SHIFT_LEFT(unsigned(rs1Value), to_integer(unsigned(r.immediate(4 DOWNTO 0)))));
-                        v.opRegWriteSource := ALU_SRC;
-                    WHEN SRLI =>
-                        v.aluResult        := STD_LOGIC_VECTOR(SHIFT_RIGHT(unsigned(rs1Value), to_integer(unsigned(r.immediate(4 DOWNTO 0)))));
-                        v.opRegWriteSource := ALU_SRC;
-                    WHEN SRAI =>
-                        v.aluResult        := STD_LOGIC_VECTOR(SHIFT_RIGHT(signed(rs1Value), to_integer(unsigned(r.immediate(4 DOWNTO 0)))));
-                        v.opRegWriteSource := ALU_SRC;
-                    WHEN ADD =>
-                        v.aluResult        := STD_LOGIC_VECTOR(unsigned(rs1Value) + unsigned(rs2Value));
-                        v.opRegWriteSource := ALU_SRC;
-                    WHEN SLT                  =>
-                        v.aluResult    := (OTHERS => '0');
-                        v.aluResult(0) := '1' WHEN signed(rs1Value) < signed(rs2Value) ELSE
-                        '0';
-                        v.opRegWriteSource := ALU_SRC;
-                    WHEN SLTU                 =>
-                        v.aluResult    := (OTHERS => '0');
-                        v.aluResult(0) := '1' WHEN unsigned(rs1Value) < unsigned(rs2Value) ELSE
-                        '0';
-                        v.opRegWriteSource := ALU_SRC;
-                    WHEN \AND\ =>
-                        v.aluResult        := rs1Value AND rs2Value;
-                        v.opRegWriteSource := ALU_SRC;
-                    WHEN \OR\ =>
-                        v.aluResult        := rs1Value OR rs2Value;
-                        v.opRegWriteSource := ALU_SRC;
-                    WHEN \XOR\ =>
-                        v.aluResult        := rs1Value XOR rs2Value;
-                        v.opRegWriteSource := ALU_SRC;
-                    WHEN \SLL\ =>
-                        v.aluResult        := STD_LOGIC_VECTOR(SHIFT_LEFT(unsigned(rs1Value), to_integer(unsigned(rs2Value(4 DOWNTO 0)))));
-                        v.opRegWriteSource := ALU_SRC;
-                    WHEN \SRL\ =>
-                        v.aluResult        := STD_LOGIC_VECTOR(SHIFT_RIGHT(unsigned(rs1Value), to_integer(unsigned(rs2Value(4 DOWNTO 0)))));
-                        v.opRegWriteSource := ALU_SRC;
-                    WHEN SUB =>
-                        v.aluResult        := STD_LOGIC_VECTOR(unsigned(rs1Value) - unsigned(rs2Value));
-                        v.opRegWriteSource := ALU_SRC;
-                    WHEN \SRA\ =>
-                        v.aluResult        := STD_LOGIC_VECTOR(SHIFT_RIGHT(signed(rs1Value), to_integer(unsigned(rs2Value(4 DOWNTO 0)))));
-                        v.opRegWriteSource := ALU_SRC;
-                    WHEN LB | LH | LW | LBU | LHU =>
-                        -- todo: read strobes on ram
-                        v.aluResult        := STD_LOGIC_VECTOR(unsigned(rs1Value) + unsigned(r.immediate));
-                        v.opMemRead        := '1';
-                        v.opRegWriteSource := MEMORY_SRC;
-                    WHEN SW =>
-                        v.aluResult            := STD_LOGIC_VECTOR(unsigned(rs1Value) + unsigned(r.immediate));
-                        v.opMemWrite           := '1';
-                        v.opMemWriteWidthBytes := 4;
-                    WHEN SH =>
-                        v.aluResult            := STD_LOGIC_VECTOR(unsigned(rs1Value) + unsigned(r.immediate));
-                        v.opMemWrite           := '1';
-                        v.opMemWriteWidthBytes := 2;
-                    WHEN SB =>
-                        v.aluResult            := STD_LOGIC_VECTOR(unsigned(rs1Value) + unsigned(r.immediate));
-                        v.opMemWrite           := '1';
-                        v.opMemWriteWidthBytes := 1;
-                    WHEN JAL =>
-                        v.aluResult        := STD_LOGIC_VECTOR(unsigned(r.pc) + unsigned(r.immediate));
-                        v.opRegWriteSource := SUCC_PC_SRC;
-                        v.opPcFromAlu      := '1';
-                    WHEN JALR =>
-                        v.aluResult        := STD_LOGIC_VECTOR(unsigned(rs1Value) + unsigned(r.immediate));
-                        v.opRegWriteSource := SUCC_PC_SRC;
-                        v.opPcFromAlu      := '1';
-                    WHEN BEQ =>
-                        v.aluResult   := STD_LOGIC_VECTOR(unsigned(r.pc) + unsigned(r.immediate));
-                        v.opPcFromAlu := '1' WHEN rs1Value = rs2Value ELSE
-                        '0';
-                    WHEN BNE =>
-                        v.aluResult   := STD_LOGIC_VECTOR(unsigned(r.pc) + unsigned(r.immediate));
-                        v.opPcFromAlu := '1' WHEN rs1Value /= rs2Value ELSE
-                        '0';
-                    WHEN BLT =>
-                        v.aluResult   := STD_LOGIC_VECTOR(unsigned(r.pc) + unsigned(r.immediate));
-                        v.opPcFromAlu := '1' WHEN SIGNED(rs1Value) < SIGNED(rs2Value) ELSE
-                        '0';
-                    WHEN BLTU =>
-                        v.aluResult   := STD_LOGIC_VECTOR(unsigned(r.pc) + unsigned(r.immediate));
-                        v.opPcFromAlu := '1' WHEN UNSIGNED(rs1Value) < UNSIGNED(rs2Value) ELSE
-                        '0';
-                    WHEN BGE =>
-                        v.aluResult   := STD_LOGIC_VECTOR(unsigned(r.pc) + unsigned(r.immediate));
-                        v.opPcFromAlu := '1' WHEN SIGNED(rs1Value) >= SIGNED(rs2Value) ELSE
-                        '0';
-                    WHEN BGEU =>
-                        v.aluResult   := STD_LOGIC_VECTOR(unsigned(r.pc) + unsigned(r.immediate));
-                        v.opPcFromAlu := '1' WHEN UNSIGNED(rs1Value) >= UNSIGNED(rs2Value) ELSE
-                        '0';
-                    WHEN CSRRW =>
-                        v.csrOp := OP_WRITE WHEN r.rd = 0 ELSE
-                        OP_READ_WRITE;
-                        v.csrAddr          := r.immediate(11 DOWNTO 0);
-                        v.csrWrData        := rs1Value;
-                        v.opRegWriteSource := NONE_SRC WHEN r.rd = 0 ELSE
-                        CSR_SRC;
-                    WHEN CSRRS =>
-                        v.csrOp := OP_READ WHEN r.rs1 = 0 ELSE
-                        OP_READ_SET;
-                        v.csrAddr          := r.immediate(11 DOWNTO 0);
-                        v.csrWrData        := rs1Value;
-                        v.opRegWriteSource := CSR_SRC;
-                    WHEN CSRRC =>
-                        v.csrOp := OP_READ WHEN r.rs1 = 0 ELSE
-                        OP_READ_CLEAR;
-                        v.csrAddr          := r.immediate(11 DOWNTO 0);
-                        v.csrWrData        := rs1Value;
-                        v.opRegWriteSource := CSR_SRC;
-                    WHEN EBREAK =>
-                        v.stage := HALTED;
-                    WHEN OTHERS =>
-                        -- on unknown instruction, halt
-                        v.stage := TRAPPED;
-                END CASE;
-            WHEN EXECUTE =>
-                -- update PC
-                IF v.opPcFromAlu THEN
-                    v.pc := r.aluResult(31 DOWNTO 1) & "0";
-                ELSE
-                    v.pc := r.successivePc;
-                END IF;
+        v.stage := EXECUTE;
 
-                -- handle potential csr read and reset
-                v.csrRdData := csrRdData;
-                v.csrOp     := OP_NONE;
-                v.csrAddr   := (OTHERS => '0');
-                v.csrWrData := (OTHERS => '0');
-
-                IF r.opMemRead OR r.opMemWrite THEN
-                    -- skip memory stage if we aren't doing any memory ops
-                    v.stage := MEMORY;
-                ELSIF csrIllegalAccess THEN
-                    -- handle illegal csr access
-                    v.stage := TRAPPED;
-                ELSE
-                    v.stage := WRITEBACK;
-
-                    -- prepare ram read for fetch in advance due to the memory latency
-                    v.axiReadMaster.arvalid := '1';
-                    v.axiReadMaster.araddr  := v.pc;
-                    v.axiReadMaster.rready  := '1';
-                END IF;
-
-                -- prepare memory ops in advance due to the memory latency
-                IF r.opMemRead THEN
-                    v.axiReadMaster.araddr              := (OTHERS => '0');
-                    v.axiReadMaster.araddr(31 DOWNTO 2) := r.aluResult(31 DOWNTO 2);
-                    v.axiReadMaster.arvalid             := '1';
-
-                    v.axiReadMaster.rready := '1';
-                END IF;
-
-                IF r.opMemWrite THEN
-                    v.axiWriteMaster.awaddr              := (OTHERS => '0');
-                    v.axiWriteMaster.awaddr(31 DOWNTO 2) := r.aluResult(31 DOWNTO 2);
-                    v.axiWriteMaster.awvalid             := '1';
-
-                    v.axiWriteMaster.wstrb  := "0000";
-                    v.axiWriteMaster.wdata  := (OTHERS => '0');
-                    v.axiWriteMaster.wvalid := '1';
-
-                    v.axiWriteMaster.bready := '1';
-                END IF;
-
-                -- set wstrb and wdata for mem write
-                CASE r.opMemWriteWidthBytes IS
-                    WHEN 1 =>
-                        FOR i IN 0 TO 3 LOOP
-                            IF v.aluResult(1 DOWNTO 0) = STD_LOGIC_VECTOR(to_unsigned(i, 2)) THEN
-                                v.axiWriteMaster.wstrb(i)                            := '1';
-                                v.axiWriteMaster.wdata((i + 1) * 8 - 1 DOWNTO i * 8) := rs2Value(7 DOWNTO 0);
-                            END IF;
-                        END LOOP;
-                    WHEN 2 =>
-                        IF v.aluResult(1) THEN
-                            v.axiWriteMaster.wstrb               := "1100";
-                            v.axiWriteMaster.wdata(31 DOWNTO 16) := rs2Value(15 DOWNTO 0);
-                        ELSE
-                            v.axiWriteMaster.wstrb              := "0011";
-                            v.axiWriteMaster.wdata(15 DOWNTO 0) := rs2Value(15 DOWNTO 0);
-                        END IF;
-                    WHEN 3 =>
-                        -- invalid (3 bytes)
-                        v.axiWriteMaster.wstrb := "0000";
-                    WHEN 4 =>
-                        v.axiWriteMaster.wstrb := "1111";
-                        v.axiWriteMaster.wdata := rs2Value;
-                END CASE;
-            WHEN MEMORY =>
-                -- once mem transaction completes
-                IF r.opMemWrite AND r.axiWriteMaster.bready AND axiWriteSlave.bvalid THEN
-                    IF axiWriteSlave.bresp = AXI_RESP_OK_C THEN
-                        -- prepare ram read for fetch in advance due to the memory latency
-                        v.axiReadMaster.arvalid := '1';
-                        v.axiReadMaster.araddr  := v.pc;
-                        v.axiReadMaster.rready  := '1';
-
-                        v.stage := WRITEBACK;
-                    ELSE
-                        v.stage := TRAPPED;
-                    END IF;
-                END IF;
-                IF r.opMemRead AND r.axiReadMaster.rready AND axiReadSlave.rvalid THEN
-                    IF axiReadSlave.rresp = AXI_RESP_OK_C THEN
-                        -- register read data
-                        v.memReadData := axiReadSlave.rdata;
-
-                        -- prepare ram read for fetch in advance due to the memory latency
-                        v.axiReadMaster.arvalid := '1';
-                        v.axiReadMaster.araddr  := v.pc;
-                        v.axiReadMaster.rready  := '1';
-
-                        v.stage := WRITEBACK;
-                    ELSE
-                        v.stage := TRAPPED;
-                    END IF;
-                END IF;
-            WHEN WRITEBACK =>
-                -- write to register from alu, ram, or immediate
-                v.regWrStrobe := '1' WHEN r.opRegWriteSource /= NONE_SRC ELSE
-                '0';
-                v.regWrAddr := r.rd;
-
-                CASE r.opRegWriteSource IS
-                    WHEN MEMORY_SRC =>
-                        CASE r.instType IS
-                            WHEN LB =>
-                                CASE r.aluResult(1 DOWNTO 0) IS
-                                    WHEN "00" =>
-                                        v.regWrData := STD_LOGIC_VECTOR(resize(signed(r.memReadData(7 DOWNTO 0)), XLEN));
-                                    WHEN "01" =>
-                                        v.regWrData := STD_LOGIC_VECTOR(resize(signed(r.memReadData(15 DOWNTO 8)), XLEN));
-                                    WHEN "10" =>
-                                        v.regWrData := STD_LOGIC_VECTOR(resize(signed(r.memReadData(23 DOWNTO 16)), XLEN));
-                                    WHEN "11" =>
-                                        v.regWrData := STD_LOGIC_VECTOR(resize(signed(r.memReadData(31 DOWNTO 24)), XLEN));
-                                    WHEN OTHERS            =>
-                                        v.regWrData := (OTHERS => '0');
-                                END CASE;
-                            WHEN LH =>
-                                IF r.aluResult(1) THEN
-                                    v.regWrData := STD_LOGIC_VECTOR(resize(signed(r.memReadData(31 DOWNTO 16)), XLEN));
-                                ELSE
-                                    v.regWrData := STD_LOGIC_VECTOR(resize(signed(r.memReadData(15 DOWNTO 0)), XLEN));
-                                END IF;
-                            WHEN LW =>
-                                v.regWrData := r.memReadData;
-                            WHEN LBU =>
-                                CASE r.aluResult(1 DOWNTO 0) IS
-                                    WHEN "00" =>
-                                        v.regWrData := STD_LOGIC_VECTOR(resize(unsigned(r.memReadData(7 DOWNTO 0)), XLEN));
-                                    WHEN "01" =>
-                                        v.regWrData := STD_LOGIC_VECTOR(resize(unsigned(r.memReadData(15 DOWNTO 8)), XLEN));
-                                    WHEN "10" =>
-                                        v.regWrData := STD_LOGIC_VECTOR(resize(unsigned(r.memReadData(23 DOWNTO 16)), XLEN));
-                                    WHEN "11" =>
-                                        v.regWrData := STD_LOGIC_VECTOR(resize(unsigned(r.memReadData(31 DOWNTO 24)), XLEN));
-                                    WHEN OTHERS            =>
-                                        v.regWrData := (OTHERS => '0');
-                                END CASE;
-                            WHEN LHU =>
-                                IF r.aluResult(1) THEN
-                                    v.regWrData := STD_LOGIC_VECTOR(resize(unsigned(r.memReadData(31 DOWNTO 16)), XLEN));
-                                ELSE
-                                    v.regWrData := STD_LOGIC_VECTOR(resize(unsigned(r.memReadData(15 DOWNTO 0)), XLEN));
-                                END IF;
-                            WHEN OTHERS =>
-                                NULL;
-                        END CASE;
-                    WHEN ALU_SRC           => v.regWrData       := r.aluResult;
-                    WHEN IMMEDIATE_SRC     => v.regWrData := r.immediate;
-                    WHEN SUCC_PC_SRC       => v.regWrData   := r.successivePc;
-                    WHEN CSR_SRC           => v.regWrData       := r.csrRdData;
-                    WHEN OTHERS            =>
-                        v.regWrData := (OTHERS => '0');
-                END CASE;
-
-                v.stage := FETCH;
-            WHEN HALTED =>
-                -- do nothing
-            WHEN TRAPPED =>
-                -- do nothing
-        END CASE;
-
-        IF reset THEN
-            v := REG_INIT_C;
-        END IF;
-
-        -- set nextstate
-        rin <= v;
-
-        -- update outputs
-        halt <= '1' WHEN r.stage = HALTED ELSE
+        case r.instType is
+          when LUI =>
+            v.opRegWriteSource := IMMEDIATE_SRC;
+          when AUIPC =>
+            v.aluResult        := std_logic_vector(unsigned(r.pc) + unsigned(r.immediate));
+            v.opRegWriteSource := ALU_SRC;
+          when ADDI =>
+            v.aluResult        := std_logic_vector(unsigned(rs1Value) + unsigned(r.immediate));
+            v.opRegWriteSource := ALU_SRC;
+          when SLTI                 =>
+            v.aluResult    := (others => '0');
+            v.aluResult(0) := '1' when signed(rs1Value) < signed(r.immediate) else
             '0';
-        trap <= '1' WHEN r.stage = TRAPPED ELSE
+            v.opRegWriteSource := ALU_SRC;
+          when SLTIU                =>
+            v.aluResult    := (others => '0');
+            v.aluResult(0) := '1' when unsigned(rs1Value) < unsigned(r.immediate) else
             '0';
-        axiReadMaster  <= r.axiReadMaster;
-        axiWriteMaster <= r.axiWriteMaster;
-    END PROCESS;
+            v.opRegWriteSource := ALU_SRC;
+          when ANDI =>
+            v.aluResult        := rs1Value and r.immediate;
+            v.opRegWriteSource := ALU_SRC;
+          when ORI =>
+            v.aluResult        := rs1Value or r.immediate;
+            v.opRegWriteSource := ALU_SRC;
+          when XORI =>
+            v.aluResult        := rs1Value xor r.immediate;
+            v.opRegWriteSource := ALU_SRC;
+          when SLLI =>
+            v.aluResult        := std_logic_vector(SHIFT_LEFT(unsigned(rs1Value), to_integer(unsigned(r.immediate(4 downto 0)))));
+            v.opRegWriteSource := ALU_SRC;
+          when SRLI =>
+            v.aluResult        := std_logic_vector(SHIFT_RIGHT(unsigned(rs1Value), to_integer(unsigned(r.immediate(4 downto 0)))));
+            v.opRegWriteSource := ALU_SRC;
+          when SRAI =>
+            v.aluResult        := std_logic_vector(SHIFT_RIGHT(signed(rs1Value), to_integer(unsigned(r.immediate(4 downto 0)))));
+            v.opRegWriteSource := ALU_SRC;
+          when ADD =>
+            v.aluResult        := std_logic_vector(unsigned(rs1Value) + unsigned(rs2Value));
+            v.opRegWriteSource := ALU_SRC;
+          when SLT                  =>
+            v.aluResult    := (others => '0');
+            v.aluResult(0) := '1' when signed(rs1Value) < signed(rs2Value) else
+            '0';
+            v.opRegWriteSource := ALU_SRC;
+          when SLTU                 =>
+            v.aluResult    := (others => '0');
+            v.aluResult(0) := '1' when unsigned(rs1Value) < unsigned(rs2Value) else
+            '0';
+            v.opRegWriteSource := ALU_SRC;
+          when \AND\ =>
+            v.aluResult        := rs1Value and rs2Value;
+            v.opRegWriteSource := ALU_SRC;
+          when \OR\ =>
+            v.aluResult        := rs1Value or rs2Value;
+            v.opRegWriteSource := ALU_SRC;
+          when \XOR\ =>
+            v.aluResult        := rs1Value xor rs2Value;
+            v.opRegWriteSource := ALU_SRC;
+          when \SLL\ =>
+            v.aluResult        := std_logic_vector(SHIFT_LEFT(unsigned(rs1Value), to_integer(unsigned(rs2Value(4 downto 0)))));
+            v.opRegWriteSource := ALU_SRC;
+          when \SRL\ =>
+            v.aluResult        := std_logic_vector(SHIFT_RIGHT(unsigned(rs1Value), to_integer(unsigned(rs2Value(4 downto 0)))));
+            v.opRegWriteSource := ALU_SRC;
+          when SUB =>
+            v.aluResult        := std_logic_vector(unsigned(rs1Value) - unsigned(rs2Value));
+            v.opRegWriteSource := ALU_SRC;
+          when \SRA\ =>
+            v.aluResult        := std_logic_vector(SHIFT_RIGHT(signed(rs1Value), to_integer(unsigned(rs2Value(4 downto 0)))));
+            v.opRegWriteSource := ALU_SRC;
+          when LB | LH | LW | LBU | LHU =>
+            -- todo: read strobes on ram
+            v.aluResult        := std_logic_vector(unsigned(rs1Value) + unsigned(r.immediate));
+            v.opMemRead        := '1';
+            v.opRegWriteSource := MEMORY_SRC;
+          when SW =>
+            v.aluResult            := std_logic_vector(unsigned(rs1Value) + unsigned(r.immediate));
+            v.opMemWrite           := '1';
+            v.opMemWriteWidthBytes := 4;
+          when SH =>
+            v.aluResult            := std_logic_vector(unsigned(rs1Value) + unsigned(r.immediate));
+            v.opMemWrite           := '1';
+            v.opMemWriteWidthBytes := 2;
+          when SB =>
+            v.aluResult            := std_logic_vector(unsigned(rs1Value) + unsigned(r.immediate));
+            v.opMemWrite           := '1';
+            v.opMemWriteWidthBytes := 1;
+          when JAL =>
+            v.aluResult        := std_logic_vector(unsigned(r.pc) + unsigned(r.immediate));
+            v.opRegWriteSource := SUCC_PC_SRC;
+            v.opPcFromAlu      := '1';
+          when JALR =>
+            v.aluResult        := std_logic_vector(unsigned(rs1Value) + unsigned(r.immediate));
+            v.opRegWriteSource := SUCC_PC_SRC;
+            v.opPcFromAlu      := '1';
+          when BEQ =>
+            v.aluResult   := std_logic_vector(unsigned(r.pc) + unsigned(r.immediate));
+            v.opPcFromAlu := '1' when rs1Value = rs2Value else
+            '0';
+          when BNE =>
+            v.aluResult   := std_logic_vector(unsigned(r.pc) + unsigned(r.immediate));
+            v.opPcFromAlu := '1' when rs1Value /= rs2Value else
+            '0';
+          when BLT =>
+            v.aluResult   := std_logic_vector(unsigned(r.pc) + unsigned(r.immediate));
+            v.opPcFromAlu := '1' when SIGNED(rs1Value) < SIGNED(rs2Value) else
+            '0';
+          when BLTU =>
+            v.aluResult   := std_logic_vector(unsigned(r.pc) + unsigned(r.immediate));
+            v.opPcFromAlu := '1' when UNSIGNED(rs1Value) < UNSIGNED(rs2Value) else
+            '0';
+          when BGE =>
+            v.aluResult   := std_logic_vector(unsigned(r.pc) + unsigned(r.immediate));
+            v.opPcFromAlu := '1' when SIGNED(rs1Value) >= SIGNED(rs2Value) else
+            '0';
+          when BGEU =>
+            v.aluResult   := std_logic_vector(unsigned(r.pc) + unsigned(r.immediate));
+            v.opPcFromAlu := '1' when UNSIGNED(rs1Value) >= UNSIGNED(rs2Value) else
+            '0';
+          when CSRRW =>
+            v.csrReq := '1';
+            v.csrOp  := OP_WRITE when r.rd = 0 else
+            OP_READ_WRITE;
+            v.csrAddr          := r.immediate(11 downto 0);
+            v.csrWrData        := rs1Value;
+            v.opRegWriteSource := NONE_SRC when r.rd = 0 else
+            CSR_SRC;
+          when CSRRS =>
+            v.csrReq := '1';
+            v.csrOp  := OP_READ when r.rs1 = 0 else
+            OP_READ_SET;
+            v.csrAddr          := r.immediate(11 downto 0);
+            v.csrWrData        := rs1Value;
+            v.opRegWriteSource := CSR_SRC;
+          when CSRRC =>
+            v.csrReq := '1';
+            v.csrOp  := OP_READ when r.rs1 = 0 else
+            OP_READ_CLEAR;
+            v.csrAddr          := r.immediate(11 downto 0);
+            v.csrWrData        := rs1Value;
+            v.opRegWriteSource := CSR_SRC;
+          when EBREAK =>
+            v.stage := HALTED;
+          when others =>
+            -- on unknown instruction, halt
+            v.stage := TRAPPED;
+        end case;
+      when EXECUTE =>
+        -- update PC
+        if v.opPcFromAlu then
+          v.pc := r.aluResult(31 downto 1) & "0";
+        else
+          v.pc := r.successivePc;
+        end if;
 
-    PROCESS (clk)
-    BEGIN
-        IF rising_edge(clk) THEN
-            r <= rin AFTER TPD_G;
-        END IF;
-    END PROCESS;
+        -- handle potential csr read and reset
+        v.csrRdData := csrRdData;
+        v.csrReq    := '0';
+        v.csrAddr   := (others => '0');
+        v.csrWrData := (others => '0');
 
-    Registers_inst : ENTITY work.Registers
-        PORT MAP(
-            clk       => clk,
-            reset     => reset,
-            rs1       => r.rs1,
-            rs1Value  => rs1Value,
-            rs2       => r.rs2,
-            rs2Value  => rs2Value,
-            wr_addr   => r.regWrAddr,
-            wr_data   => r.regWrData,
-            wr_strobe => r.regWrStrobe
-        );
+        if r.opMemRead or r.opMemWrite then
+          -- only use memory stage if we are doing memory ops
+          v.stage := MEMORY;
+        elsif csrIllegalAccess then
+          -- handle illegal csr access
+          v.stage := TRAPPED;
+        else
+          v.stage := WRITEBACK;
 
-    InstructionDecoder_inst : ENTITY work.InstructionDecoder
-        PORT MAP(
-            instructionType => instType,
-            instruction     => axiReadSlave.rdata,
-            immediate       => immediate,
-            rs1             => rs1,
-            rs2             => rs2,
-            rd              => rd
-        );
+          -- prepare ram read for fetch in advance due to the memory latency
+          v.axiReadMaster.arvalid := '1';
+          v.axiReadMaster.araddr  := v.pc;
+          v.axiReadMaster.rready  := '1';
+        end if;
 
-    Csr_inst : ENTITY work.Csr
-        PORT MAP(
-            clk              => clk,
-            reset            => reset,
-            currentPrivilege => r.currentPrivilege,
-            op               => r.csrOp,
-            addr             => r.csrAddr,
-            wrData           => r.csrWrData,
-            rdData           => csrRdData,
-            illegalAccess    => csrIllegalAccess
-        );
+        -- prepare memory ops in advance due to the memory latency
+        if r.opMemRead then
+          v.axiReadMaster.araddr              := (others => '0');
+          v.axiReadMaster.araddr(31 downto 2) := r.aluResult(31 downto 2);
+          v.axiReadMaster.arvalid             := '1';
 
-END ARCHITECTURE;
+          v.axiReadMaster.rready := '1';
+        end if;
+
+        if r.opMemWrite then
+          v.axiWriteMaster.awaddr              := (others => '0');
+          v.axiWriteMaster.awaddr(31 downto 2) := r.aluResult(31 downto 2);
+          v.axiWriteMaster.awvalid             := '1';
+
+          v.axiWriteMaster.wstrb  := "0000";
+          v.axiWriteMaster.wdata  := (others => '0');
+          v.axiWriteMaster.wvalid := '1';
+
+          v.axiWriteMaster.bready := '1';
+        end if;
+
+        -- set wstrb and wdata for mem write
+        case r.opMemWriteWidthBytes is
+          when 1 =>
+            for i in 0 to 3 loop
+              if v.aluResult(1 downto 0) = std_logic_vector(to_unsigned(i, 2)) then
+                v.axiWriteMaster.wstrb(i)                            := '1';
+                v.axiWriteMaster.wdata((i + 1) * 8 - 1 downto i * 8) := rs2Value(7 downto 0);
+              end if;
+            end loop;
+          when 2 =>
+            if v.aluResult(1) then
+              v.axiWriteMaster.wstrb               := "1100";
+              v.axiWriteMaster.wdata(31 downto 16) := rs2Value(15 downto 0);
+            else
+              v.axiWriteMaster.wstrb              := "0011";
+              v.axiWriteMaster.wdata(15 downto 0) := rs2Value(15 downto 0);
+            end if;
+          when 3 =>
+            -- invalid (3 bytes)
+            v.axiWriteMaster.wstrb := "0000";
+          when 4 =>
+            v.axiWriteMaster.wstrb := "1111";
+            v.axiWriteMaster.wdata := rs2Value;
+        end case;
+      when MEMORY =>
+        -- once mem transaction completes
+        if r.opMemWrite and r.axiWriteMaster.bready and axiWriteSlave.bvalid then
+          if axiWriteSlave.bresp = AXI_RESP_OK_C then
+            -- prepare ram read for fetch in advance due to the memory latency
+            v.axiReadMaster.arvalid := '1';
+            v.axiReadMaster.araddr  := v.pc;
+            v.axiReadMaster.rready  := '1';
+
+            v.stage := WRITEBACK;
+          else
+            v.stage := TRAPPED;
+          end if;
+        end if;
+        if r.opMemRead and r.axiReadMaster.rready and axiReadSlave.rvalid then
+          if axiReadSlave.rresp = AXI_RESP_OK_C then
+            -- register read data
+            v.memReadData := axiReadSlave.rdata;
+
+            -- prepare ram read for fetch in advance due to the memory latency
+            v.axiReadMaster.arvalid := '1';
+            v.axiReadMaster.araddr  := v.pc;
+            v.axiReadMaster.rready  := '1';
+
+            v.stage := WRITEBACK;
+          else
+            v.stage := TRAPPED;
+          end if;
+        end if;
+      when WRITEBACK =>
+        -- write to register from alu, ram, or immediate
+        v.regWrStrobe := '1' when r.opRegWriteSource /= NONE_SRC else
+        '0';
+        v.regWrAddr := r.rd;
+
+        case r.opRegWriteSource is
+          when MEMORY_SRC =>
+            case r.instType is
+              when LB =>
+                case r.aluResult(1 downto 0) is
+                  when "00" =>
+                    v.regWrData := std_logic_vector(resize(signed(r.memReadData(7 downto 0)), XLEN));
+                  when "01" =>
+                    v.regWrData := std_logic_vector(resize(signed(r.memReadData(15 downto 8)), XLEN));
+                  when "10" =>
+                    v.regWrData := std_logic_vector(resize(signed(r.memReadData(23 downto 16)), XLEN));
+                  when "11" =>
+                    v.regWrData := std_logic_vector(resize(signed(r.memReadData(31 downto 24)), XLEN));
+                  when others            =>
+                    v.regWrData := (others => '0');
+                end case;
+              when LH =>
+                if r.aluResult(1) then
+                  v.regWrData := std_logic_vector(resize(signed(r.memReadData(31 downto 16)), XLEN));
+                else
+                  v.regWrData := std_logic_vector(resize(signed(r.memReadData(15 downto 0)), XLEN));
+                end if;
+              when LW =>
+                v.regWrData := r.memReadData;
+              when LBU =>
+                case r.aluResult(1 downto 0) is
+                  when "00" =>
+                    v.regWrData := std_logic_vector(resize(unsigned(r.memReadData(7 downto 0)), XLEN));
+                  when "01" =>
+                    v.regWrData := std_logic_vector(resize(unsigned(r.memReadData(15 downto 8)), XLEN));
+                  when "10" =>
+                    v.regWrData := std_logic_vector(resize(unsigned(r.memReadData(23 downto 16)), XLEN));
+                  when "11" =>
+                    v.regWrData := std_logic_vector(resize(unsigned(r.memReadData(31 downto 24)), XLEN));
+                  when others            =>
+                    v.regWrData := (others => '0');
+                end case;
+              when LHU =>
+                if r.aluResult(1) then
+                  v.regWrData := std_logic_vector(resize(unsigned(r.memReadData(31 downto 16)), XLEN));
+                else
+                  v.regWrData := std_logic_vector(resize(unsigned(r.memReadData(15 downto 0)), XLEN));
+                end if;
+              when others =>
+                null;
+            end case;
+          when ALU_SRC           => v.regWrData       := r.aluResult;
+          when IMMEDIATE_SRC     => v.regWrData := r.immediate;
+          when SUCC_PC_SRC       => v.regWrData   := r.successivePc;
+          when CSR_SRC           => v.regWrData       := r.csrRdData;
+          when others            =>
+            v.regWrData := (others => '0');
+        end case;
+
+        v.stage := FETCH;
+      when HALTED =>
+        -- do nothing
+      when TRAPPED =>
+        -- do nothing
+    end case;
+
+    if reset then
+      v := REG_INIT_C;
+    end if;
+
+    -- set nextstate
+    rin <= v;
+
+    -- update outputs
+    halt <= '1' when r.stage = HALTED else
+      '0';
+    trap <= '1' when r.stage = TRAPPED else
+      '0';
+    axiReadMaster  <= r.axiReadMaster;
+    axiWriteMaster <= r.axiWriteMaster;
+  end process;
+
+  process (clk)
+  begin
+    if rising_edge(clk) then
+      r <= rin after TPD_G;
+    end if;
+  end process;
+
+  Registers_inst : entity work.Registers
+    port map
+    (
+      clk       => clk,
+      reset     => reset,
+      rs1       => r.rs1,
+      rs1Value  => rs1Value,
+      rs2       => r.rs2,
+      rs2Value  => rs2Value,
+      wr_addr   => r.regWrAddr,
+      wr_data   => r.regWrData,
+      wr_strobe => r.regWrStrobe
+    );
+
+  InstructionDecoder_inst : entity work.InstructionDecoder
+    port map
+    (
+      instructionType => instType,
+      instruction     => axiReadSlave.rdata,
+      immediate       => immediate,
+      rs1             => rs1,
+      rs2             => rs2,
+      rd              => rd
+    );
+
+  Csr_inst : entity work.Csr
+    port map
+    (
+      clk              => clk,
+      reset            => reset,
+      currentPrivilege => r.currentPrivilege,
+      req              => r.csrReq,
+      op               => r.csrOp,
+      addr             => r.csrAddr,
+      wrData           => r.csrWrData,
+      rdData           => csrRdData,
+      illegalAccess    => csrIllegalAccess,
+      hwif_in          => csrHwIn,
+      hwif_out         => csrHwOut
+    );
+
+end architecture;
