@@ -127,8 +127,8 @@ Don't override. Generated from: CsrRegisters
 
 |Bits|Identifier|Access|Reset|Name|
 |----|----------|------|-----|----|
-| 1:0|   mode   |   r  | 0x0 |  — |
-|31:2|   base   |   r  | 0x0 |  — |
+| 1:0|   mode   |  rw  | 0x0 |  — |
+|31:2|   base   |  rw  | 0x0 |  — |
 
 ### mstatush register
 

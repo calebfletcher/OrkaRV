@@ -131,6 +131,7 @@ addrmap CsrRegisters {
     } mie @ 0x304 << 2;
     
     reg {
+        default sw = rw;
         field {} mode[2] = 0;
         field {} base[30] = 0;
     } mtvec @ 0x305 << 2;

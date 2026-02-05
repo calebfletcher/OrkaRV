@@ -9,1374 +9,1440 @@ use work.csrif_pkg.all;
 use work.reg_utils.all;
 
 entity CsrRegisters is
-  port (
-    clk : in std_logic;
-    rst : in std_logic;
+    port (
+        clk : in std_logic;
+        rst : in std_logic;
 
-    s_cpuif_req          : in std_logic;
-    s_cpuif_req_op       : in csr_access_op;
-    s_cpuif_addr         : in std_logic_vector(13 downto 0);
-    s_cpuif_wr_data      : in std_logic_vector(31 downto 0);
-    s_cpuif_wr_biten     : in std_logic_vector(31 downto 0);
-    s_cpuif_req_stall_wr : out std_logic;
-    s_cpuif_req_stall_rd : out std_logic;
-    s_cpuif_rd_ack       : out std_logic;
-    s_cpuif_rd_err       : out std_logic;
-    s_cpuif_rd_data      : out std_logic_vector(31 downto 0);
-    s_cpuif_wr_ack       : out std_logic;
-    s_cpuif_wr_err       : out std_logic;
+        s_cpuif_req : in std_logic;
+        s_cpuif_req_op : in csr_access_op;
+        s_cpuif_addr : in std_logic_vector(13 downto 0);
+        s_cpuif_wr_data : in std_logic_vector(31 downto 0);
+        s_cpuif_wr_biten : in std_logic_vector(31 downto 0);
+        s_cpuif_req_stall_wr : out std_logic;
+        s_cpuif_req_stall_rd : out std_logic;
+        s_cpuif_rd_ack : out std_logic;
+        s_cpuif_rd_err : out std_logic;
+        s_cpuif_rd_data : out std_logic_vector(31 downto 0);
+        s_cpuif_wr_ack : out std_logic;
+        s_cpuif_wr_err : out std_logic;
 
-    hwif_in  : in CsrRegisters_in_t;
-    hwif_out : out CsrRegisters_out_t
-  );
+        hwif_in : in CsrRegisters_in_t;
+        hwif_out : out CsrRegisters_out_t
+    );
 end entity CsrRegisters;
 
 architecture rtl of CsrRegisters is
-  ----------------------------------------------------------------------------
-  -- CPU Bus interface signals
-  ----------------------------------------------------------------------------
-  signal cpuif_req          : std_logic;
-  signal cpuif_req_op       : csr_access_op;
-  signal cpuif_addr         : std_logic_vector(13 downto 0);
-  signal cpuif_wr_data      : std_logic_vector(31 downto 0);
-  signal cpuif_wr_biten     : std_logic_vector(31 downto 0);
-  signal cpuif_req_stall_wr : std_logic;
-  signal cpuif_req_stall_rd : std_logic;
-
-  signal cpuif_rd_ack  : std_logic;
-  signal cpuif_rd_err  : std_logic;
-  signal cpuif_rd_data : std_logic_vector(31 downto 0);
-
-  signal cpuif_wr_ack : std_logic;
-  signal cpuif_wr_err : std_logic;
-
-  signal cpuif_req_masked : std_logic;
-
-  ----------------------------------------------------------------------------
-  -- Address Decode Signals
-  ----------------------------------------------------------------------------
-  type decoded_reg_strb_t is record
-    mstatus    : std_logic;
-    misa       : std_logic;
-    medeleg    : std_logic;
-    mideleg    : std_logic;
-    mie        : std_logic;
-    mtvec      : std_logic;
-    mstatush   : std_logic;
-    medelegh   : std_logic;
-    mscratch   : std_logic;
-    mepc       : std_logic;
-    mcause     : std_logic;
-    mtval      : std_logic;
-    mip        : std_logic;
-    mvendorid  : std_logic;
-    marchid    : std_logic;
-    mimpid     : std_logic;
-    mhartid    : std_logic;
-    mconfigptr : std_logic;
-  end record;
-  signal decoded_reg_strb : decoded_reg_strb_t;
-  signal decoded_err      : std_logic;
-  signal decoded_req      : std_logic;
-  signal decoded_req_op   : csr_access_op;
-  signal decoded_wr_data  : std_logic_vector(31 downto 0);
-  signal decoded_wr_biten : std_logic_vector(31 downto 0);
-
-  ----------------------------------------------------------------------------
-  -- Field Logic Signals
-  ----------------------------------------------------------------------------
-  -- Field Combinational Signals
-  type \CsrRegisters.mstatus.sie_combo_t\ is record
-  next_q    : std_logic;
-  load_next : std_logic;
-end record;
-
-type \CsrRegisters.mstatus.mie_combo_t\ is record
-next_q    : std_logic;
-load_next : std_logic;
-end record;
-
-type \CsrRegisters.mstatus.spie_combo_t\ is record
-next_q    : std_logic;
-load_next : std_logic;
-end record;
-
-type \CsrRegisters.mstatus.mpie_combo_t\ is record
-next_q    : std_logic;
-load_next : std_logic;
-end record;
-
-type \CsrRegisters.mstatus.spp_combo_t\ is record
-next_q    : std_logic;
-load_next : std_logic;
-end record;
-
-type \CsrRegisters.mstatus.mpp_combo_t\ is record
-next_q    : std_logic_vector(1 downto 0);
-load_next : std_logic;
-end record;
-
-type \CsrRegisters.mstatus_combo_t\ is record
-sie  : \CsrRegisters.mstatus.sie_combo_t\;
-mie  : \CsrRegisters.mstatus.mie_combo_t\;
-spie : \CsrRegisters.mstatus.spie_combo_t\;
-mpie : \CsrRegisters.mstatus.mpie_combo_t\;
-spp  : \CsrRegisters.mstatus.spp_combo_t\;
-mpp  : \CsrRegisters.mstatus.mpp_combo_t\;
-end record;
-
-type \CsrRegisters.mie.msie_combo_t\ is record
-next_q    : std_logic;
-load_next : std_logic;
-end record;
-
-type \CsrRegisters.mie.mtie_combo_t\ is record
-next_q    : std_logic;
-load_next : std_logic;
-end record;
-
-type \CsrRegisters.mie.meie_combo_t\ is record
-next_q    : std_logic;
-load_next : std_logic;
-end record;
-
-type \CsrRegisters.mie_combo_t\ is record
-msie : \CsrRegisters.mie.msie_combo_t\;
-mtie : \CsrRegisters.mie.mtie_combo_t\;
-meie : \CsrRegisters.mie.meie_combo_t\;
-end record;
-
-type \CsrRegisters.mstatush.gva_combo_t\ is record
-next_q    : std_logic;
-load_next : std_logic;
-end record;
-
-type \CsrRegisters.mstatush.mpv_combo_t\ is record
-next_q    : std_logic;
-load_next : std_logic;
-end record;
-
-type \CsrRegisters.mstatush.mpelp_combo_t\ is record
-next_q    : std_logic;
-load_next : std_logic;
-end record;
-
-type \CsrRegisters.mstatush.mdt_combo_t\ is record
-next_q    : std_logic;
-load_next : std_logic;
-end record;
-
-type \CsrRegisters.mstatush_combo_t\ is record
-gva   : \CsrRegisters.mstatush.gva_combo_t\;
-mpv   : \CsrRegisters.mstatush.mpv_combo_t\;
-mpelp : \CsrRegisters.mstatush.mpelp_combo_t\;
-mdt   : \CsrRegisters.mstatush.mdt_combo_t\;
-end record;
-
-type \CsrRegisters.mscratch.mscratch_combo_t\ is record
-next_q    : std_logic_vector(31 downto 0);
-load_next : std_logic;
-end record;
-
-type \CsrRegisters.mscratch_combo_t\ is record
-mscratch : \CsrRegisters.mscratch.mscratch_combo_t\;
-end record;
-
-type \CsrRegisters.mepc.mepc_combo_t\ is record
-next_q    : std_logic_vector(31 downto 0);
-load_next : std_logic;
-end record;
-
-type \CsrRegisters.mepc_combo_t\ is record
-mepc : \CsrRegisters.mepc.mepc_combo_t\;
-end record;
-
-type \CsrRegisters.mcause.code_combo_t\ is record
-next_q    : std_logic_vector(30 downto 0);
-load_next : std_logic;
-end record;
-
-type \CsrRegisters.mcause.interrupt_combo_t\ is record
-next_q    : std_logic;
-load_next : std_logic;
-end record;
-
-type \CsrRegisters.mcause_combo_t\ is record
-code      : \CsrRegisters.mcause.code_combo_t\;
-interrupt : \CsrRegisters.mcause.interrupt_combo_t\;
-end record;
-
-type \CsrRegisters.mtval.mtval_combo_t\ is record
-next_q    : std_logic_vector(31 downto 0);
-load_next : std_logic;
-end record;
-
-type \CsrRegisters.mtval_combo_t\ is record
-mtval : \CsrRegisters.mtval.mtval_combo_t\;
-end record;
-
-type \CsrRegisters.mip.msip_combo_t\ is record
-next_q    : std_logic;
-load_next : std_logic;
-end record;
-
-type \CsrRegisters.mip.mtip_combo_t\ is record
-next_q    : std_logic;
-load_next : std_logic;
-end record;
-
-type \CsrRegisters.mip.meip_combo_t\ is record
-next_q    : std_logic;
-load_next : std_logic;
-end record;
-
-type \CsrRegisters.mip_combo_t\ is record
-msip : \CsrRegisters.mip.msip_combo_t\;
-mtip : \CsrRegisters.mip.mtip_combo_t\;
-meip : \CsrRegisters.mip.meip_combo_t\;
-end record;
-
-type field_combo_t is record
-  mstatus  : \CsrRegisters.mstatus_combo_t\;
-  mie      : \CsrRegisters.mie_combo_t\;
-  mstatush : \CsrRegisters.mstatush_combo_t\;
-  mscratch : \CsrRegisters.mscratch_combo_t\;
-  mepc     : \CsrRegisters.mepc_combo_t\;
-  mcause   : \CsrRegisters.mcause_combo_t\;
-  mtval    : \CsrRegisters.mtval_combo_t\;
-  mip      : \CsrRegisters.mip_combo_t\;
-end record;
-signal field_combo : field_combo_t;
-
--- Field Storage Signals
-type \CsrRegisters.mstatus.sie_storage_t\ is record
-value : std_logic;
-end record;
-
-type \CsrRegisters.mstatus.mie_storage_t\ is record
-value : std_logic;
-end record;
-
-type \CsrRegisters.mstatus.spie_storage_t\ is record
-value : std_logic;
-end record;
-
-type \CsrRegisters.mstatus.mpie_storage_t\ is record
-value : std_logic;
-end record;
-
-type \CsrRegisters.mstatus.spp_storage_t\ is record
-value : std_logic;
-end record;
-
-type \CsrRegisters.mstatus.mpp_storage_t\ is record
-value : std_logic_vector(1 downto 0);
-end record;
-
-type \CsrRegisters.mstatus_storage_t\ is record
-sie  : \CsrRegisters.mstatus.sie_storage_t\;
-mie  : \CsrRegisters.mstatus.mie_storage_t\;
-spie : \CsrRegisters.mstatus.spie_storage_t\;
-mpie : \CsrRegisters.mstatus.mpie_storage_t\;
-spp  : \CsrRegisters.mstatus.spp_storage_t\;
-mpp  : \CsrRegisters.mstatus.mpp_storage_t\;
-end record;
-
-type \CsrRegisters.mie.msie_storage_t\ is record
-value : std_logic;
-end record;
-
-type \CsrRegisters.mie.mtie_storage_t\ is record
-value : std_logic;
-end record;
-
-type \CsrRegisters.mie.meie_storage_t\ is record
-value : std_logic;
-end record;
-
-type \CsrRegisters.mie_storage_t\ is record
-msie : \CsrRegisters.mie.msie_storage_t\;
-mtie : \CsrRegisters.mie.mtie_storage_t\;
-meie : \CsrRegisters.mie.meie_storage_t\;
-end record;
-
-type \CsrRegisters.mstatush.gva_storage_t\ is record
-value : std_logic;
-end record;
-
-type \CsrRegisters.mstatush.mpv_storage_t\ is record
-value : std_logic;
-end record;
-
-type \CsrRegisters.mstatush.mpelp_storage_t\ is record
-value : std_logic;
-end record;
-
-type \CsrRegisters.mstatush.mdt_storage_t\ is record
-value : std_logic;
-end record;
-
-type \CsrRegisters.mstatush_storage_t\ is record
-gva   : \CsrRegisters.mstatush.gva_storage_t\;
-mpv   : \CsrRegisters.mstatush.mpv_storage_t\;
-mpelp : \CsrRegisters.mstatush.mpelp_storage_t\;
-mdt   : \CsrRegisters.mstatush.mdt_storage_t\;
-end record;
-
-type \CsrRegisters.mscratch.mscratch_storage_t\ is record
-value : std_logic_vector(31 downto 0);
-end record;
-
-type \CsrRegisters.mscratch_storage_t\ is record
-mscratch : \CsrRegisters.mscratch.mscratch_storage_t\;
-end record;
-
-type \CsrRegisters.mepc.mepc_storage_t\ is record
-value : std_logic_vector(31 downto 0);
-end record;
-
-type \CsrRegisters.mepc_storage_t\ is record
-mepc : \CsrRegisters.mepc.mepc_storage_t\;
-end record;
-
-type \CsrRegisters.mcause.code_storage_t\ is record
-value : std_logic_vector(30 downto 0);
-end record;
-
-type \CsrRegisters.mcause.interrupt_storage_t\ is record
-value : std_logic;
-end record;
-
-type \CsrRegisters.mcause_storage_t\ is record
-code      : \CsrRegisters.mcause.code_storage_t\;
-interrupt : \CsrRegisters.mcause.interrupt_storage_t\;
-end record;
-
-type \CsrRegisters.mtval.mtval_storage_t\ is record
-value : std_logic_vector(31 downto 0);
-end record;
-
-type \CsrRegisters.mtval_storage_t\ is record
-mtval : \CsrRegisters.mtval.mtval_storage_t\;
-end record;
-
-type \CsrRegisters.mip.msip_storage_t\ is record
-value : std_logic;
-end record;
-
-type \CsrRegisters.mip.mtip_storage_t\ is record
-value : std_logic;
-end record;
-
-type \CsrRegisters.mip.meip_storage_t\ is record
-value : std_logic;
-end record;
-
-type \CsrRegisters.mip_storage_t\ is record
-msip : \CsrRegisters.mip.msip_storage_t\;
-mtip : \CsrRegisters.mip.mtip_storage_t\;
-meip : \CsrRegisters.mip.meip_storage_t\;
-end record;
-
-type field_storage_t is record
-  mstatus  : \CsrRegisters.mstatus_storage_t\;
-  mie      : \CsrRegisters.mie_storage_t\;
-  mstatush : \CsrRegisters.mstatush_storage_t\;
-  mscratch : \CsrRegisters.mscratch_storage_t\;
-  mepc     : \CsrRegisters.mepc_storage_t\;
-  mcause   : \CsrRegisters.mcause_storage_t\;
-  mtval    : \CsrRegisters.mtval_storage_t\;
-  mip      : \CsrRegisters.mip_storage_t\;
-end record;
-signal field_storage : field_storage_t;
-
-----------------------------------------------------------------------------
--- Readback Signals
-----------------------------------------------------------------------------
-signal readback_err   : std_logic;
-signal readback_done  : std_logic;
-signal readback_data  : std_logic_vector(31 downto 0);
-signal readback_array : std_logic_vector_array1(0 to 17)(31 downto 0);
+    ----------------------------------------------------------------------------
+    -- CPU Bus interface signals
+    ----------------------------------------------------------------------------
+    signal cpuif_req : std_logic;
+    signal cpuif_req_op : csr_access_op;
+    signal cpuif_addr : std_logic_vector(13 downto 0);
+    signal cpuif_wr_data : std_logic_vector(31 downto 0);
+    signal cpuif_wr_biten : std_logic_vector(31 downto 0);
+    signal cpuif_req_stall_wr : std_logic;
+    signal cpuif_req_stall_rd : std_logic;
+
+    signal cpuif_rd_ack : std_logic;
+    signal cpuif_rd_err : std_logic;
+    signal cpuif_rd_data : std_logic_vector(31 downto 0);
+
+    signal cpuif_wr_ack : std_logic;
+    signal cpuif_wr_err : std_logic;
+
+    signal cpuif_req_masked : std_logic;
+
+    
+
+    ----------------------------------------------------------------------------
+    -- Address Decode Signals
+    ----------------------------------------------------------------------------
+    type decoded_reg_strb_t is record
+        mstatus : std_logic;
+        misa : std_logic;
+        medeleg : std_logic;
+        mideleg : std_logic;
+        mie : std_logic;
+        mtvec : std_logic;
+        mstatush : std_logic;
+        medelegh : std_logic;
+        mscratch : std_logic;
+        mepc : std_logic;
+        mcause : std_logic;
+        mtval : std_logic;
+        mip : std_logic;
+        mvendorid : std_logic;
+        marchid : std_logic;
+        mimpid : std_logic;
+        mhartid : std_logic;
+        mconfigptr : std_logic;
+    end record;
+    signal decoded_reg_strb : decoded_reg_strb_t;
+    signal decoded_err : std_logic;
+    signal decoded_req : std_logic;
+    signal decoded_req_op : csr_access_op;
+    signal decoded_wr_data : std_logic_vector(31 downto 0);
+    signal decoded_wr_biten : std_logic_vector(31 downto 0);
+
+    ----------------------------------------------------------------------------
+    -- Field Logic Signals
+    ----------------------------------------------------------------------------
+    -- Field Combinational Signals
+    type \CsrRegisters.mstatus.sie_combo_t\ is record
+        next_q : std_logic;
+        load_next : std_logic;
+    end record;
+
+    type \CsrRegisters.mstatus.mie_combo_t\ is record
+        next_q : std_logic;
+        load_next : std_logic;
+    end record;
+
+    type \CsrRegisters.mstatus.spie_combo_t\ is record
+        next_q : std_logic;
+        load_next : std_logic;
+    end record;
+
+    type \CsrRegisters.mstatus.mpie_combo_t\ is record
+        next_q : std_logic;
+        load_next : std_logic;
+    end record;
+
+    type \CsrRegisters.mstatus.spp_combo_t\ is record
+        next_q : std_logic;
+        load_next : std_logic;
+    end record;
+
+    type \CsrRegisters.mstatus.mpp_combo_t\ is record
+        next_q : std_logic_vector(1 downto 0);
+        load_next : std_logic;
+    end record;
+
+    type \CsrRegisters.mstatus_combo_t\ is record
+        sie : \CsrRegisters.mstatus.sie_combo_t\;
+        mie : \CsrRegisters.mstatus.mie_combo_t\;
+        spie : \CsrRegisters.mstatus.spie_combo_t\;
+        mpie : \CsrRegisters.mstatus.mpie_combo_t\;
+        spp : \CsrRegisters.mstatus.spp_combo_t\;
+        mpp : \CsrRegisters.mstatus.mpp_combo_t\;
+    end record;
+
+    type \CsrRegisters.mie.msie_combo_t\ is record
+        next_q : std_logic;
+        load_next : std_logic;
+    end record;
+
+    type \CsrRegisters.mie.mtie_combo_t\ is record
+        next_q : std_logic;
+        load_next : std_logic;
+    end record;
+
+    type \CsrRegisters.mie.meie_combo_t\ is record
+        next_q : std_logic;
+        load_next : std_logic;
+    end record;
+
+    type \CsrRegisters.mie_combo_t\ is record
+        msie : \CsrRegisters.mie.msie_combo_t\;
+        mtie : \CsrRegisters.mie.mtie_combo_t\;
+        meie : \CsrRegisters.mie.meie_combo_t\;
+    end record;
+
+    type \CsrRegisters.mtvec.mode_combo_t\ is record
+        next_q : std_logic_vector(1 downto 0);
+        load_next : std_logic;
+    end record;
+
+    type \CsrRegisters.mtvec.base_combo_t\ is record
+        next_q : std_logic_vector(29 downto 0);
+        load_next : std_logic;
+    end record;
+
+    type \CsrRegisters.mtvec_combo_t\ is record
+        mode : \CsrRegisters.mtvec.mode_combo_t\;
+        base : \CsrRegisters.mtvec.base_combo_t\;
+    end record;
+
+    type \CsrRegisters.mstatush.gva_combo_t\ is record
+        next_q : std_logic;
+        load_next : std_logic;
+    end record;
+
+    type \CsrRegisters.mstatush.mpv_combo_t\ is record
+        next_q : std_logic;
+        load_next : std_logic;
+    end record;
+
+    type \CsrRegisters.mstatush.mpelp_combo_t\ is record
+        next_q : std_logic;
+        load_next : std_logic;
+    end record;
+
+    type \CsrRegisters.mstatush.mdt_combo_t\ is record
+        next_q : std_logic;
+        load_next : std_logic;
+    end record;
+
+    type \CsrRegisters.mstatush_combo_t\ is record
+        gva : \CsrRegisters.mstatush.gva_combo_t\;
+        mpv : \CsrRegisters.mstatush.mpv_combo_t\;
+        mpelp : \CsrRegisters.mstatush.mpelp_combo_t\;
+        mdt : \CsrRegisters.mstatush.mdt_combo_t\;
+    end record;
+
+    type \CsrRegisters.mscratch.mscratch_combo_t\ is record
+        next_q : std_logic_vector(31 downto 0);
+        load_next : std_logic;
+    end record;
+
+    type \CsrRegisters.mscratch_combo_t\ is record
+        mscratch : \CsrRegisters.mscratch.mscratch_combo_t\;
+    end record;
+
+    type \CsrRegisters.mepc.mepc_combo_t\ is record
+        next_q : std_logic_vector(31 downto 0);
+        load_next : std_logic;
+    end record;
+
+    type \CsrRegisters.mepc_combo_t\ is record
+        mepc : \CsrRegisters.mepc.mepc_combo_t\;
+    end record;
+
+    type \CsrRegisters.mcause.code_combo_t\ is record
+        next_q : std_logic_vector(30 downto 0);
+        load_next : std_logic;
+    end record;
+
+    type \CsrRegisters.mcause.interrupt_combo_t\ is record
+        next_q : std_logic;
+        load_next : std_logic;
+    end record;
+
+    type \CsrRegisters.mcause_combo_t\ is record
+        code : \CsrRegisters.mcause.code_combo_t\;
+        interrupt : \CsrRegisters.mcause.interrupt_combo_t\;
+    end record;
+
+    type \CsrRegisters.mtval.mtval_combo_t\ is record
+        next_q : std_logic_vector(31 downto 0);
+        load_next : std_logic;
+    end record;
+
+    type \CsrRegisters.mtval_combo_t\ is record
+        mtval : \CsrRegisters.mtval.mtval_combo_t\;
+    end record;
+
+    type \CsrRegisters.mip.msip_combo_t\ is record
+        next_q : std_logic;
+        load_next : std_logic;
+    end record;
+
+    type \CsrRegisters.mip.mtip_combo_t\ is record
+        next_q : std_logic;
+        load_next : std_logic;
+    end record;
+
+    type \CsrRegisters.mip.meip_combo_t\ is record
+        next_q : std_logic;
+        load_next : std_logic;
+    end record;
+
+    type \CsrRegisters.mip_combo_t\ is record
+        msip : \CsrRegisters.mip.msip_combo_t\;
+        mtip : \CsrRegisters.mip.mtip_combo_t\;
+        meip : \CsrRegisters.mip.meip_combo_t\;
+    end record;
+
+    type field_combo_t is record
+        mstatus : \CsrRegisters.mstatus_combo_t\;
+        mie : \CsrRegisters.mie_combo_t\;
+        mtvec : \CsrRegisters.mtvec_combo_t\;
+        mstatush : \CsrRegisters.mstatush_combo_t\;
+        mscratch : \CsrRegisters.mscratch_combo_t\;
+        mepc : \CsrRegisters.mepc_combo_t\;
+        mcause : \CsrRegisters.mcause_combo_t\;
+        mtval : \CsrRegisters.mtval_combo_t\;
+        mip : \CsrRegisters.mip_combo_t\;
+    end record;
+    signal field_combo : field_combo_t;
+
+    -- Field Storage Signals
+    type \CsrRegisters.mstatus.sie_storage_t\ is record
+        value : std_logic;
+    end record;
+
+    type \CsrRegisters.mstatus.mie_storage_t\ is record
+        value : std_logic;
+    end record;
+
+    type \CsrRegisters.mstatus.spie_storage_t\ is record
+        value : std_logic;
+    end record;
+
+    type \CsrRegisters.mstatus.mpie_storage_t\ is record
+        value : std_logic;
+    end record;
+
+    type \CsrRegisters.mstatus.spp_storage_t\ is record
+        value : std_logic;
+    end record;
+
+    type \CsrRegisters.mstatus.mpp_storage_t\ is record
+        value : std_logic_vector(1 downto 0);
+    end record;
+
+    type \CsrRegisters.mstatus_storage_t\ is record
+        sie : \CsrRegisters.mstatus.sie_storage_t\;
+        mie : \CsrRegisters.mstatus.mie_storage_t\;
+        spie : \CsrRegisters.mstatus.spie_storage_t\;
+        mpie : \CsrRegisters.mstatus.mpie_storage_t\;
+        spp : \CsrRegisters.mstatus.spp_storage_t\;
+        mpp : \CsrRegisters.mstatus.mpp_storage_t\;
+    end record;
+
+    type \CsrRegisters.mie.msie_storage_t\ is record
+        value : std_logic;
+    end record;
+
+    type \CsrRegisters.mie.mtie_storage_t\ is record
+        value : std_logic;
+    end record;
+
+    type \CsrRegisters.mie.meie_storage_t\ is record
+        value : std_logic;
+    end record;
+
+    type \CsrRegisters.mie_storage_t\ is record
+        msie : \CsrRegisters.mie.msie_storage_t\;
+        mtie : \CsrRegisters.mie.mtie_storage_t\;
+        meie : \CsrRegisters.mie.meie_storage_t\;
+    end record;
+
+    type \CsrRegisters.mtvec.mode_storage_t\ is record
+        value : std_logic_vector(1 downto 0);
+    end record;
+
+    type \CsrRegisters.mtvec.base_storage_t\ is record
+        value : std_logic_vector(29 downto 0);
+    end record;
+
+    type \CsrRegisters.mtvec_storage_t\ is record
+        mode : \CsrRegisters.mtvec.mode_storage_t\;
+        base : \CsrRegisters.mtvec.base_storage_t\;
+    end record;
+
+    type \CsrRegisters.mstatush.gva_storage_t\ is record
+        value : std_logic;
+    end record;
+
+    type \CsrRegisters.mstatush.mpv_storage_t\ is record
+        value : std_logic;
+    end record;
+
+    type \CsrRegisters.mstatush.mpelp_storage_t\ is record
+        value : std_logic;
+    end record;
+
+    type \CsrRegisters.mstatush.mdt_storage_t\ is record
+        value : std_logic;
+    end record;
+
+    type \CsrRegisters.mstatush_storage_t\ is record
+        gva : \CsrRegisters.mstatush.gva_storage_t\;
+        mpv : \CsrRegisters.mstatush.mpv_storage_t\;
+        mpelp : \CsrRegisters.mstatush.mpelp_storage_t\;
+        mdt : \CsrRegisters.mstatush.mdt_storage_t\;
+    end record;
+
+    type \CsrRegisters.mscratch.mscratch_storage_t\ is record
+        value : std_logic_vector(31 downto 0);
+    end record;
+
+    type \CsrRegisters.mscratch_storage_t\ is record
+        mscratch : \CsrRegisters.mscratch.mscratch_storage_t\;
+    end record;
+
+    type \CsrRegisters.mepc.mepc_storage_t\ is record
+        value : std_logic_vector(31 downto 0);
+    end record;
+
+    type \CsrRegisters.mepc_storage_t\ is record
+        mepc : \CsrRegisters.mepc.mepc_storage_t\;
+    end record;
+
+    type \CsrRegisters.mcause.code_storage_t\ is record
+        value : std_logic_vector(30 downto 0);
+    end record;
+
+    type \CsrRegisters.mcause.interrupt_storage_t\ is record
+        value : std_logic;
+    end record;
+
+    type \CsrRegisters.mcause_storage_t\ is record
+        code : \CsrRegisters.mcause.code_storage_t\;
+        interrupt : \CsrRegisters.mcause.interrupt_storage_t\;
+    end record;
+
+    type \CsrRegisters.mtval.mtval_storage_t\ is record
+        value : std_logic_vector(31 downto 0);
+    end record;
+
+    type \CsrRegisters.mtval_storage_t\ is record
+        mtval : \CsrRegisters.mtval.mtval_storage_t\;
+    end record;
+
+    type \CsrRegisters.mip.msip_storage_t\ is record
+        value : std_logic;
+    end record;
+
+    type \CsrRegisters.mip.mtip_storage_t\ is record
+        value : std_logic;
+    end record;
+
+    type \CsrRegisters.mip.meip_storage_t\ is record
+        value : std_logic;
+    end record;
+
+    type \CsrRegisters.mip_storage_t\ is record
+        msip : \CsrRegisters.mip.msip_storage_t\;
+        mtip : \CsrRegisters.mip.mtip_storage_t\;
+        meip : \CsrRegisters.mip.meip_storage_t\;
+    end record;
+
+    type field_storage_t is record
+        mstatus : \CsrRegisters.mstatus_storage_t\;
+        mie : \CsrRegisters.mie_storage_t\;
+        mtvec : \CsrRegisters.mtvec_storage_t\;
+        mstatush : \CsrRegisters.mstatush_storage_t\;
+        mscratch : \CsrRegisters.mscratch_storage_t\;
+        mepc : \CsrRegisters.mepc_storage_t\;
+        mcause : \CsrRegisters.mcause_storage_t\;
+        mtval : \CsrRegisters.mtval_storage_t\;
+        mip : \CsrRegisters.mip_storage_t\;
+    end record;
+    signal field_storage : field_storage_t;
+
+    ----------------------------------------------------------------------------
+    -- Readback Signals
+    ----------------------------------------------------------------------------
+    signal readback_err : std_logic;
+    signal readback_done : std_logic;
+    signal readback_data : std_logic_vector(31 downto 0);
+    signal readback_array : std_logic_vector_array1(0 to 17)(31 downto 0);
 
 begin
 
-----------------------------------------------------------------------------
--- CPU Bus interface
-----------------------------------------------------------------------------
-cpuif_req            <= s_cpuif_req;
-cpuif_req_op         <= s_cpuif_req_op;
-cpuif_addr           <= s_cpuif_addr;
-cpuif_wr_data        <= s_cpuif_wr_data;
-cpuif_wr_biten       <= s_cpuif_wr_biten;
-s_cpuif_req_stall_wr <= cpuif_req_stall_wr;
-s_cpuif_req_stall_rd <= cpuif_req_stall_rd;
-s_cpuif_rd_ack       <= cpuif_rd_ack;
-s_cpuif_rd_err       <= cpuif_rd_err;
-s_cpuif_rd_data      <= cpuif_rd_data;
-s_cpuif_wr_ack       <= cpuif_wr_ack;
-s_cpuif_wr_err       <= cpuif_wr_err;
+    ----------------------------------------------------------------------------
+    -- CPU Bus interface
+    ----------------------------------------------------------------------------
+    cpuif_req <= s_cpuif_req;
+    cpuif_req_op <= s_cpuif_req_op;
+    cpuif_addr <= s_cpuif_addr;
+    cpuif_wr_data <= s_cpuif_wr_data;
+    cpuif_wr_biten <= s_cpuif_wr_biten;
+    s_cpuif_req_stall_wr <= cpuif_req_stall_wr;
+    s_cpuif_req_stall_rd <= cpuif_req_stall_rd;
+    s_cpuif_rd_ack <= cpuif_rd_ack;
+    s_cpuif_rd_err <= cpuif_rd_err;
+    s_cpuif_rd_data <= cpuif_rd_data;
+    s_cpuif_wr_ack <= cpuif_wr_ack;
+    s_cpuif_wr_err <= cpuif_wr_err;
 
--- Read & write latencies are balanced. Stalls not required
-cpuif_req_stall_rd <= '0';
-cpuif_req_stall_wr <= '0';
-cpuif_req_masked   <= cpuif_req;
+    -- Read & write latencies are balanced. Stalls not required
+    cpuif_req_stall_rd <= '0';
+    cpuif_req_stall_wr <= '0';
+    cpuif_req_masked <= cpuif_req;
 
-----------------------------------------------------------------------------
--- Address Decode
-----------------------------------------------------------------------------
-process (all)
-  -- overload "=" in this scope to avoid lots of type casts
-  function "="(L : std_logic_vector; R : integer) return std_logic is
-    variable result : std_logic;
-  begin
-    result := '1' when unsigned(L) = R else
-      '0';
-    return result;
-  end;
-  variable is_valid_addr : std_logic;
-  variable is_invalid_rw : std_logic;
-begin
-  is_valid_addr := '1'; -- No error checking on valid address access
-  is_invalid_rw := '0';
-  decoded_reg_strb.mstatus    <= cpuif_req_masked and (cpuif_addr = 16#C00#);
-  decoded_reg_strb.misa       <= cpuif_req_masked and (cpuif_addr = 16#C04#) and to_std_logic(cpuif_req_op = OP_READ);
-  decoded_reg_strb.medeleg    <= cpuif_req_masked and (cpuif_addr = 16#C08#) and to_std_logic(cpuif_req_op = OP_READ);
-  decoded_reg_strb.mideleg    <= cpuif_req_masked and (cpuif_addr = 16#C0C#) and to_std_logic(cpuif_req_op = OP_READ);
-  decoded_reg_strb.mie        <= cpuif_req_masked and (cpuif_addr = 16#C10#);
-  decoded_reg_strb.mtvec      <= cpuif_req_masked and (cpuif_addr = 16#C14#) and to_std_logic(cpuif_req_op = OP_READ);
-  decoded_reg_strb.mstatush   <= cpuif_req_masked and (cpuif_addr = 16#C40#);
-  decoded_reg_strb.medelegh   <= cpuif_req_masked and (cpuif_addr = 16#C48#) and to_std_logic(cpuif_req_op = OP_READ);
-  decoded_reg_strb.mscratch   <= cpuif_req_masked and (cpuif_addr = 16#D00#);
-  decoded_reg_strb.mepc       <= cpuif_req_masked and (cpuif_addr = 16#D04#);
-  decoded_reg_strb.mcause     <= cpuif_req_masked and (cpuif_addr = 16#D08#);
-  decoded_reg_strb.mtval      <= cpuif_req_masked and (cpuif_addr = 16#D0C#);
-  decoded_reg_strb.mip        <= cpuif_req_masked and (cpuif_addr = 16#D10#);
-  decoded_reg_strb.mvendorid  <= cpuif_req_masked and (cpuif_addr = 16#3C44#) and to_std_logic(cpuif_req_op = OP_READ);
-  decoded_reg_strb.marchid    <= cpuif_req_masked and (cpuif_addr = 16#3C48#) and to_std_logic(cpuif_req_op = OP_READ);
-  decoded_reg_strb.mimpid     <= cpuif_req_masked and (cpuif_addr = 16#3C4C#) and to_std_logic(cpuif_req_op = OP_READ);
-  decoded_reg_strb.mhartid    <= cpuif_req_masked and (cpuif_addr = 16#3C50#) and to_std_logic(cpuif_req_op = OP_READ);
-  decoded_reg_strb.mconfigptr <= cpuif_req_masked and (cpuif_addr = 16#3C54#) and to_std_logic(cpuif_req_op = OP_READ);
-  decoded_err                 <= (not is_valid_addr or is_invalid_rw) and decoded_req;
-end process;
+    ----------------------------------------------------------------------------
+    -- Address Decode
+    ----------------------------------------------------------------------------
+    process(all)
+        -- overload "=" in this scope to avoid lots of type casts
+        function "="(L: std_logic_vector; R: integer) return std_logic is
+            variable result : std_logic;
+        begin
+            result := '1' when unsigned(L) = R else '0';
+            return result;
+        end;
+        variable is_valid_addr : std_logic;
+        variable is_invalid_rw : std_logic;
+    begin
+        is_valid_addr := '0';
+        is_invalid_rw := '0';
+        decoded_reg_strb.mstatus <= cpuif_req_masked and (cpuif_addr = 16#C00#);
+        is_valid_addr := is_valid_addr or (cpuif_req_masked and (cpuif_addr = 16#C00#));
+        is_invalid_rw := is_invalid_rw or ('0');
+        decoded_reg_strb.misa <= cpuif_req_masked and (cpuif_addr = 16#C04#) and to_std_logic(cpuif_req_op = OP_READ);
+        is_valid_addr := is_valid_addr or (cpuif_req_masked and (cpuif_addr = 16#C04#));
+        is_invalid_rw := is_invalid_rw or (cpuif_req_masked and (cpuif_addr = 16#C04#) and to_std_logic(cpuif_req_op /= OP_READ));
+        decoded_reg_strb.medeleg <= cpuif_req_masked and (cpuif_addr = 16#C08#) and to_std_logic(cpuif_req_op = OP_READ);
+        is_valid_addr := is_valid_addr or (cpuif_req_masked and (cpuif_addr = 16#C08#));
+        is_invalid_rw := is_invalid_rw or (cpuif_req_masked and (cpuif_addr = 16#C08#) and to_std_logic(cpuif_req_op /= OP_READ));
+        decoded_reg_strb.mideleg <= cpuif_req_masked and (cpuif_addr = 16#C0C#) and to_std_logic(cpuif_req_op = OP_READ);
+        is_valid_addr := is_valid_addr or (cpuif_req_masked and (cpuif_addr = 16#C0C#));
+        is_invalid_rw := is_invalid_rw or (cpuif_req_masked and (cpuif_addr = 16#C0C#) and to_std_logic(cpuif_req_op /= OP_READ));
+        decoded_reg_strb.mie <= cpuif_req_masked and (cpuif_addr = 16#C10#);
+        is_valid_addr := is_valid_addr or (cpuif_req_masked and (cpuif_addr = 16#C10#));
+        is_invalid_rw := is_invalid_rw or ('0');
+        decoded_reg_strb.mtvec <= cpuif_req_masked and (cpuif_addr = 16#C14#);
+        is_valid_addr := is_valid_addr or (cpuif_req_masked and (cpuif_addr = 16#C14#));
+        is_invalid_rw := is_invalid_rw or ('0');
+        decoded_reg_strb.mstatush <= cpuif_req_masked and (cpuif_addr = 16#C40#);
+        is_valid_addr := is_valid_addr or (cpuif_req_masked and (cpuif_addr = 16#C40#));
+        is_invalid_rw := is_invalid_rw or ('0');
+        decoded_reg_strb.medelegh <= cpuif_req_masked and (cpuif_addr = 16#C48#) and to_std_logic(cpuif_req_op = OP_READ);
+        is_valid_addr := is_valid_addr or (cpuif_req_masked and (cpuif_addr = 16#C48#));
+        is_invalid_rw := is_invalid_rw or (cpuif_req_masked and (cpuif_addr = 16#C48#) and to_std_logic(cpuif_req_op /= OP_READ));
+        decoded_reg_strb.mscratch <= cpuif_req_masked and (cpuif_addr = 16#D00#);
+        is_valid_addr := is_valid_addr or (cpuif_req_masked and (cpuif_addr = 16#D00#));
+        is_invalid_rw := is_invalid_rw or ('0');
+        decoded_reg_strb.mepc <= cpuif_req_masked and (cpuif_addr = 16#D04#);
+        is_valid_addr := is_valid_addr or (cpuif_req_masked and (cpuif_addr = 16#D04#));
+        is_invalid_rw := is_invalid_rw or ('0');
+        decoded_reg_strb.mcause <= cpuif_req_masked and (cpuif_addr = 16#D08#);
+        is_valid_addr := is_valid_addr or (cpuif_req_masked and (cpuif_addr = 16#D08#));
+        is_invalid_rw := is_invalid_rw or ('0');
+        decoded_reg_strb.mtval <= cpuif_req_masked and (cpuif_addr = 16#D0C#);
+        is_valid_addr := is_valid_addr or (cpuif_req_masked and (cpuif_addr = 16#D0C#));
+        is_invalid_rw := is_invalid_rw or ('0');
+        decoded_reg_strb.mip <= cpuif_req_masked and (cpuif_addr = 16#D10#);
+        is_valid_addr := is_valid_addr or (cpuif_req_masked and (cpuif_addr = 16#D10#));
+        is_invalid_rw := is_invalid_rw or ('0');
+        decoded_reg_strb.mvendorid <= cpuif_req_masked and (cpuif_addr = 16#3C44#) and to_std_logic(cpuif_req_op = OP_READ);
+        is_valid_addr := is_valid_addr or (cpuif_req_masked and (cpuif_addr = 16#3C44#));
+        is_invalid_rw := is_invalid_rw or (cpuif_req_masked and (cpuif_addr = 16#3C44#) and to_std_logic(cpuif_req_op /= OP_READ));
+        decoded_reg_strb.marchid <= cpuif_req_masked and (cpuif_addr = 16#3C48#) and to_std_logic(cpuif_req_op = OP_READ);
+        is_valid_addr := is_valid_addr or (cpuif_req_masked and (cpuif_addr = 16#3C48#));
+        is_invalid_rw := is_invalid_rw or (cpuif_req_masked and (cpuif_addr = 16#3C48#) and to_std_logic(cpuif_req_op /= OP_READ));
+        decoded_reg_strb.mimpid <= cpuif_req_masked and (cpuif_addr = 16#3C4C#) and to_std_logic(cpuif_req_op = OP_READ);
+        is_valid_addr := is_valid_addr or (cpuif_req_masked and (cpuif_addr = 16#3C4C#));
+        is_invalid_rw := is_invalid_rw or (cpuif_req_masked and (cpuif_addr = 16#3C4C#) and to_std_logic(cpuif_req_op /= OP_READ));
+        decoded_reg_strb.mhartid <= cpuif_req_masked and (cpuif_addr = 16#3C50#) and to_std_logic(cpuif_req_op = OP_READ);
+        is_valid_addr := is_valid_addr or (cpuif_req_masked and (cpuif_addr = 16#3C50#));
+        is_invalid_rw := is_invalid_rw or (cpuif_req_masked and (cpuif_addr = 16#3C50#) and to_std_logic(cpuif_req_op /= OP_READ));
+        decoded_reg_strb.mconfigptr <= cpuif_req_masked and (cpuif_addr = 16#3C54#) and to_std_logic(cpuif_req_op = OP_READ);
+        is_valid_addr := is_valid_addr or (cpuif_req_masked and (cpuif_addr = 16#3C54#));
+        is_invalid_rw := is_invalid_rw or (cpuif_req_masked and (cpuif_addr = 16#3C54#) and to_std_logic(cpuif_req_op /= OP_READ));
+        decoded_err <= (not is_valid_addr or is_invalid_rw) and decoded_req;
+    end process;
 
--- Pass down signals to next stage
-process (all) begin
-  decoded_req      <= cpuif_req_masked;
-  decoded_req_op   <= cpuif_req_op;
-  decoded_wr_data  <= cpuif_wr_data;
-  decoded_wr_biten <= cpuif_wr_biten;
-end process;
+    -- Pass down signals to next stage
+    process(all) begin
+        decoded_req <= cpuif_req_masked;
+        decoded_req_op <= cpuif_req_op;
+        decoded_wr_data <= cpuif_wr_data;
+        decoded_wr_biten <= cpuif_wr_biten;
+    end process;
 
-----------------------------------------------------------------------------
--- Field logic
-----------------------------------------------------------------------------
+    ----------------------------------------------------------------------------
+    -- Field logic
+    ----------------------------------------------------------------------------
+    
+    -- Field: CsrRegisters.mstatus.sie
+    process(all)
+        variable next_c: std_logic;
+        variable load_next_c: std_logic;
+    begin
+        next_c := field_storage.mstatus.sie.value;
+        load_next_c := '0';
+        if decoded_reg_strb.mstatus and to_std_logic(decoded_req_op = OP_READ_SET) then -- SW write custom 1 set
+            next_c := field_storage.mstatus.sie.value or (decoded_wr_data(1) and decoded_wr_biten(1));
+            load_next_c := '1';
+        elsif decoded_reg_strb.mstatus and to_std_logic(decoded_req_op = OP_READ_CLEAR) then -- SW write custom 1 clear
+            next_c := field_storage.mstatus.sie.value and not (decoded_wr_data(1) and decoded_wr_biten(1));
+            load_next_c := '1';
+        elsif decoded_reg_strb.mstatus and to_std_logic(decoded_req_op = OP_WRITE or decoded_req_op = OP_READ_WRITE) then -- SW write
+            next_c := (field_storage.mstatus.sie.value and not decoded_wr_biten(1)) or (decoded_wr_data(1) and decoded_wr_biten(1));
+            load_next_c := '1';
+        elsif hwif_in.mstatus.sie.we then -- HW Write - we
+            next_c := hwif_in.mstatus.sie.next_q;
+            load_next_c := '1';
+        end if;
+        field_combo.mstatus.sie.next_q <= next_c;
+        field_combo.mstatus.sie.load_next <= load_next_c;
+    end process;
+    process(clk) begin
+        if rising_edge(clk) then
+            if field_combo.mstatus.sie.load_next then
+                field_storage.mstatus.sie.value <= field_combo.mstatus.sie.next_q;
+            end if;
+        end if;
+    end process;
+    hwif_out.mstatus.sie.value <= field_storage.mstatus.sie.value;
 
--- Field: CsrRegisters.mstatus.sie
-process (all)
-  variable next_c      : std_logic;
-  variable load_next_c : std_logic;
-begin
-  next_c      := field_storage.mstatus.sie.value;
-  load_next_c := '0';
-  if decoded_reg_strb.mstatus and to_std_logic(decoded_req_op = OP_READ_SET) then -- SW write custom 1 set
-    next_c      := field_storage.mstatus.sie.value or (decoded_wr_data(1) and decoded_wr_biten(1));
-    load_next_c := '1';
-  elsif decoded_reg_strb.mstatus and to_std_logic(decoded_req_op = OP_READ_CLEAR) then -- SW write custom 1 clear
-    next_c      := field_storage.mstatus.sie.value and not (decoded_wr_data(1) and decoded_wr_biten(1));
-    load_next_c := '1';
-  elsif decoded_reg_strb.mstatus and to_std_logic(decoded_req_op = OP_WRITE or decoded_req_op = OP_READ_WRITE) then -- SW write
-    next_c      := (field_storage.mstatus.sie.value and not decoded_wr_biten(1)) or (decoded_wr_data(1) and decoded_wr_biten(1));
-    load_next_c := '1';
-  elsif hwif_in.mstatus.sie.we then -- HW Write - we
-    next_c      := hwif_in.mstatus.sie.next_q;
-    load_next_c := '1';
-  end if;
-  field_combo.mstatus.sie.next_q    <= next_c;
-  field_combo.mstatus.sie.load_next <= load_next_c;
-end process;
-process (clk) begin
-  if rising_edge(clk) then
-    if field_combo.mstatus.sie.load_next then
-      field_storage.mstatus.sie.value <= field_combo.mstatus.sie.next_q;
-    end if;
-  end if;
-end process;
-hwif_out.mstatus.sie.value <= field_storage.mstatus.sie.value;
+    -- Field: CsrRegisters.mstatus.mie
+    process(all)
+        variable next_c: std_logic;
+        variable load_next_c: std_logic;
+    begin
+        next_c := field_storage.mstatus.mie.value;
+        load_next_c := '0';
+        if decoded_reg_strb.mstatus and to_std_logic(decoded_req_op = OP_READ_SET) then -- SW write custom 1 set
+            next_c := field_storage.mstatus.mie.value or (decoded_wr_data(3) and decoded_wr_biten(3));
+            load_next_c := '1';
+        elsif decoded_reg_strb.mstatus and to_std_logic(decoded_req_op = OP_READ_CLEAR) then -- SW write custom 1 clear
+            next_c := field_storage.mstatus.mie.value and not (decoded_wr_data(3) and decoded_wr_biten(3));
+            load_next_c := '1';
+        elsif decoded_reg_strb.mstatus and to_std_logic(decoded_req_op = OP_WRITE or decoded_req_op = OP_READ_WRITE) then -- SW write
+            next_c := (field_storage.mstatus.mie.value and not decoded_wr_biten(3)) or (decoded_wr_data(3) and decoded_wr_biten(3));
+            load_next_c := '1';
+        elsif hwif_in.mstatus.mie.we then -- HW Write - we
+            next_c := hwif_in.mstatus.mie.next_q;
+            load_next_c := '1';
+        end if;
+        field_combo.mstatus.mie.next_q <= next_c;
+        field_combo.mstatus.mie.load_next <= load_next_c;
+    end process;
+    process(clk) begin
+        if rising_edge(clk) then
+            if field_combo.mstatus.mie.load_next then
+                field_storage.mstatus.mie.value <= field_combo.mstatus.mie.next_q;
+            end if;
+        end if;
+    end process;
+    hwif_out.mstatus.mie.value <= field_storage.mstatus.mie.value;
 
--- Field: CsrRegisters.mstatus.mie
-process (all)
-  variable next_c      : std_logic;
-  variable load_next_c : std_logic;
-begin
-  next_c      := field_storage.mstatus.mie.value;
-  load_next_c := '0';
-  if decoded_reg_strb.mstatus and to_std_logic(decoded_req_op = OP_READ_SET) then -- SW write custom 1 set
-    next_c      := field_storage.mstatus.mie.value or (decoded_wr_data(3) and decoded_wr_biten(3));
-    load_next_c := '1';
-  elsif decoded_reg_strb.mstatus and to_std_logic(decoded_req_op = OP_READ_CLEAR) then -- SW write custom 1 clear
-    next_c      := field_storage.mstatus.mie.value and not (decoded_wr_data(3) and decoded_wr_biten(3));
-    load_next_c := '1';
-  elsif decoded_reg_strb.mstatus and to_std_logic(decoded_req_op = OP_WRITE or decoded_req_op = OP_READ_WRITE) then -- SW write
-    next_c      := (field_storage.mstatus.mie.value and not decoded_wr_biten(3)) or (decoded_wr_data(3) and decoded_wr_biten(3));
-    load_next_c := '1';
-  elsif hwif_in.mstatus.mie.we then -- HW Write - we
-    next_c      := hwif_in.mstatus.mie.next_q;
-    load_next_c := '1';
-  end if;
-  field_combo.mstatus.mie.next_q    <= next_c;
-  field_combo.mstatus.mie.load_next <= load_next_c;
-end process;
-process (clk) begin
-  if rising_edge(clk) then
-    if field_combo.mstatus.mie.load_next then
-      field_storage.mstatus.mie.value <= field_combo.mstatus.mie.next_q;
-    end if;
-  end if;
-end process;
-hwif_out.mstatus.mie.value <= field_storage.mstatus.mie.value;
+    -- Field: CsrRegisters.mstatus.spie
+    process(all)
+        variable next_c: std_logic;
+        variable load_next_c: std_logic;
+    begin
+        next_c := field_storage.mstatus.spie.value;
+        load_next_c := '0';
+        if decoded_reg_strb.mstatus and to_std_logic(decoded_req_op = OP_READ_SET) then -- SW write custom 1 set
+            next_c := field_storage.mstatus.spie.value or (decoded_wr_data(5) and decoded_wr_biten(5));
+            load_next_c := '1';
+        elsif decoded_reg_strb.mstatus and to_std_logic(decoded_req_op = OP_READ_CLEAR) then -- SW write custom 1 clear
+            next_c := field_storage.mstatus.spie.value and not (decoded_wr_data(5) and decoded_wr_biten(5));
+            load_next_c := '1';
+        elsif decoded_reg_strb.mstatus and to_std_logic(decoded_req_op = OP_WRITE or decoded_req_op = OP_READ_WRITE) then -- SW write
+            next_c := (field_storage.mstatus.spie.value and not decoded_wr_biten(5)) or (decoded_wr_data(5) and decoded_wr_biten(5));
+            load_next_c := '1';
+        elsif hwif_in.mstatus.spie.we then -- HW Write - we
+            next_c := hwif_in.mstatus.spie.next_q;
+            load_next_c := '1';
+        end if;
+        field_combo.mstatus.spie.next_q <= next_c;
+        field_combo.mstatus.spie.load_next <= load_next_c;
+    end process;
+    process(clk) begin
+        if rising_edge(clk) then
+            if field_combo.mstatus.spie.load_next then
+                field_storage.mstatus.spie.value <= field_combo.mstatus.spie.next_q;
+            end if;
+        end if;
+    end process;
+    hwif_out.mstatus.spie.value <= field_storage.mstatus.spie.value;
+    hwif_out.mstatus.ube.value <= '0';
 
--- Field: CsrRegisters.mstatus.spie
-process (all)
-  variable next_c      : std_logic;
-  variable load_next_c : std_logic;
-begin
-  next_c      := field_storage.mstatus.spie.value;
-  load_next_c := '0';
-  if decoded_reg_strb.mstatus and to_std_logic(decoded_req_op = OP_READ_SET) then -- SW write custom 1 set
-    next_c      := field_storage.mstatus.spie.value or (decoded_wr_data(5) and decoded_wr_biten(5));
-    load_next_c := '1';
-  elsif decoded_reg_strb.mstatus and to_std_logic(decoded_req_op = OP_READ_CLEAR) then -- SW write custom 1 clear
-    next_c      := field_storage.mstatus.spie.value and not (decoded_wr_data(5) and decoded_wr_biten(5));
-    load_next_c := '1';
-  elsif decoded_reg_strb.mstatus and to_std_logic(decoded_req_op = OP_WRITE or decoded_req_op = OP_READ_WRITE) then -- SW write
-    next_c      := (field_storage.mstatus.spie.value and not decoded_wr_biten(5)) or (decoded_wr_data(5) and decoded_wr_biten(5));
-    load_next_c := '1';
-  elsif hwif_in.mstatus.spie.we then -- HW Write - we
-    next_c      := hwif_in.mstatus.spie.next_q;
-    load_next_c := '1';
-  end if;
-  field_combo.mstatus.spie.next_q    <= next_c;
-  field_combo.mstatus.spie.load_next <= load_next_c;
-end process;
-process (clk) begin
-  if rising_edge(clk) then
-    if field_combo.mstatus.spie.load_next then
-      field_storage.mstatus.spie.value <= field_combo.mstatus.spie.next_q;
-    end if;
-  end if;
-end process;
-hwif_out.mstatus.spie.value <= field_storage.mstatus.spie.value;
-hwif_out.mstatus.ube.value  <= '0';
+    -- Field: CsrRegisters.mstatus.mpie
+    process(all)
+        variable next_c: std_logic;
+        variable load_next_c: std_logic;
+    begin
+        next_c := field_storage.mstatus.mpie.value;
+        load_next_c := '0';
+        if decoded_reg_strb.mstatus and to_std_logic(decoded_req_op = OP_READ_SET) then -- SW write custom 1 set
+            next_c := field_storage.mstatus.mpie.value or (decoded_wr_data(7) and decoded_wr_biten(7));
+            load_next_c := '1';
+        elsif decoded_reg_strb.mstatus and to_std_logic(decoded_req_op = OP_READ_CLEAR) then -- SW write custom 1 clear
+            next_c := field_storage.mstatus.mpie.value and not (decoded_wr_data(7) and decoded_wr_biten(7));
+            load_next_c := '1';
+        elsif decoded_reg_strb.mstatus and to_std_logic(decoded_req_op = OP_WRITE or decoded_req_op = OP_READ_WRITE) then -- SW write
+            next_c := (field_storage.mstatus.mpie.value and not decoded_wr_biten(7)) or (decoded_wr_data(7) and decoded_wr_biten(7));
+            load_next_c := '1';
+        elsif hwif_in.mstatus.mpie.we then -- HW Write - we
+            next_c := hwif_in.mstatus.mpie.next_q;
+            load_next_c := '1';
+        end if;
+        field_combo.mstatus.mpie.next_q <= next_c;
+        field_combo.mstatus.mpie.load_next <= load_next_c;
+    end process;
+    process(clk) begin
+        if rising_edge(clk) then
+            if field_combo.mstatus.mpie.load_next then
+                field_storage.mstatus.mpie.value <= field_combo.mstatus.mpie.next_q;
+            end if;
+        end if;
+    end process;
+    hwif_out.mstatus.mpie.value <= field_storage.mstatus.mpie.value;
 
--- Field: CsrRegisters.mstatus.mpie
-process (all)
-  variable next_c      : std_logic;
-  variable load_next_c : std_logic;
-begin
-  next_c      := field_storage.mstatus.mpie.value;
-  load_next_c := '0';
-  if decoded_reg_strb.mstatus and to_std_logic(decoded_req_op = OP_READ_SET) then -- SW write custom 1 set
-    next_c      := field_storage.mstatus.mpie.value or (decoded_wr_data(7) and decoded_wr_biten(7));
-    load_next_c := '1';
-  elsif decoded_reg_strb.mstatus and to_std_logic(decoded_req_op = OP_READ_CLEAR) then -- SW write custom 1 clear
-    next_c      := field_storage.mstatus.mpie.value and not (decoded_wr_data(7) and decoded_wr_biten(7));
-    load_next_c := '1';
-  elsif decoded_reg_strb.mstatus and to_std_logic(decoded_req_op = OP_WRITE or decoded_req_op = OP_READ_WRITE) then -- SW write
-    next_c      := (field_storage.mstatus.mpie.value and not decoded_wr_biten(7)) or (decoded_wr_data(7) and decoded_wr_biten(7));
-    load_next_c := '1';
-  elsif hwif_in.mstatus.mpie.we then -- HW Write - we
-    next_c      := hwif_in.mstatus.mpie.next_q;
-    load_next_c := '1';
-  end if;
-  field_combo.mstatus.mpie.next_q    <= next_c;
-  field_combo.mstatus.mpie.load_next <= load_next_c;
-end process;
-process (clk) begin
-  if rising_edge(clk) then
-    if field_combo.mstatus.mpie.load_next then
-      field_storage.mstatus.mpie.value <= field_combo.mstatus.mpie.next_q;
-    end if;
-  end if;
-end process;
-hwif_out.mstatus.mpie.value <= field_storage.mstatus.mpie.value;
+    -- Field: CsrRegisters.mstatus.spp
+    process(all)
+        variable next_c: std_logic;
+        variable load_next_c: std_logic;
+    begin
+        next_c := field_storage.mstatus.spp.value;
+        load_next_c := '0';
+        if decoded_reg_strb.mstatus and to_std_logic(decoded_req_op = OP_READ_SET) then -- SW write custom 1 set
+            next_c := field_storage.mstatus.spp.value or (decoded_wr_data(8) and decoded_wr_biten(8));
+            load_next_c := '1';
+        elsif decoded_reg_strb.mstatus and to_std_logic(decoded_req_op = OP_READ_CLEAR) then -- SW write custom 1 clear
+            next_c := field_storage.mstatus.spp.value and not (decoded_wr_data(8) and decoded_wr_biten(8));
+            load_next_c := '1';
+        elsif decoded_reg_strb.mstatus and to_std_logic(decoded_req_op = OP_WRITE or decoded_req_op = OP_READ_WRITE) then -- SW write
+            next_c := (field_storage.mstatus.spp.value and not decoded_wr_biten(8)) or (decoded_wr_data(8) and decoded_wr_biten(8));
+            load_next_c := '1';
+        elsif hwif_in.mstatus.spp.we then -- HW Write - we
+            next_c := hwif_in.mstatus.spp.next_q;
+            load_next_c := '1';
+        end if;
+        field_combo.mstatus.spp.next_q <= next_c;
+        field_combo.mstatus.spp.load_next <= load_next_c;
+    end process;
+    process(clk) begin
+        if rising_edge(clk) then
+            if field_combo.mstatus.spp.load_next then
+                field_storage.mstatus.spp.value <= field_combo.mstatus.spp.next_q;
+            end if;
+        end if;
+    end process;
+    hwif_out.mstatus.spp.value <= field_storage.mstatus.spp.value;
+    hwif_out.mstatus.vs.value <= 2x"0";
 
--- Field: CsrRegisters.mstatus.spp
-process (all)
-  variable next_c      : std_logic;
-  variable load_next_c : std_logic;
-begin
-  next_c      := field_storage.mstatus.spp.value;
-  load_next_c := '0';
-  if decoded_reg_strb.mstatus and to_std_logic(decoded_req_op = OP_READ_SET) then -- SW write custom 1 set
-    next_c      := field_storage.mstatus.spp.value or (decoded_wr_data(8) and decoded_wr_biten(8));
-    load_next_c := '1';
-  elsif decoded_reg_strb.mstatus and to_std_logic(decoded_req_op = OP_READ_CLEAR) then -- SW write custom 1 clear
-    next_c      := field_storage.mstatus.spp.value and not (decoded_wr_data(8) and decoded_wr_biten(8));
-    load_next_c := '1';
-  elsif decoded_reg_strb.mstatus and to_std_logic(decoded_req_op = OP_WRITE or decoded_req_op = OP_READ_WRITE) then -- SW write
-    next_c      := (field_storage.mstatus.spp.value and not decoded_wr_biten(8)) or (decoded_wr_data(8) and decoded_wr_biten(8));
-    load_next_c := '1';
-  elsif hwif_in.mstatus.spp.we then -- HW Write - we
-    next_c      := hwif_in.mstatus.spp.next_q;
-    load_next_c := '1';
-  end if;
-  field_combo.mstatus.spp.next_q    <= next_c;
-  field_combo.mstatus.spp.load_next <= load_next_c;
-end process;
-process (clk) begin
-  if rising_edge(clk) then
-    if field_combo.mstatus.spp.load_next then
-      field_storage.mstatus.spp.value <= field_combo.mstatus.spp.next_q;
-    end if;
-  end if;
-end process;
-hwif_out.mstatus.spp.value <= field_storage.mstatus.spp.value;
-hwif_out.mstatus.vs.value  <= 2x"0";
+    -- Field: CsrRegisters.mstatus.mpp
+    process(all)
+        variable next_c: std_logic_vector(1 downto 0);
+        variable load_next_c: std_logic;
+    begin
+        next_c := field_storage.mstatus.mpp.value;
+        load_next_c := '0';
+        if decoded_reg_strb.mstatus and to_std_logic(decoded_req_op = OP_READ_SET) then -- SW write custom 1 set
+            next_c := field_storage.mstatus.mpp.value or (decoded_wr_data(12 downto 11) and decoded_wr_biten(12 downto 11));
+            load_next_c := '1';
+        elsif decoded_reg_strb.mstatus and to_std_logic(decoded_req_op = OP_READ_CLEAR) then -- SW write custom 1 clear
+            next_c := field_storage.mstatus.mpp.value and not (decoded_wr_data(12 downto 11) and decoded_wr_biten(12 downto 11));
+            load_next_c := '1';
+        elsif decoded_reg_strb.mstatus and to_std_logic(decoded_req_op = OP_WRITE or decoded_req_op = OP_READ_WRITE) then -- SW write
+            next_c := (field_storage.mstatus.mpp.value and not decoded_wr_biten(12 downto 11)) or (decoded_wr_data(12 downto 11) and decoded_wr_biten(12 downto 11));
+            load_next_c := '1';
+        elsif hwif_in.mstatus.mpp.we then -- HW Write - we
+            next_c := hwif_in.mstatus.mpp.next_q;
+            load_next_c := '1';
+        end if;
+        field_combo.mstatus.mpp.next_q <= next_c;
+        field_combo.mstatus.mpp.load_next <= load_next_c;
+    end process;
+    process(clk) begin
+        if rising_edge(clk) then
+            if field_combo.mstatus.mpp.load_next then
+                field_storage.mstatus.mpp.value <= field_combo.mstatus.mpp.next_q;
+            end if;
+        end if;
+    end process;
+    hwif_out.mstatus.mpp.value <= field_storage.mstatus.mpp.value;
+    hwif_out.mstatus.fs.value <= 2x"0";
+    hwif_out.mstatus.xs.value <= 2x"0";
+    hwif_out.mstatus.mprv.value <= '0';
+    hwif_out.mstatus.sum.value <= '0';
+    hwif_out.mstatus.mxr.value <= '0';
+    hwif_out.mstatus.tvm.value <= '0';
+    hwif_out.mstatus.tw.value <= '0';
+    hwif_out.mstatus.tsr.value <= '0';
+    hwif_out.mstatus.sd.value <= '0';
+    hwif_out.misa.a.value <= '0';
+    hwif_out.misa.b.value <= '0';
+    hwif_out.misa.c.value <= '0';
+    hwif_out.misa.d.value <= '0';
+    hwif_out.misa.e.value <= '0';
+    hwif_out.misa.f.value <= '0';
+    hwif_out.misa.h.value <= '0';
+    hwif_out.misa.i.value <= '1';
+    hwif_out.misa.m.value <= '0';
+    hwif_out.misa.n.value <= '0';
+    hwif_out.misa.p.value <= '0';
+    hwif_out.misa.q.value <= '0';
+    hwif_out.misa.s.value <= '0';
+    hwif_out.misa.u.value <= '0';
+    hwif_out.misa.v.value <= '0';
+    hwif_out.misa.x.value <= '0';
+    hwif_out.misa.mxl.value <= 2x"1";
+    hwif_out.medeleg.medeleg.value <= 32x"0";
+    hwif_out.mideleg.mideleg.value <= 32x"0";
+    hwif_out.mie.ssie.value <= '0';
 
--- Field: CsrRegisters.mstatus.mpp
-process (all)
-  variable next_c      : std_logic_vector(1 downto 0);
-  variable load_next_c : std_logic;
-begin
-  next_c      := field_storage.mstatus.mpp.value;
-  load_next_c := '0';
-  if decoded_reg_strb.mstatus and to_std_logic(decoded_req_op = OP_READ_SET) then -- SW write custom 1 set
-    next_c      := field_storage.mstatus.mpp.value or (decoded_wr_data(12 downto 11) and decoded_wr_biten(12 downto 11));
-    load_next_c := '1';
-  elsif decoded_reg_strb.mstatus and to_std_logic(decoded_req_op = OP_READ_CLEAR) then -- SW write custom 1 clear
-    next_c      := field_storage.mstatus.mpp.value and not (decoded_wr_data(12 downto 11) and decoded_wr_biten(12 downto 11));
-    load_next_c := '1';
-  elsif decoded_reg_strb.mstatus and to_std_logic(decoded_req_op = OP_WRITE or decoded_req_op = OP_READ_WRITE) then -- SW write
-    next_c      := (field_storage.mstatus.mpp.value and not decoded_wr_biten(12 downto 11)) or (decoded_wr_data(12 downto 11) and decoded_wr_biten(12 downto 11));
-    load_next_c := '1';
-  elsif hwif_in.mstatus.mpp.we then -- HW Write - we
-    next_c      := hwif_in.mstatus.mpp.next_q;
-    load_next_c := '1';
-  end if;
-  field_combo.mstatus.mpp.next_q    <= next_c;
-  field_combo.mstatus.mpp.load_next <= load_next_c;
-end process;
-process (clk) begin
-  if rising_edge(clk) then
-    if field_combo.mstatus.mpp.load_next then
-      field_storage.mstatus.mpp.value <= field_combo.mstatus.mpp.next_q;
-    end if;
-  end if;
-end process;
-hwif_out.mstatus.mpp.value     <= field_storage.mstatus.mpp.value;
-hwif_out.mstatus.fs.value      <= 2x"0";
-hwif_out.mstatus.xs.value      <= 2x"0";
-hwif_out.mstatus.mprv.value    <= '0';
-hwif_out.mstatus.sum.value     <= '0';
-hwif_out.mstatus.mxr.value     <= '0';
-hwif_out.mstatus.tvm.value     <= '0';
-hwif_out.mstatus.tw.value      <= '0';
-hwif_out.mstatus.tsr.value     <= '0';
-hwif_out.mstatus.sd.value      <= '0';
-hwif_out.misa.a.value          <= '0';
-hwif_out.misa.b.value          <= '0';
-hwif_out.misa.c.value          <= '0';
-hwif_out.misa.d.value          <= '0';
-hwif_out.misa.e.value          <= '0';
-hwif_out.misa.f.value          <= '0';
-hwif_out.misa.h.value          <= '0';
-hwif_out.misa.i.value          <= '1';
-hwif_out.misa.m.value          <= '0';
-hwif_out.misa.n.value          <= '0';
-hwif_out.misa.p.value          <= '0';
-hwif_out.misa.q.value          <= '0';
-hwif_out.misa.s.value          <= '0';
-hwif_out.misa.u.value          <= '0';
-hwif_out.misa.v.value          <= '0';
-hwif_out.misa.x.value          <= '0';
-hwif_out.misa.mxl.value        <= 2x"1";
-hwif_out.medeleg.medeleg.value <= 32x"0";
-hwif_out.mideleg.mideleg.value <= 32x"0";
-hwif_out.mie.ssie.value        <= '0';
+    -- Field: CsrRegisters.mie.msie
+    process(all)
+        variable next_c: std_logic;
+        variable load_next_c: std_logic;
+    begin
+        next_c := field_storage.mie.msie.value;
+        load_next_c := '0';
+        if decoded_reg_strb.mie and to_std_logic(decoded_req_op = OP_READ_SET) then -- SW write custom 1 set
+            next_c := field_storage.mie.msie.value or (decoded_wr_data(3) and decoded_wr_biten(3));
+            load_next_c := '1';
+        elsif decoded_reg_strb.mie and to_std_logic(decoded_req_op = OP_READ_CLEAR) then -- SW write custom 1 clear
+            next_c := field_storage.mie.msie.value and not (decoded_wr_data(3) and decoded_wr_biten(3));
+            load_next_c := '1';
+        elsif decoded_reg_strb.mie and to_std_logic(decoded_req_op = OP_WRITE or decoded_req_op = OP_READ_WRITE) then -- SW write
+            next_c := (field_storage.mie.msie.value and not decoded_wr_biten(3)) or (decoded_wr_data(3) and decoded_wr_biten(3));
+            load_next_c := '1';
+        end if;
+        field_combo.mie.msie.next_q <= next_c;
+        field_combo.mie.msie.load_next <= load_next_c;
+    end process;
+    process(clk) begin
+        if rising_edge(clk) then
+            if field_combo.mie.msie.load_next then
+                field_storage.mie.msie.value <= field_combo.mie.msie.next_q;
+            end if;
+        end if;
+    end process;
+    hwif_out.mie.msie.value <= field_storage.mie.msie.value;
+    hwif_out.mie.stie.value <= '0';
 
--- Field: CsrRegisters.mie.msie
-process (all)
-  variable next_c      : std_logic;
-  variable load_next_c : std_logic;
-begin
-  next_c      := field_storage.mie.msie.value;
-  load_next_c := '0';
-  if decoded_reg_strb.mie and to_std_logic(decoded_req_op = OP_READ_SET) then -- SW write custom 1 set
-    next_c      := field_storage.mie.msie.value or (decoded_wr_data(3) and decoded_wr_biten(3));
-    load_next_c := '1';
-  elsif decoded_reg_strb.mie and to_std_logic(decoded_req_op = OP_READ_CLEAR) then -- SW write custom 1 clear
-    next_c      := field_storage.mie.msie.value and not (decoded_wr_data(3) and decoded_wr_biten(3));
-    load_next_c := '1';
-  elsif decoded_reg_strb.mie and to_std_logic(decoded_req_op = OP_WRITE or decoded_req_op = OP_READ_WRITE) then -- SW write
-    next_c      := (field_storage.mie.msie.value and not decoded_wr_biten(3)) or (decoded_wr_data(3) and decoded_wr_biten(3));
-    load_next_c := '1';
-  end if;
-  field_combo.mie.msie.next_q    <= next_c;
-  field_combo.mie.msie.load_next <= load_next_c;
-end process;
-process (clk) begin
-  if rising_edge(clk) then
-    if field_combo.mie.msie.load_next then
-      field_storage.mie.msie.value <= field_combo.mie.msie.next_q;
-    end if;
-  end if;
-end process;
-hwif_out.mie.msie.value <= field_storage.mie.msie.value;
-hwif_out.mie.stie.value <= '0';
+    -- Field: CsrRegisters.mie.mtie
+    process(all)
+        variable next_c: std_logic;
+        variable load_next_c: std_logic;
+    begin
+        next_c := field_storage.mie.mtie.value;
+        load_next_c := '0';
+        if decoded_reg_strb.mie and to_std_logic(decoded_req_op = OP_READ_SET) then -- SW write custom 1 set
+            next_c := field_storage.mie.mtie.value or (decoded_wr_data(7) and decoded_wr_biten(7));
+            load_next_c := '1';
+        elsif decoded_reg_strb.mie and to_std_logic(decoded_req_op = OP_READ_CLEAR) then -- SW write custom 1 clear
+            next_c := field_storage.mie.mtie.value and not (decoded_wr_data(7) and decoded_wr_biten(7));
+            load_next_c := '1';
+        elsif decoded_reg_strb.mie and to_std_logic(decoded_req_op = OP_WRITE or decoded_req_op = OP_READ_WRITE) then -- SW write
+            next_c := (field_storage.mie.mtie.value and not decoded_wr_biten(7)) or (decoded_wr_data(7) and decoded_wr_biten(7));
+            load_next_c := '1';
+        end if;
+        field_combo.mie.mtie.next_q <= next_c;
+        field_combo.mie.mtie.load_next <= load_next_c;
+    end process;
+    process(clk) begin
+        if rising_edge(clk) then
+            if field_combo.mie.mtie.load_next then
+                field_storage.mie.mtie.value <= field_combo.mie.mtie.next_q;
+            end if;
+        end if;
+    end process;
+    hwif_out.mie.mtie.value <= field_storage.mie.mtie.value;
+    hwif_out.mie.seie.value <= '0';
 
--- Field: CsrRegisters.mie.mtie
-process (all)
-  variable next_c      : std_logic;
-  variable load_next_c : std_logic;
-begin
-  next_c      := field_storage.mie.mtie.value;
-  load_next_c := '0';
-  if decoded_reg_strb.mie and to_std_logic(decoded_req_op = OP_READ_SET) then -- SW write custom 1 set
-    next_c      := field_storage.mie.mtie.value or (decoded_wr_data(7) and decoded_wr_biten(7));
-    load_next_c := '1';
-  elsif decoded_reg_strb.mie and to_std_logic(decoded_req_op = OP_READ_CLEAR) then -- SW write custom 1 clear
-    next_c      := field_storage.mie.mtie.value and not (decoded_wr_data(7) and decoded_wr_biten(7));
-    load_next_c := '1';
-  elsif decoded_reg_strb.mie and to_std_logic(decoded_req_op = OP_WRITE or decoded_req_op = OP_READ_WRITE) then -- SW write
-    next_c      := (field_storage.mie.mtie.value and not decoded_wr_biten(7)) or (decoded_wr_data(7) and decoded_wr_biten(7));
-    load_next_c := '1';
-  end if;
-  field_combo.mie.mtie.next_q    <= next_c;
-  field_combo.mie.mtie.load_next <= load_next_c;
-end process;
-process (clk) begin
-  if rising_edge(clk) then
-    if field_combo.mie.mtie.load_next then
-      field_storage.mie.mtie.value <= field_combo.mie.mtie.next_q;
-    end if;
-  end if;
-end process;
-hwif_out.mie.mtie.value <= field_storage.mie.mtie.value;
-hwif_out.mie.seie.value <= '0';
+    -- Field: CsrRegisters.mie.meie
+    process(all)
+        variable next_c: std_logic;
+        variable load_next_c: std_logic;
+    begin
+        next_c := field_storage.mie.meie.value;
+        load_next_c := '0';
+        if decoded_reg_strb.mie and to_std_logic(decoded_req_op = OP_READ_SET) then -- SW write custom 1 set
+            next_c := field_storage.mie.meie.value or (decoded_wr_data(11) and decoded_wr_biten(11));
+            load_next_c := '1';
+        elsif decoded_reg_strb.mie and to_std_logic(decoded_req_op = OP_READ_CLEAR) then -- SW write custom 1 clear
+            next_c := field_storage.mie.meie.value and not (decoded_wr_data(11) and decoded_wr_biten(11));
+            load_next_c := '1';
+        elsif decoded_reg_strb.mie and to_std_logic(decoded_req_op = OP_WRITE or decoded_req_op = OP_READ_WRITE) then -- SW write
+            next_c := (field_storage.mie.meie.value and not decoded_wr_biten(11)) or (decoded_wr_data(11) and decoded_wr_biten(11));
+            load_next_c := '1';
+        end if;
+        field_combo.mie.meie.next_q <= next_c;
+        field_combo.mie.meie.load_next <= load_next_c;
+    end process;
+    process(clk) begin
+        if rising_edge(clk) then
+            if field_combo.mie.meie.load_next then
+                field_storage.mie.meie.value <= field_combo.mie.meie.next_q;
+            end if;
+        end if;
+    end process;
+    hwif_out.mie.meie.value <= field_storage.mie.meie.value;
 
--- Field: CsrRegisters.mie.meie
-process (all)
-  variable next_c      : std_logic;
-  variable load_next_c : std_logic;
-begin
-  next_c      := field_storage.mie.meie.value;
-  load_next_c := '0';
-  if decoded_reg_strb.mie and to_std_logic(decoded_req_op = OP_READ_SET) then -- SW write custom 1 set
-    next_c      := field_storage.mie.meie.value or (decoded_wr_data(11) and decoded_wr_biten(11));
-    load_next_c := '1';
-  elsif decoded_reg_strb.mie and to_std_logic(decoded_req_op = OP_READ_CLEAR) then -- SW write custom 1 clear
-    next_c      := field_storage.mie.meie.value and not (decoded_wr_data(11) and decoded_wr_biten(11));
-    load_next_c := '1';
-  elsif decoded_reg_strb.mie and to_std_logic(decoded_req_op = OP_WRITE or decoded_req_op = OP_READ_WRITE) then -- SW write
-    next_c      := (field_storage.mie.meie.value and not decoded_wr_biten(11)) or (decoded_wr_data(11) and decoded_wr_biten(11));
-    load_next_c := '1';
-  end if;
-  field_combo.mie.meie.next_q    <= next_c;
-  field_combo.mie.meie.load_next <= load_next_c;
-end process;
-process (clk) begin
-  if rising_edge(clk) then
-    if field_combo.mie.meie.load_next then
-      field_storage.mie.meie.value <= field_combo.mie.meie.next_q;
-    end if;
-  end if;
-end process;
-hwif_out.mie.meie.value     <= field_storage.mie.meie.value;
-hwif_out.mtvec.mode.value   <= 2x"0";
-hwif_out.mtvec.base.value   <= 30x"0";
-hwif_out.mstatush.sbe.value <= '0';
-hwif_out.mstatush.mbe.value <= '0';
+    -- Field: CsrRegisters.mtvec.mode
+    process(all)
+        variable next_c: std_logic_vector(1 downto 0);
+        variable load_next_c: std_logic;
+    begin
+        next_c := field_storage.mtvec.mode.value;
+        load_next_c := '0';
+        if decoded_reg_strb.mtvec and to_std_logic(decoded_req_op = OP_READ_SET) then -- SW write custom 1 set
+            next_c := field_storage.mtvec.mode.value or (decoded_wr_data(1 downto 0) and decoded_wr_biten(1 downto 0));
+            load_next_c := '1';
+        elsif decoded_reg_strb.mtvec and to_std_logic(decoded_req_op = OP_READ_CLEAR) then -- SW write custom 1 clear
+            next_c := field_storage.mtvec.mode.value and not (decoded_wr_data(1 downto 0) and decoded_wr_biten(1 downto 0));
+            load_next_c := '1';
+        elsif decoded_reg_strb.mtvec and to_std_logic(decoded_req_op = OP_WRITE or decoded_req_op = OP_READ_WRITE) then -- SW write
+            next_c := (field_storage.mtvec.mode.value and not decoded_wr_biten(1 downto 0)) or (decoded_wr_data(1 downto 0) and decoded_wr_biten(1 downto 0));
+            load_next_c := '1';
+        end if;
+        field_combo.mtvec.mode.next_q <= next_c;
+        field_combo.mtvec.mode.load_next <= load_next_c;
+    end process;
+    process(clk) begin
+        if false then -- async reset
+            field_storage.mtvec.mode.value <= 2x"0";
+        elsif rising_edge(clk) then
+            if rst then -- sync reset
+                field_storage.mtvec.mode.value <= 2x"0";
+            else
+                if field_combo.mtvec.mode.load_next then
+                    field_storage.mtvec.mode.value <= field_combo.mtvec.mode.next_q;
+                end if;
+            end if;
+        end if;
+    end process;
+    hwif_out.mtvec.mode.value <= field_storage.mtvec.mode.value;
 
--- Field: CsrRegisters.mstatush.gva
-process (all)
-  variable next_c      : std_logic;
-  variable load_next_c : std_logic;
-begin
-  next_c      := field_storage.mstatush.gva.value;
-  load_next_c := '0';
-  if decoded_reg_strb.mstatush and to_std_logic(decoded_req_op = OP_READ_SET) then -- SW write custom 1 set
-    next_c      := field_storage.mstatush.gva.value or (decoded_wr_data(6) and decoded_wr_biten(6));
-    load_next_c := '1';
-  elsif decoded_reg_strb.mstatush and to_std_logic(decoded_req_op = OP_READ_CLEAR) then -- SW write custom 1 clear
-    next_c      := field_storage.mstatush.gva.value and not (decoded_wr_data(6) and decoded_wr_biten(6));
-    load_next_c := '1';
-  elsif decoded_reg_strb.mstatush and to_std_logic(decoded_req_op = OP_WRITE or decoded_req_op = OP_READ_WRITE) then -- SW write
-    next_c      := (field_storage.mstatush.gva.value and not decoded_wr_biten(6)) or (decoded_wr_data(6) and decoded_wr_biten(6));
-    load_next_c := '1';
-  end if;
-  field_combo.mstatush.gva.next_q    <= next_c;
-  field_combo.mstatush.gva.load_next <= load_next_c;
-end process;
-process (clk) begin
-  if rising_edge(clk) then
-    if field_combo.mstatush.gva.load_next then
-      field_storage.mstatush.gva.value <= field_combo.mstatush.gva.next_q;
-    end if;
-  end if;
-end process;
-hwif_out.mstatush.gva.value <= field_storage.mstatush.gva.value;
+    -- Field: CsrRegisters.mtvec.base
+    process(all)
+        variable next_c: std_logic_vector(29 downto 0);
+        variable load_next_c: std_logic;
+    begin
+        next_c := field_storage.mtvec.base.value;
+        load_next_c := '0';
+        if decoded_reg_strb.mtvec and to_std_logic(decoded_req_op = OP_READ_SET) then -- SW write custom 1 set
+            next_c := field_storage.mtvec.base.value or (decoded_wr_data(31 downto 2) and decoded_wr_biten(31 downto 2));
+            load_next_c := '1';
+        elsif decoded_reg_strb.mtvec and to_std_logic(decoded_req_op = OP_READ_CLEAR) then -- SW write custom 1 clear
+            next_c := field_storage.mtvec.base.value and not (decoded_wr_data(31 downto 2) and decoded_wr_biten(31 downto 2));
+            load_next_c := '1';
+        elsif decoded_reg_strb.mtvec and to_std_logic(decoded_req_op = OP_WRITE or decoded_req_op = OP_READ_WRITE) then -- SW write
+            next_c := (field_storage.mtvec.base.value and not decoded_wr_biten(31 downto 2)) or (decoded_wr_data(31 downto 2) and decoded_wr_biten(31 downto 2));
+            load_next_c := '1';
+        end if;
+        field_combo.mtvec.base.next_q <= next_c;
+        field_combo.mtvec.base.load_next <= load_next_c;
+    end process;
+    process(clk) begin
+        if false then -- async reset
+            field_storage.mtvec.base.value <= 30x"0";
+        elsif rising_edge(clk) then
+            if rst then -- sync reset
+                field_storage.mtvec.base.value <= 30x"0";
+            else
+                if field_combo.mtvec.base.load_next then
+                    field_storage.mtvec.base.value <= field_combo.mtvec.base.next_q;
+                end if;
+            end if;
+        end if;
+    end process;
+    hwif_out.mtvec.base.value <= field_storage.mtvec.base.value;
+    hwif_out.mstatush.sbe.value <= '0';
+    hwif_out.mstatush.mbe.value <= '0';
 
--- Field: CsrRegisters.mstatush.mpv
-process (all)
-  variable next_c      : std_logic;
-  variable load_next_c : std_logic;
-begin
-  next_c      := field_storage.mstatush.mpv.value;
-  load_next_c := '0';
-  if decoded_reg_strb.mstatush and to_std_logic(decoded_req_op = OP_READ_SET) then -- SW write custom 1 set
-    next_c      := field_storage.mstatush.mpv.value or (decoded_wr_data(7) and decoded_wr_biten(7));
-    load_next_c := '1';
-  elsif decoded_reg_strb.mstatush and to_std_logic(decoded_req_op = OP_READ_CLEAR) then -- SW write custom 1 clear
-    next_c      := field_storage.mstatush.mpv.value and not (decoded_wr_data(7) and decoded_wr_biten(7));
-    load_next_c := '1';
-  elsif decoded_reg_strb.mstatush and to_std_logic(decoded_req_op = OP_WRITE or decoded_req_op = OP_READ_WRITE) then -- SW write
-    next_c      := (field_storage.mstatush.mpv.value and not decoded_wr_biten(7)) or (decoded_wr_data(7) and decoded_wr_biten(7));
-    load_next_c := '1';
-  end if;
-  field_combo.mstatush.mpv.next_q    <= next_c;
-  field_combo.mstatush.mpv.load_next <= load_next_c;
-end process;
-process (clk) begin
-  if rising_edge(clk) then
-    if field_combo.mstatush.mpv.load_next then
-      field_storage.mstatush.mpv.value <= field_combo.mstatush.mpv.next_q;
-    end if;
-  end if;
-end process;
-hwif_out.mstatush.mpv.value <= field_storage.mstatush.mpv.value;
+    -- Field: CsrRegisters.mstatush.gva
+    process(all)
+        variable next_c: std_logic;
+        variable load_next_c: std_logic;
+    begin
+        next_c := field_storage.mstatush.gva.value;
+        load_next_c := '0';
+        if decoded_reg_strb.mstatush and to_std_logic(decoded_req_op = OP_READ_SET) then -- SW write custom 1 set
+            next_c := field_storage.mstatush.gva.value or (decoded_wr_data(6) and decoded_wr_biten(6));
+            load_next_c := '1';
+        elsif decoded_reg_strb.mstatush and to_std_logic(decoded_req_op = OP_READ_CLEAR) then -- SW write custom 1 clear
+            next_c := field_storage.mstatush.gva.value and not (decoded_wr_data(6) and decoded_wr_biten(6));
+            load_next_c := '1';
+        elsif decoded_reg_strb.mstatush and to_std_logic(decoded_req_op = OP_WRITE or decoded_req_op = OP_READ_WRITE) then -- SW write
+            next_c := (field_storage.mstatush.gva.value and not decoded_wr_biten(6)) or (decoded_wr_data(6) and decoded_wr_biten(6));
+            load_next_c := '1';
+        end if;
+        field_combo.mstatush.gva.next_q <= next_c;
+        field_combo.mstatush.gva.load_next <= load_next_c;
+    end process;
+    process(clk) begin
+        if rising_edge(clk) then
+            if field_combo.mstatush.gva.load_next then
+                field_storage.mstatush.gva.value <= field_combo.mstatush.gva.next_q;
+            end if;
+        end if;
+    end process;
+    hwif_out.mstatush.gva.value <= field_storage.mstatush.gva.value;
 
--- Field: CsrRegisters.mstatush.mpelp
-process (all)
-  variable next_c      : std_logic;
-  variable load_next_c : std_logic;
-begin
-  next_c      := field_storage.mstatush.mpelp.value;
-  load_next_c := '0';
-  if decoded_reg_strb.mstatush and to_std_logic(decoded_req_op = OP_READ_SET) then -- SW write custom 1 set
-    next_c      := field_storage.mstatush.mpelp.value or (decoded_wr_data(9) and decoded_wr_biten(9));
-    load_next_c := '1';
-  elsif decoded_reg_strb.mstatush and to_std_logic(decoded_req_op = OP_READ_CLEAR) then -- SW write custom 1 clear
-    next_c      := field_storage.mstatush.mpelp.value and not (decoded_wr_data(9) and decoded_wr_biten(9));
-    load_next_c := '1';
-  elsif decoded_reg_strb.mstatush and to_std_logic(decoded_req_op = OP_WRITE or decoded_req_op = OP_READ_WRITE) then -- SW write
-    next_c      := (field_storage.mstatush.mpelp.value and not decoded_wr_biten(9)) or (decoded_wr_data(9) and decoded_wr_biten(9));
-    load_next_c := '1';
-  end if;
-  field_combo.mstatush.mpelp.next_q    <= next_c;
-  field_combo.mstatush.mpelp.load_next <= load_next_c;
-end process;
-process (clk) begin
-  if rising_edge(clk) then
-    if field_combo.mstatush.mpelp.load_next then
-      field_storage.mstatush.mpelp.value <= field_combo.mstatush.mpelp.next_q;
-    end if;
-  end if;
-end process;
-hwif_out.mstatush.mpelp.value <= field_storage.mstatush.mpelp.value;
+    -- Field: CsrRegisters.mstatush.mpv
+    process(all)
+        variable next_c: std_logic;
+        variable load_next_c: std_logic;
+    begin
+        next_c := field_storage.mstatush.mpv.value;
+        load_next_c := '0';
+        if decoded_reg_strb.mstatush and to_std_logic(decoded_req_op = OP_READ_SET) then -- SW write custom 1 set
+            next_c := field_storage.mstatush.mpv.value or (decoded_wr_data(7) and decoded_wr_biten(7));
+            load_next_c := '1';
+        elsif decoded_reg_strb.mstatush and to_std_logic(decoded_req_op = OP_READ_CLEAR) then -- SW write custom 1 clear
+            next_c := field_storage.mstatush.mpv.value and not (decoded_wr_data(7) and decoded_wr_biten(7));
+            load_next_c := '1';
+        elsif decoded_reg_strb.mstatush and to_std_logic(decoded_req_op = OP_WRITE or decoded_req_op = OP_READ_WRITE) then -- SW write
+            next_c := (field_storage.mstatush.mpv.value and not decoded_wr_biten(7)) or (decoded_wr_data(7) and decoded_wr_biten(7));
+            load_next_c := '1';
+        end if;
+        field_combo.mstatush.mpv.next_q <= next_c;
+        field_combo.mstatush.mpv.load_next <= load_next_c;
+    end process;
+    process(clk) begin
+        if rising_edge(clk) then
+            if field_combo.mstatush.mpv.load_next then
+                field_storage.mstatush.mpv.value <= field_combo.mstatush.mpv.next_q;
+            end if;
+        end if;
+    end process;
+    hwif_out.mstatush.mpv.value <= field_storage.mstatush.mpv.value;
 
--- Field: CsrRegisters.mstatush.mdt
-process (all)
-  variable next_c      : std_logic;
-  variable load_next_c : std_logic;
-begin
-  next_c      := field_storage.mstatush.mdt.value;
-  load_next_c := '0';
-  if decoded_reg_strb.mstatush and to_std_logic(decoded_req_op = OP_READ_SET) then -- SW write custom 1 set
-    next_c      := field_storage.mstatush.mdt.value or (decoded_wr_data(10) and decoded_wr_biten(10));
-    load_next_c := '1';
-  elsif decoded_reg_strb.mstatush and to_std_logic(decoded_req_op = OP_READ_CLEAR) then -- SW write custom 1 clear
-    next_c      := field_storage.mstatush.mdt.value and not (decoded_wr_data(10) and decoded_wr_biten(10));
-    load_next_c := '1';
-  elsif decoded_reg_strb.mstatush and to_std_logic(decoded_req_op = OP_WRITE or decoded_req_op = OP_READ_WRITE) then -- SW write
-    next_c      := (field_storage.mstatush.mdt.value and not decoded_wr_biten(10)) or (decoded_wr_data(10) and decoded_wr_biten(10));
-    load_next_c := '1';
-  end if;
-  field_combo.mstatush.mdt.next_q    <= next_c;
-  field_combo.mstatush.mdt.load_next <= load_next_c;
-end process;
-process (clk) begin
-  if rising_edge(clk) then
-    if field_combo.mstatush.mdt.load_next then
-      field_storage.mstatush.mdt.value <= field_combo.mstatush.mdt.next_q;
-    end if;
-  end if;
-end process;
-hwif_out.mstatush.mdt.value      <= field_storage.mstatush.mdt.value;
-hwif_out.medelegh.medelegh.value <= 32x"0";
+    -- Field: CsrRegisters.mstatush.mpelp
+    process(all)
+        variable next_c: std_logic;
+        variable load_next_c: std_logic;
+    begin
+        next_c := field_storage.mstatush.mpelp.value;
+        load_next_c := '0';
+        if decoded_reg_strb.mstatush and to_std_logic(decoded_req_op = OP_READ_SET) then -- SW write custom 1 set
+            next_c := field_storage.mstatush.mpelp.value or (decoded_wr_data(9) and decoded_wr_biten(9));
+            load_next_c := '1';
+        elsif decoded_reg_strb.mstatush and to_std_logic(decoded_req_op = OP_READ_CLEAR) then -- SW write custom 1 clear
+            next_c := field_storage.mstatush.mpelp.value and not (decoded_wr_data(9) and decoded_wr_biten(9));
+            load_next_c := '1';
+        elsif decoded_reg_strb.mstatush and to_std_logic(decoded_req_op = OP_WRITE or decoded_req_op = OP_READ_WRITE) then -- SW write
+            next_c := (field_storage.mstatush.mpelp.value and not decoded_wr_biten(9)) or (decoded_wr_data(9) and decoded_wr_biten(9));
+            load_next_c := '1';
+        end if;
+        field_combo.mstatush.mpelp.next_q <= next_c;
+        field_combo.mstatush.mpelp.load_next <= load_next_c;
+    end process;
+    process(clk) begin
+        if rising_edge(clk) then
+            if field_combo.mstatush.mpelp.load_next then
+                field_storage.mstatush.mpelp.value <= field_combo.mstatush.mpelp.next_q;
+            end if;
+        end if;
+    end process;
+    hwif_out.mstatush.mpelp.value <= field_storage.mstatush.mpelp.value;
 
--- Field: CsrRegisters.mscratch.mscratch
-process (all)
-  variable next_c      : std_logic_vector(31 downto 0);
-  variable load_next_c : std_logic;
-begin
-  next_c      := field_storage.mscratch.mscratch.value;
-  load_next_c := '0';
-  if decoded_reg_strb.mscratch and to_std_logic(decoded_req_op = OP_READ_SET) then -- SW write custom 1 set
-    next_c      := field_storage.mscratch.mscratch.value or (decoded_wr_data(31 downto 0) and decoded_wr_biten(31 downto 0));
-    load_next_c := '1';
-  elsif decoded_reg_strb.mscratch and to_std_logic(decoded_req_op = OP_READ_CLEAR) then -- SW write custom 1 clear
-    next_c      := field_storage.mscratch.mscratch.value and not (decoded_wr_data(31 downto 0) and decoded_wr_biten(31 downto 0));
-    load_next_c := '1';
-  elsif decoded_reg_strb.mscratch and to_std_logic(decoded_req_op = OP_WRITE or decoded_req_op = OP_READ_WRITE) then -- SW write
-    next_c      := (field_storage.mscratch.mscratch.value and not decoded_wr_biten(31 downto 0)) or (decoded_wr_data(31 downto 0) and decoded_wr_biten(31 downto 0));
-    load_next_c := '1';
-  end if;
-  field_combo.mscratch.mscratch.next_q    <= next_c;
-  field_combo.mscratch.mscratch.load_next <= load_next_c;
-end process;
-process (clk) begin
-  if false then -- async reset
-    field_storage.mscratch.mscratch.value <= 32x"0";
-  elsif rising_edge(clk) then
-    if rst then -- sync reset
-      field_storage.mscratch.mscratch.value <= 32x"0";
-    else
-      if field_combo.mscratch.mscratch.load_next then
-        field_storage.mscratch.mscratch.value <= field_combo.mscratch.mscratch.next_q;
-      end if;
-    end if;
-  end if;
-end process;
+    -- Field: CsrRegisters.mstatush.mdt
+    process(all)
+        variable next_c: std_logic;
+        variable load_next_c: std_logic;
+    begin
+        next_c := field_storage.mstatush.mdt.value;
+        load_next_c := '0';
+        if decoded_reg_strb.mstatush and to_std_logic(decoded_req_op = OP_READ_SET) then -- SW write custom 1 set
+            next_c := field_storage.mstatush.mdt.value or (decoded_wr_data(10) and decoded_wr_biten(10));
+            load_next_c := '1';
+        elsif decoded_reg_strb.mstatush and to_std_logic(decoded_req_op = OP_READ_CLEAR) then -- SW write custom 1 clear
+            next_c := field_storage.mstatush.mdt.value and not (decoded_wr_data(10) and decoded_wr_biten(10));
+            load_next_c := '1';
+        elsif decoded_reg_strb.mstatush and to_std_logic(decoded_req_op = OP_WRITE or decoded_req_op = OP_READ_WRITE) then -- SW write
+            next_c := (field_storage.mstatush.mdt.value and not decoded_wr_biten(10)) or (decoded_wr_data(10) and decoded_wr_biten(10));
+            load_next_c := '1';
+        end if;
+        field_combo.mstatush.mdt.next_q <= next_c;
+        field_combo.mstatush.mdt.load_next <= load_next_c;
+    end process;
+    process(clk) begin
+        if rising_edge(clk) then
+            if field_combo.mstatush.mdt.load_next then
+                field_storage.mstatush.mdt.value <= field_combo.mstatush.mdt.next_q;
+            end if;
+        end if;
+    end process;
+    hwif_out.mstatush.mdt.value <= field_storage.mstatush.mdt.value;
+    hwif_out.medelegh.medelegh.value <= 32x"0";
 
--- Field: CsrRegisters.mepc.mepc
-process (all)
-  variable next_c      : std_logic_vector(31 downto 0);
-  variable load_next_c : std_logic;
-begin
-  next_c      := field_storage.mepc.mepc.value;
-  load_next_c := '0';
-  if decoded_reg_strb.mepc and to_std_logic(decoded_req_op = OP_READ_SET) then -- SW write custom 1 set
-    next_c      := field_storage.mepc.mepc.value or (decoded_wr_data(31 downto 0) and decoded_wr_biten(31 downto 0));
-    load_next_c := '1';
-  elsif decoded_reg_strb.mepc and to_std_logic(decoded_req_op = OP_READ_CLEAR) then -- SW write custom 1 clear
-    next_c      := field_storage.mepc.mepc.value and not (decoded_wr_data(31 downto 0) and decoded_wr_biten(31 downto 0));
-    load_next_c := '1';
-  elsif decoded_reg_strb.mepc and to_std_logic(decoded_req_op = OP_WRITE or decoded_req_op = OP_READ_WRITE) then -- SW write
-    next_c      := (field_storage.mepc.mepc.value and not decoded_wr_biten(31 downto 0)) or (decoded_wr_data(31 downto 0) and decoded_wr_biten(31 downto 0));
-    load_next_c := '1';
-  elsif hwif_in.mepc.mepc.we then -- HW Write - we
-    next_c      := hwif_in.mepc.mepc.next_q;
-    load_next_c := '1';
-  end if;
-  field_combo.mepc.mepc.next_q    <= next_c;
-  field_combo.mepc.mepc.load_next <= load_next_c;
-end process;
-process (clk) begin
-  if false then -- async reset
-    field_storage.mepc.mepc.value <= 32x"0";
-  elsif rising_edge(clk) then
-    if rst then -- sync reset
-      field_storage.mepc.mepc.value <= 32x"0";
-    else
-      if field_combo.mepc.mepc.load_next then
-        field_storage.mepc.mepc.value <= field_combo.mepc.mepc.next_q;
-      end if;
-    end if;
-  end if;
-end process;
-hwif_out.mepc.mepc.value <= field_storage.mepc.mepc.value;
+    -- Field: CsrRegisters.mscratch.mscratch
+    process(all)
+        variable next_c: std_logic_vector(31 downto 0);
+        variable load_next_c: std_logic;
+    begin
+        next_c := field_storage.mscratch.mscratch.value;
+        load_next_c := '0';
+        if decoded_reg_strb.mscratch and to_std_logic(decoded_req_op = OP_READ_SET) then -- SW write custom 1 set
+            next_c := field_storage.mscratch.mscratch.value or (decoded_wr_data(31 downto 0) and decoded_wr_biten(31 downto 0));
+            load_next_c := '1';
+        elsif decoded_reg_strb.mscratch and to_std_logic(decoded_req_op = OP_READ_CLEAR) then -- SW write custom 1 clear
+            next_c := field_storage.mscratch.mscratch.value and not (decoded_wr_data(31 downto 0) and decoded_wr_biten(31 downto 0));
+            load_next_c := '1';
+        elsif decoded_reg_strb.mscratch and to_std_logic(decoded_req_op = OP_WRITE or decoded_req_op = OP_READ_WRITE) then -- SW write
+            next_c := (field_storage.mscratch.mscratch.value and not decoded_wr_biten(31 downto 0)) or (decoded_wr_data(31 downto 0) and decoded_wr_biten(31 downto 0));
+            load_next_c := '1';
+        end if;
+        field_combo.mscratch.mscratch.next_q <= next_c;
+        field_combo.mscratch.mscratch.load_next <= load_next_c;
+    end process;
+    process(clk) begin
+        if false then -- async reset
+            field_storage.mscratch.mscratch.value <= 32x"0";
+        elsif rising_edge(clk) then
+            if rst then -- sync reset
+                field_storage.mscratch.mscratch.value <= 32x"0";
+            else
+                if field_combo.mscratch.mscratch.load_next then
+                    field_storage.mscratch.mscratch.value <= field_combo.mscratch.mscratch.next_q;
+                end if;
+            end if;
+        end if;
+    end process;
 
--- Field: CsrRegisters.mcause.code
-process (all)
-  variable next_c      : std_logic_vector(30 downto 0);
-  variable load_next_c : std_logic;
-begin
-  next_c      := field_storage.mcause.code.value;
-  load_next_c := '0';
-  if decoded_reg_strb.mcause and to_std_logic(decoded_req_op = OP_READ_SET) then -- SW write custom 1 set
-    next_c      := field_storage.mcause.code.value or (decoded_wr_data(30 downto 0) and decoded_wr_biten(30 downto 0));
-    load_next_c := '1';
-  elsif decoded_reg_strb.mcause and to_std_logic(decoded_req_op = OP_READ_CLEAR) then -- SW write custom 1 clear
-    next_c      := field_storage.mcause.code.value and not (decoded_wr_data(30 downto 0) and decoded_wr_biten(30 downto 0));
-    load_next_c := '1';
-  elsif decoded_reg_strb.mcause and to_std_logic(decoded_req_op = OP_WRITE or decoded_req_op = OP_READ_WRITE) then -- SW write
-    next_c      := (field_storage.mcause.code.value and not decoded_wr_biten(30 downto 0)) or (decoded_wr_data(30 downto 0) and decoded_wr_biten(30 downto 0));
-    load_next_c := '1';
-  elsif hwif_in.mcause.code.we then -- HW Write - we
-    next_c      := hwif_in.mcause.code.next_q;
-    load_next_c := '1';
-  end if;
-  field_combo.mcause.code.next_q    <= next_c;
-  field_combo.mcause.code.load_next <= load_next_c;
-end process;
-process (clk) begin
-  if false then -- async reset
-    field_storage.mcause.code.value <= 31x"0";
-  elsif rising_edge(clk) then
-    if rst then -- sync reset
-      field_storage.mcause.code.value <= 31x"0";
-    else
-      if field_combo.mcause.code.load_next then
-        field_storage.mcause.code.value <= field_combo.mcause.code.next_q;
-      end if;
-    end if;
-  end if;
-end process;
-hwif_out.mcause.code.value <= field_storage.mcause.code.value;
+    -- Field: CsrRegisters.mepc.mepc
+    process(all)
+        variable next_c: std_logic_vector(31 downto 0);
+        variable load_next_c: std_logic;
+    begin
+        next_c := field_storage.mepc.mepc.value;
+        load_next_c := '0';
+        if decoded_reg_strb.mepc and to_std_logic(decoded_req_op = OP_READ_SET) then -- SW write custom 1 set
+            next_c := field_storage.mepc.mepc.value or (decoded_wr_data(31 downto 0) and decoded_wr_biten(31 downto 0));
+            load_next_c := '1';
+        elsif decoded_reg_strb.mepc and to_std_logic(decoded_req_op = OP_READ_CLEAR) then -- SW write custom 1 clear
+            next_c := field_storage.mepc.mepc.value and not (decoded_wr_data(31 downto 0) and decoded_wr_biten(31 downto 0));
+            load_next_c := '1';
+        elsif decoded_reg_strb.mepc and to_std_logic(decoded_req_op = OP_WRITE or decoded_req_op = OP_READ_WRITE) then -- SW write
+            next_c := (field_storage.mepc.mepc.value and not decoded_wr_biten(31 downto 0)) or (decoded_wr_data(31 downto 0) and decoded_wr_biten(31 downto 0));
+            load_next_c := '1';
+        elsif hwif_in.mepc.mepc.we then -- HW Write - we
+            next_c := hwif_in.mepc.mepc.next_q;
+            load_next_c := '1';
+        end if;
+        field_combo.mepc.mepc.next_q <= next_c;
+        field_combo.mepc.mepc.load_next <= load_next_c;
+    end process;
+    process(clk) begin
+        if false then -- async reset
+            field_storage.mepc.mepc.value <= 32x"0";
+        elsif rising_edge(clk) then
+            if rst then -- sync reset
+                field_storage.mepc.mepc.value <= 32x"0";
+            else
+                if field_combo.mepc.mepc.load_next then
+                    field_storage.mepc.mepc.value <= field_combo.mepc.mepc.next_q;
+                end if;
+            end if;
+        end if;
+    end process;
+    hwif_out.mepc.mepc.value <= field_storage.mepc.mepc.value;
 
--- Field: CsrRegisters.mcause.interrupt
-process (all)
-  variable next_c      : std_logic;
-  variable load_next_c : std_logic;
-begin
-  next_c      := field_storage.mcause.interrupt.value;
-  load_next_c := '0';
-  if decoded_reg_strb.mcause and to_std_logic(decoded_req_op = OP_READ_SET) then -- SW write custom 1 set
-    next_c      := field_storage.mcause.interrupt.value or (decoded_wr_data(31) and decoded_wr_biten(31));
-    load_next_c := '1';
-  elsif decoded_reg_strb.mcause and to_std_logic(decoded_req_op = OP_READ_CLEAR) then -- SW write custom 1 clear
-    next_c      := field_storage.mcause.interrupt.value and not (decoded_wr_data(31) and decoded_wr_biten(31));
-    load_next_c := '1';
-  elsif decoded_reg_strb.mcause and to_std_logic(decoded_req_op = OP_WRITE or decoded_req_op = OP_READ_WRITE) then -- SW write
-    next_c      := (field_storage.mcause.interrupt.value and not decoded_wr_biten(31)) or (decoded_wr_data(31) and decoded_wr_biten(31));
-    load_next_c := '1';
-  elsif hwif_in.mcause.interrupt.we then -- HW Write - we
-    next_c      := hwif_in.mcause.interrupt.next_q;
-    load_next_c := '1';
-  end if;
-  field_combo.mcause.interrupt.next_q    <= next_c;
-  field_combo.mcause.interrupt.load_next <= load_next_c;
-end process;
-process (clk) begin
-  if false then -- async reset
-    field_storage.mcause.interrupt.value <= '0';
-  elsif rising_edge(clk) then
-    if rst then -- sync reset
-      field_storage.mcause.interrupt.value <= '0';
-    else
-      if field_combo.mcause.interrupt.load_next then
-        field_storage.mcause.interrupt.value <= field_combo.mcause.interrupt.next_q;
-      end if;
-    end if;
-  end if;
-end process;
-hwif_out.mcause.interrupt.value <= field_storage.mcause.interrupt.value;
+    -- Field: CsrRegisters.mcause.code
+    process(all)
+        variable next_c: std_logic_vector(30 downto 0);
+        variable load_next_c: std_logic;
+    begin
+        next_c := field_storage.mcause.code.value;
+        load_next_c := '0';
+        if decoded_reg_strb.mcause and to_std_logic(decoded_req_op = OP_READ_SET) then -- SW write custom 1 set
+            next_c := field_storage.mcause.code.value or (decoded_wr_data(30 downto 0) and decoded_wr_biten(30 downto 0));
+            load_next_c := '1';
+        elsif decoded_reg_strb.mcause and to_std_logic(decoded_req_op = OP_READ_CLEAR) then -- SW write custom 1 clear
+            next_c := field_storage.mcause.code.value and not (decoded_wr_data(30 downto 0) and decoded_wr_biten(30 downto 0));
+            load_next_c := '1';
+        elsif decoded_reg_strb.mcause and to_std_logic(decoded_req_op = OP_WRITE or decoded_req_op = OP_READ_WRITE) then -- SW write
+            next_c := (field_storage.mcause.code.value and not decoded_wr_biten(30 downto 0)) or (decoded_wr_data(30 downto 0) and decoded_wr_biten(30 downto 0));
+            load_next_c := '1';
+        elsif hwif_in.mcause.code.we then -- HW Write - we
+            next_c := hwif_in.mcause.code.next_q;
+            load_next_c := '1';
+        end if;
+        field_combo.mcause.code.next_q <= next_c;
+        field_combo.mcause.code.load_next <= load_next_c;
+    end process;
+    process(clk) begin
+        if false then -- async reset
+            field_storage.mcause.code.value <= 31x"0";
+        elsif rising_edge(clk) then
+            if rst then -- sync reset
+                field_storage.mcause.code.value <= 31x"0";
+            else
+                if field_combo.mcause.code.load_next then
+                    field_storage.mcause.code.value <= field_combo.mcause.code.next_q;
+                end if;
+            end if;
+        end if;
+    end process;
+    hwif_out.mcause.code.value <= field_storage.mcause.code.value;
 
--- Field: CsrRegisters.mtval.mtval
-process (all)
-  variable next_c      : std_logic_vector(31 downto 0);
-  variable load_next_c : std_logic;
-begin
-  next_c      := field_storage.mtval.mtval.value;
-  load_next_c := '0';
-  if decoded_reg_strb.mtval and to_std_logic(decoded_req_op = OP_READ_SET) then -- SW write custom 1 set
-    next_c      := field_storage.mtval.mtval.value or (decoded_wr_data(31 downto 0) and decoded_wr_biten(31 downto 0));
-    load_next_c := '1';
-  elsif decoded_reg_strb.mtval and to_std_logic(decoded_req_op = OP_READ_CLEAR) then -- SW write custom 1 clear
-    next_c      := field_storage.mtval.mtval.value and not (decoded_wr_data(31 downto 0) and decoded_wr_biten(31 downto 0));
-    load_next_c := '1';
-  elsif decoded_reg_strb.mtval and to_std_logic(decoded_req_op = OP_WRITE or decoded_req_op = OP_READ_WRITE) then -- SW write
-    next_c      := (field_storage.mtval.mtval.value and not decoded_wr_biten(31 downto 0)) or (decoded_wr_data(31 downto 0) and decoded_wr_biten(31 downto 0));
-    load_next_c := '1';
-  elsif hwif_in.mtval.mtval.we then -- HW Write - we
-    next_c      := hwif_in.mtval.mtval.next_q;
-    load_next_c := '1';
-  end if;
-  field_combo.mtval.mtval.next_q    <= next_c;
-  field_combo.mtval.mtval.load_next <= load_next_c;
-end process;
-process (clk) begin
-  if false then -- async reset
-    field_storage.mtval.mtval.value <= 32x"0";
-  elsif rising_edge(clk) then
-    if rst then -- sync reset
-      field_storage.mtval.mtval.value <= 32x"0";
-    else
-      if field_combo.mtval.mtval.load_next then
-        field_storage.mtval.mtval.value <= field_combo.mtval.mtval.next_q;
-      end if;
-    end if;
-  end if;
-end process;
-hwif_out.mtval.mtval.value <= field_storage.mtval.mtval.value;
-hwif_out.mip.ssip.value    <= '0';
+    -- Field: CsrRegisters.mcause.interrupt
+    process(all)
+        variable next_c: std_logic;
+        variable load_next_c: std_logic;
+    begin
+        next_c := field_storage.mcause.interrupt.value;
+        load_next_c := '0';
+        if decoded_reg_strb.mcause and to_std_logic(decoded_req_op = OP_READ_SET) then -- SW write custom 1 set
+            next_c := field_storage.mcause.interrupt.value or (decoded_wr_data(31) and decoded_wr_biten(31));
+            load_next_c := '1';
+        elsif decoded_reg_strb.mcause and to_std_logic(decoded_req_op = OP_READ_CLEAR) then -- SW write custom 1 clear
+            next_c := field_storage.mcause.interrupt.value and not (decoded_wr_data(31) and decoded_wr_biten(31));
+            load_next_c := '1';
+        elsif decoded_reg_strb.mcause and to_std_logic(decoded_req_op = OP_WRITE or decoded_req_op = OP_READ_WRITE) then -- SW write
+            next_c := (field_storage.mcause.interrupt.value and not decoded_wr_biten(31)) or (decoded_wr_data(31) and decoded_wr_biten(31));
+            load_next_c := '1';
+        elsif hwif_in.mcause.interrupt.we then -- HW Write - we
+            next_c := hwif_in.mcause.interrupt.next_q;
+            load_next_c := '1';
+        end if;
+        field_combo.mcause.interrupt.next_q <= next_c;
+        field_combo.mcause.interrupt.load_next <= load_next_c;
+    end process;
+    process(clk) begin
+        if false then -- async reset
+            field_storage.mcause.interrupt.value <= '0';
+        elsif rising_edge(clk) then
+            if rst then -- sync reset
+                field_storage.mcause.interrupt.value <= '0';
+            else
+                if field_combo.mcause.interrupt.load_next then
+                    field_storage.mcause.interrupt.value <= field_combo.mcause.interrupt.next_q;
+                end if;
+            end if;
+        end if;
+    end process;
+    hwif_out.mcause.interrupt.value <= field_storage.mcause.interrupt.value;
 
--- Field: CsrRegisters.mip.msip
-process (all)
-  variable next_c      : std_logic;
-  variable load_next_c : std_logic;
-begin
-  next_c      := field_storage.mip.msip.value;
-  load_next_c := '0';
-  if decoded_reg_strb.mip and to_std_logic(decoded_req_op = OP_READ_SET) then -- SW write custom 1 set
-    next_c      := field_storage.mip.msip.value or (decoded_wr_data(3) and decoded_wr_biten(3));
-    load_next_c := '1';
-  elsif decoded_reg_strb.mip and to_std_logic(decoded_req_op = OP_READ_CLEAR) then -- SW write custom 1 clear
-    next_c      := field_storage.mip.msip.value and not (decoded_wr_data(3) and decoded_wr_biten(3));
-    load_next_c := '1';
-  elsif decoded_reg_strb.mip and to_std_logic(decoded_req_op = OP_WRITE or decoded_req_op = OP_READ_WRITE) then -- SW write
-    next_c      := (field_storage.mip.msip.value and not decoded_wr_biten(3)) or (decoded_wr_data(3) and decoded_wr_biten(3));
-    load_next_c := '1';
-  end if;
-  field_combo.mip.msip.next_q    <= next_c;
-  field_combo.mip.msip.load_next <= load_next_c;
-end process;
-process (clk) begin
-  if rising_edge(clk) then
-    if field_combo.mip.msip.load_next then
-      field_storage.mip.msip.value <= field_combo.mip.msip.next_q;
-    end if;
-  end if;
-end process;
-hwif_out.mip.msip.value <= field_storage.mip.msip.value;
-hwif_out.mip.stip.value <= '0';
+    -- Field: CsrRegisters.mtval.mtval
+    process(all)
+        variable next_c: std_logic_vector(31 downto 0);
+        variable load_next_c: std_logic;
+    begin
+        next_c := field_storage.mtval.mtval.value;
+        load_next_c := '0';
+        if decoded_reg_strb.mtval and to_std_logic(decoded_req_op = OP_READ_SET) then -- SW write custom 1 set
+            next_c := field_storage.mtval.mtval.value or (decoded_wr_data(31 downto 0) and decoded_wr_biten(31 downto 0));
+            load_next_c := '1';
+        elsif decoded_reg_strb.mtval and to_std_logic(decoded_req_op = OP_READ_CLEAR) then -- SW write custom 1 clear
+            next_c := field_storage.mtval.mtval.value and not (decoded_wr_data(31 downto 0) and decoded_wr_biten(31 downto 0));
+            load_next_c := '1';
+        elsif decoded_reg_strb.mtval and to_std_logic(decoded_req_op = OP_WRITE or decoded_req_op = OP_READ_WRITE) then -- SW write
+            next_c := (field_storage.mtval.mtval.value and not decoded_wr_biten(31 downto 0)) or (decoded_wr_data(31 downto 0) and decoded_wr_biten(31 downto 0));
+            load_next_c := '1';
+        elsif hwif_in.mtval.mtval.we then -- HW Write - we
+            next_c := hwif_in.mtval.mtval.next_q;
+            load_next_c := '1';
+        end if;
+        field_combo.mtval.mtval.next_q <= next_c;
+        field_combo.mtval.mtval.load_next <= load_next_c;
+    end process;
+    process(clk) begin
+        if false then -- async reset
+            field_storage.mtval.mtval.value <= 32x"0";
+        elsif rising_edge(clk) then
+            if rst then -- sync reset
+                field_storage.mtval.mtval.value <= 32x"0";
+            else
+                if field_combo.mtval.mtval.load_next then
+                    field_storage.mtval.mtval.value <= field_combo.mtval.mtval.next_q;
+                end if;
+            end if;
+        end if;
+    end process;
+    hwif_out.mtval.mtval.value <= field_storage.mtval.mtval.value;
+    hwif_out.mip.ssip.value <= '0';
 
--- Field: CsrRegisters.mip.mtip
-process (all)
-  variable next_c      : std_logic;
-  variable load_next_c : std_logic;
-begin
-  next_c      := field_storage.mip.mtip.value;
-  load_next_c := '0';
-  if decoded_reg_strb.mip and to_std_logic(decoded_req_op = OP_READ_SET) then -- SW write custom 1 set
-    next_c      := field_storage.mip.mtip.value or (decoded_wr_data(7) and decoded_wr_biten(7));
-    load_next_c := '1';
-  elsif decoded_reg_strb.mip and to_std_logic(decoded_req_op = OP_READ_CLEAR) then -- SW write custom 1 clear
-    next_c      := field_storage.mip.mtip.value and not (decoded_wr_data(7) and decoded_wr_biten(7));
-    load_next_c := '1';
-  elsif decoded_reg_strb.mip and to_std_logic(decoded_req_op = OP_WRITE or decoded_req_op = OP_READ_WRITE) then -- SW write
-    next_c      := (field_storage.mip.mtip.value and not decoded_wr_biten(7)) or (decoded_wr_data(7) and decoded_wr_biten(7));
-    load_next_c := '1';
-  end if;
-  field_combo.mip.mtip.next_q    <= next_c;
-  field_combo.mip.mtip.load_next <= load_next_c;
-end process;
-process (clk) begin
-  if rising_edge(clk) then
-    if field_combo.mip.mtip.load_next then
-      field_storage.mip.mtip.value <= field_combo.mip.mtip.next_q;
-    end if;
-  end if;
-end process;
-hwif_out.mip.mtip.value <= field_storage.mip.mtip.value;
-hwif_out.mip.seip.value <= '0';
+    -- Field: CsrRegisters.mip.msip
+    process(all)
+        variable next_c: std_logic;
+        variable load_next_c: std_logic;
+    begin
+        next_c := field_storage.mip.msip.value;
+        load_next_c := '0';
+        if decoded_reg_strb.mip and to_std_logic(decoded_req_op = OP_READ_SET) then -- SW write custom 1 set
+            next_c := field_storage.mip.msip.value or (decoded_wr_data(3) and decoded_wr_biten(3));
+            load_next_c := '1';
+        elsif decoded_reg_strb.mip and to_std_logic(decoded_req_op = OP_READ_CLEAR) then -- SW write custom 1 clear
+            next_c := field_storage.mip.msip.value and not (decoded_wr_data(3) and decoded_wr_biten(3));
+            load_next_c := '1';
+        elsif decoded_reg_strb.mip and to_std_logic(decoded_req_op = OP_WRITE or decoded_req_op = OP_READ_WRITE) then -- SW write
+            next_c := (field_storage.mip.msip.value and not decoded_wr_biten(3)) or (decoded_wr_data(3) and decoded_wr_biten(3));
+            load_next_c := '1';
+        end if;
+        field_combo.mip.msip.next_q <= next_c;
+        field_combo.mip.msip.load_next <= load_next_c;
+    end process;
+    process(clk) begin
+        if rising_edge(clk) then
+            if field_combo.mip.msip.load_next then
+                field_storage.mip.msip.value <= field_combo.mip.msip.next_q;
+            end if;
+        end if;
+    end process;
+    hwif_out.mip.msip.value <= field_storage.mip.msip.value;
+    hwif_out.mip.stip.value <= '0';
 
--- Field: CsrRegisters.mip.meip
-process (all)
-  variable next_c      : std_logic;
-  variable load_next_c : std_logic;
-begin
-  next_c      := field_storage.mip.meip.value;
-  load_next_c := '0';
-  if decoded_reg_strb.mip and to_std_logic(decoded_req_op = OP_READ_SET) then -- SW write custom 1 set
-    next_c      := field_storage.mip.meip.value or (decoded_wr_data(11) and decoded_wr_biten(11));
-    load_next_c := '1';
-  elsif decoded_reg_strb.mip and to_std_logic(decoded_req_op = OP_READ_CLEAR) then -- SW write custom 1 clear
-    next_c      := field_storage.mip.meip.value and not (decoded_wr_data(11) and decoded_wr_biten(11));
-    load_next_c := '1';
-  elsif decoded_reg_strb.mip and to_std_logic(decoded_req_op = OP_WRITE or decoded_req_op = OP_READ_WRITE) then -- SW write
-    next_c      := (field_storage.mip.meip.value and not decoded_wr_biten(11)) or (decoded_wr_data(11) and decoded_wr_biten(11));
-    load_next_c := '1';
-  end if;
-  field_combo.mip.meip.next_q    <= next_c;
-  field_combo.mip.meip.load_next <= load_next_c;
-end process;
-process (clk) begin
-  if rising_edge(clk) then
-    if field_combo.mip.meip.load_next then
-      field_storage.mip.meip.value <= field_combo.mip.meip.next_q;
-    end if;
-  end if;
-end process;
-hwif_out.mip.meip.value              <= field_storage.mip.meip.value;
-hwif_out.mvendorid.offset.value      <= 7x"0";
-hwif_out.mvendorid.bank.value        <= 25x"0";
-hwif_out.marchid.marchid.value       <= 32x"0";
-hwif_out.mimpid.mimpid.value         <= 32x"0";
-hwif_out.mhartid.mhartid.value       <= 32x"0";
-hwif_out.mconfigptr.mconfigptr.value <= 32x"0";
+    -- Field: CsrRegisters.mip.mtip
+    process(all)
+        variable next_c: std_logic;
+        variable load_next_c: std_logic;
+    begin
+        next_c := field_storage.mip.mtip.value;
+        load_next_c := '0';
+        if decoded_reg_strb.mip and to_std_logic(decoded_req_op = OP_READ_SET) then -- SW write custom 1 set
+            next_c := field_storage.mip.mtip.value or (decoded_wr_data(7) and decoded_wr_biten(7));
+            load_next_c := '1';
+        elsif decoded_reg_strb.mip and to_std_logic(decoded_req_op = OP_READ_CLEAR) then -- SW write custom 1 clear
+            next_c := field_storage.mip.mtip.value and not (decoded_wr_data(7) and decoded_wr_biten(7));
+            load_next_c := '1';
+        elsif decoded_reg_strb.mip and to_std_logic(decoded_req_op = OP_WRITE or decoded_req_op = OP_READ_WRITE) then -- SW write
+            next_c := (field_storage.mip.mtip.value and not decoded_wr_biten(7)) or (decoded_wr_data(7) and decoded_wr_biten(7));
+            load_next_c := '1';
+        end if;
+        field_combo.mip.mtip.next_q <= next_c;
+        field_combo.mip.mtip.load_next <= load_next_c;
+    end process;
+    process(clk) begin
+        if rising_edge(clk) then
+            if field_combo.mip.mtip.load_next then
+                field_storage.mip.mtip.value <= field_combo.mip.mtip.next_q;
+            end if;
+        end if;
+    end process;
+    hwif_out.mip.mtip.value <= field_storage.mip.mtip.value;
+    hwif_out.mip.seip.value <= '0';
 
-----------------------------------------------------------------------------
--- Write response
-----------------------------------------------------------------------------
-cpuif_wr_ack <= decoded_req and to_std_logic(decoded_req_op /= OP_READ);
--- Writes are always granted with no error response
-cpuif_wr_err <= '0';
+    -- Field: CsrRegisters.mip.meip
+    process(all)
+        variable next_c: std_logic;
+        variable load_next_c: std_logic;
+    begin
+        next_c := field_storage.mip.meip.value;
+        load_next_c := '0';
+        if decoded_reg_strb.mip and to_std_logic(decoded_req_op = OP_READ_SET) then -- SW write custom 1 set
+            next_c := field_storage.mip.meip.value or (decoded_wr_data(11) and decoded_wr_biten(11));
+            load_next_c := '1';
+        elsif decoded_reg_strb.mip and to_std_logic(decoded_req_op = OP_READ_CLEAR) then -- SW write custom 1 clear
+            next_c := field_storage.mip.meip.value and not (decoded_wr_data(11) and decoded_wr_biten(11));
+            load_next_c := '1';
+        elsif decoded_reg_strb.mip and to_std_logic(decoded_req_op = OP_WRITE or decoded_req_op = OP_READ_WRITE) then -- SW write
+            next_c := (field_storage.mip.meip.value and not decoded_wr_biten(11)) or (decoded_wr_data(11) and decoded_wr_biten(11));
+            load_next_c := '1';
+        end if;
+        field_combo.mip.meip.next_q <= next_c;
+        field_combo.mip.meip.load_next <= load_next_c;
+    end process;
+    process(clk) begin
+        if rising_edge(clk) then
+            if field_combo.mip.meip.load_next then
+                field_storage.mip.meip.value <= field_combo.mip.meip.next_q;
+            end if;
+        end if;
+    end process;
+    hwif_out.mip.meip.value <= field_storage.mip.meip.value;
+    hwif_out.mvendorid.offset.value <= 7x"0";
+    hwif_out.mvendorid.bank.value <= 25x"0";
+    hwif_out.marchid.marchid.value <= 32x"0";
+    hwif_out.mimpid.mimpid.value <= 32x"0";
+    hwif_out.mhartid.mhartid.value <= 32x"0";
+    hwif_out.mconfigptr.mconfigptr.value <= 32x"0";
 
-----------------------------------------------------------------------------
--- Readback
-----------------------------------------------------------------------------
+    ----------------------------------------------------------------------------
+    -- Write response
+    ----------------------------------------------------------------------------
+    cpuif_wr_ack <= decoded_req and to_std_logic(decoded_req_op /= OP_READ);
+    cpuif_wr_err <= decoded_err;
 
--- Assign readback values to a flattened array
-readback_array(0)(0 downto 0) <= (others => '0');
-readback_array(0)(1 downto 1) <= to_std_logic_vector(field_storage.mstatus.sie.value) when (decoded_reg_strb.mstatus and to_std_logic(decoded_req_op /= OP_WRITE)) else
-(others                                  => '0');
-readback_array(0)(2 downto 2) <= (others => '0');
-readback_array(0)(3 downto 3) <= to_std_logic_vector(field_storage.mstatus.mie.value) when (decoded_reg_strb.mstatus and to_std_logic(decoded_req_op /= OP_WRITE)) else
-(others                                  => '0');
-readback_array(0)(4 downto 4) <= (others => '0');
-readback_array(0)(5 downto 5) <= to_std_logic_vector(field_storage.mstatus.spie.value) when (decoded_reg_strb.mstatus and to_std_logic(decoded_req_op /= OP_WRITE)) else
-(others => '0');
-readback_array(0)(6 downto 6) <= 1x"0" when (decoded_reg_strb.mstatus and to_std_logic(decoded_req_op /= OP_WRITE)) else
-(others => '0');
-readback_array(0)(7 downto 7) <= to_std_logic_vector(field_storage.mstatus.mpie.value) when (decoded_reg_strb.mstatus and to_std_logic(decoded_req_op /= OP_WRITE)) else
-(others => '0');
-readback_array(0)(8 downto 8) <= to_std_logic_vector(field_storage.mstatus.spp.value) when (decoded_reg_strb.mstatus and to_std_logic(decoded_req_op /= OP_WRITE)) else
-(others => '0');
-readback_array(0)(10 downto 9) <= 2x"0" when (decoded_reg_strb.mstatus and to_std_logic(decoded_req_op /= OP_WRITE)) else
-(others => '0');
-readback_array(0)(12 downto 11) <= field_storage.mstatus.mpp.value when (decoded_reg_strb.mstatus and to_std_logic(decoded_req_op /= OP_WRITE)) else
-(others => '0');
-readback_array(0)(14 downto 13) <= 2x"0" when (decoded_reg_strb.mstatus and to_std_logic(decoded_req_op /= OP_WRITE)) else
-(others => '0');
-readback_array(0)(16 downto 15) <= 2x"0" when (decoded_reg_strb.mstatus and to_std_logic(decoded_req_op /= OP_WRITE)) else
-(others => '0');
-readback_array(0)(17 downto 17) <= 1x"0" when (decoded_reg_strb.mstatus and to_std_logic(decoded_req_op /= OP_WRITE)) else
-(others => '0');
-readback_array(0)(18 downto 18) <= 1x"0" when (decoded_reg_strb.mstatus and to_std_logic(decoded_req_op /= OP_WRITE)) else
-(others => '0');
-readback_array(0)(19 downto 19) <= 1x"0" when (decoded_reg_strb.mstatus and to_std_logic(decoded_req_op /= OP_WRITE)) else
-(others => '0');
-readback_array(0)(20 downto 20) <= 1x"0" when (decoded_reg_strb.mstatus and to_std_logic(decoded_req_op /= OP_WRITE)) else
-(others => '0');
-readback_array(0)(21 downto 21) <= 1x"0" when (decoded_reg_strb.mstatus and to_std_logic(decoded_req_op /= OP_WRITE)) else
-(others => '0');
-readback_array(0)(22 downto 22) <= 1x"0" when (decoded_reg_strb.mstatus and to_std_logic(decoded_req_op /= OP_WRITE)) else
-(others                                    => '0');
-readback_array(0)(30 downto 23) <= (others => '0');
-readback_array(0)(31 downto 31) <= 1x"0" when (decoded_reg_strb.mstatus and to_std_logic(decoded_req_op /= OP_WRITE)) else
-(others => '0');
-readback_array(1)(0 downto 0) <= 1x"0" when (decoded_reg_strb.misa and to_std_logic(decoded_req_op /= OP_WRITE)) else
-(others => '0');
-readback_array(1)(1 downto 1) <= 1x"0" when (decoded_reg_strb.misa and to_std_logic(decoded_req_op /= OP_WRITE)) else
-(others => '0');
-readback_array(1)(2 downto 2) <= 1x"0" when (decoded_reg_strb.misa and to_std_logic(decoded_req_op /= OP_WRITE)) else
-(others => '0');
-readback_array(1)(3 downto 3) <= 1x"0" when (decoded_reg_strb.misa and to_std_logic(decoded_req_op /= OP_WRITE)) else
-(others => '0');
-readback_array(1)(4 downto 4) <= 1x"0" when (decoded_reg_strb.misa and to_std_logic(decoded_req_op /= OP_WRITE)) else
-(others => '0');
-readback_array(1)(5 downto 5) <= 1x"0" when (decoded_reg_strb.misa and to_std_logic(decoded_req_op /= OP_WRITE)) else
-(others                                  => '0');
-readback_array(1)(6 downto 6) <= (others => '0');
-readback_array(1)(7 downto 7) <= 1x"0" when (decoded_reg_strb.misa and to_std_logic(decoded_req_op /= OP_WRITE)) else
-(others => '0');
-readback_array(1)(8 downto 8) <= 1x"1" when (decoded_reg_strb.misa and to_std_logic(decoded_req_op /= OP_WRITE)) else
-(others                                    => '0');
-readback_array(1)(11 downto 9)  <= (others => '0');
-readback_array(1)(12 downto 12) <= 1x"0" when (decoded_reg_strb.misa and to_std_logic(decoded_req_op /= OP_WRITE)) else
-(others => '0');
-readback_array(1)(13 downto 13) <= 1x"0" when (decoded_reg_strb.misa and to_std_logic(decoded_req_op /= OP_WRITE)) else
-(others                                    => '0');
-readback_array(1)(14 downto 14) <= (others => '0');
-readback_array(1)(15 downto 15) <= 1x"0" when (decoded_reg_strb.misa and to_std_logic(decoded_req_op /= OP_WRITE)) else
-(others => '0');
-readback_array(1)(16 downto 16) <= 1x"0" when (decoded_reg_strb.misa and to_std_logic(decoded_req_op /= OP_WRITE)) else
-(others                                    => '0');
-readback_array(1)(17 downto 17) <= (others => '0');
-readback_array(1)(18 downto 18) <= 1x"0" when (decoded_reg_strb.misa and to_std_logic(decoded_req_op /= OP_WRITE)) else
-(others                                    => '0');
-readback_array(1)(19 downto 19) <= (others => '0');
-readback_array(1)(20 downto 20) <= 1x"0" when (decoded_reg_strb.misa and to_std_logic(decoded_req_op /= OP_WRITE)) else
-(others => '0');
-readback_array(1)(21 downto 21) <= 1x"0" when (decoded_reg_strb.misa and to_std_logic(decoded_req_op /= OP_WRITE)) else
-(others                                    => '0');
-readback_array(1)(22 downto 22) <= (others => '0');
-readback_array(1)(23 downto 23) <= 1x"0" when (decoded_reg_strb.misa and to_std_logic(decoded_req_op /= OP_WRITE)) else
-(others                                    => '0');
-readback_array(1)(29 downto 24) <= (others => '0');
-readback_array(1)(31 downto 30) <= 2x"1" when (decoded_reg_strb.misa and to_std_logic(decoded_req_op /= OP_WRITE)) else
-(others => '0');
-readback_array(2)(31 downto 0) <= 32x"0" when (decoded_reg_strb.medeleg and to_std_logic(decoded_req_op /= OP_WRITE)) else
-(others => '0');
-readback_array(3)(31 downto 0) <= 32x"0" when (decoded_reg_strb.mideleg and to_std_logic(decoded_req_op /= OP_WRITE)) else
-(others                                  => '0');
-readback_array(4)(0 downto 0) <= (others => '0');
-readback_array(4)(1 downto 1) <= 1x"0" when (decoded_reg_strb.mie and to_std_logic(decoded_req_op /= OP_WRITE)) else
-(others                                  => '0');
-readback_array(4)(2 downto 2) <= (others => '0');
-readback_array(4)(3 downto 3) <= to_std_logic_vector(field_storage.mie.msie.value) when (decoded_reg_strb.mie and to_std_logic(decoded_req_op /= OP_WRITE)) else
-(others                                  => '0');
-readback_array(4)(4 downto 4) <= (others => '0');
-readback_array(4)(5 downto 5) <= 1x"0" when (decoded_reg_strb.mie and to_std_logic(decoded_req_op /= OP_WRITE)) else
-(others                                  => '0');
-readback_array(4)(6 downto 6) <= (others => '0');
-readback_array(4)(7 downto 7) <= to_std_logic_vector(field_storage.mie.mtie.value) when (decoded_reg_strb.mie and to_std_logic(decoded_req_op /= OP_WRITE)) else
-(others                                  => '0');
-readback_array(4)(8 downto 8) <= (others => '0');
-readback_array(4)(9 downto 9) <= 1x"0" when (decoded_reg_strb.mie and to_std_logic(decoded_req_op /= OP_WRITE)) else
-(others                                    => '0');
-readback_array(4)(10 downto 10) <= (others => '0');
-readback_array(4)(11 downto 11) <= to_std_logic_vector(field_storage.mie.meie.value) when (decoded_reg_strb.mie and to_std_logic(decoded_req_op /= OP_WRITE)) else
-(others                                    => '0');
-readback_array(4)(31 downto 12) <= (others => '0');
-readback_array(5)(1 downto 0)   <= 2x"0" when (decoded_reg_strb.mtvec and to_std_logic(decoded_req_op /= OP_WRITE)) else
-(others => '0');
-readback_array(5)(31 downto 2) <= 30x"0" when (decoded_reg_strb.mtvec and to_std_logic(decoded_req_op /= OP_WRITE)) else
-(others                                  => '0');
-readback_array(6)(3 downto 0) <= (others => '0');
-readback_array(6)(4 downto 4) <= 1x"0" when (decoded_reg_strb.mstatush and to_std_logic(decoded_req_op /= OP_WRITE)) else
-(others => '0');
-readback_array(6)(5 downto 5) <= 1x"0" when (decoded_reg_strb.mstatush and to_std_logic(decoded_req_op /= OP_WRITE)) else
-(others => '0');
-readback_array(6)(6 downto 6) <= to_std_logic_vector(field_storage.mstatush.gva.value) when (decoded_reg_strb.mstatush and to_std_logic(decoded_req_op /= OP_WRITE)) else
-(others => '0');
-readback_array(6)(7 downto 7) <= to_std_logic_vector(field_storage.mstatush.mpv.value) when (decoded_reg_strb.mstatush and to_std_logic(decoded_req_op /= OP_WRITE)) else
-(others                                  => '0');
-readback_array(6)(8 downto 8) <= (others => '0');
-readback_array(6)(9 downto 9) <= to_std_logic_vector(field_storage.mstatush.mpelp.value) when (decoded_reg_strb.mstatush and to_std_logic(decoded_req_op /= OP_WRITE)) else
-(others => '0');
-readback_array(6)(10 downto 10) <= to_std_logic_vector(field_storage.mstatush.mdt.value) when (decoded_reg_strb.mstatush and to_std_logic(decoded_req_op /= OP_WRITE)) else
-(others                                    => '0');
-readback_array(6)(31 downto 11) <= (others => '0');
-readback_array(7)(31 downto 0)  <= 32x"0" when (decoded_reg_strb.medelegh and to_std_logic(decoded_req_op /= OP_WRITE)) else
-(others => '0');
-readback_array(8)(31 downto 0) <= field_storage.mscratch.mscratch.value when (decoded_reg_strb.mscratch and to_std_logic(decoded_req_op /= OP_WRITE)) else
-(others => '0');
-readback_array(9)(31 downto 0) <= field_storage.mepc.mepc.value when (decoded_reg_strb.mepc and to_std_logic(decoded_req_op /= OP_WRITE)) else
-(others => '0');
-readback_array(10)(30 downto 0) <= field_storage.mcause.code.value when (decoded_reg_strb.mcause and to_std_logic(decoded_req_op /= OP_WRITE)) else
-(others => '0');
-readback_array(10)(31 downto 31) <= to_std_logic_vector(field_storage.mcause.interrupt.value) when (decoded_reg_strb.mcause and to_std_logic(decoded_req_op /= OP_WRITE)) else
-(others => '0');
-readback_array(11)(31 downto 0) <= field_storage.mtval.mtval.value when (decoded_reg_strb.mtval and to_std_logic(decoded_req_op /= OP_WRITE)) else
-(others                                   => '0');
-readback_array(12)(0 downto 0) <= (others => '0');
-readback_array(12)(1 downto 1) <= 1x"0" when (decoded_reg_strb.mip and to_std_logic(decoded_req_op /= OP_WRITE)) else
-(others                                   => '0');
-readback_array(12)(2 downto 2) <= (others => '0');
-readback_array(12)(3 downto 3) <= to_std_logic_vector(field_storage.mip.msip.value) when (decoded_reg_strb.mip and to_std_logic(decoded_req_op /= OP_WRITE)) else
-(others                                   => '0');
-readback_array(12)(4 downto 4) <= (others => '0');
-readback_array(12)(5 downto 5) <= 1x"0" when (decoded_reg_strb.mip and to_std_logic(decoded_req_op /= OP_WRITE)) else
-(others                                   => '0');
-readback_array(12)(6 downto 6) <= (others => '0');
-readback_array(12)(7 downto 7) <= to_std_logic_vector(field_storage.mip.mtip.value) when (decoded_reg_strb.mip and to_std_logic(decoded_req_op /= OP_WRITE)) else
-(others                                   => '0');
-readback_array(12)(8 downto 8) <= (others => '0');
-readback_array(12)(9 downto 9) <= 1x"0" when (decoded_reg_strb.mip and to_std_logic(decoded_req_op /= OP_WRITE)) else
-(others                                     => '0');
-readback_array(12)(10 downto 10) <= (others => '0');
-readback_array(12)(11 downto 11) <= to_std_logic_vector(field_storage.mip.meip.value) when (decoded_reg_strb.mip and to_std_logic(decoded_req_op /= OP_WRITE)) else
-(others                                     => '0');
-readback_array(12)(31 downto 12) <= (others => '0');
-readback_array(13)(6 downto 0)   <= 7x"0" when (decoded_reg_strb.mvendorid and to_std_logic(decoded_req_op /= OP_WRITE)) else
-(others => '0');
-readback_array(13)(31 downto 7) <= 25x"0" when (decoded_reg_strb.mvendorid and to_std_logic(decoded_req_op /= OP_WRITE)) else
-(others => '0');
-readback_array(14)(31 downto 0) <= 32x"0" when (decoded_reg_strb.marchid and to_std_logic(decoded_req_op /= OP_WRITE)) else
-(others => '0');
-readback_array(15)(31 downto 0) <= 32x"0" when (decoded_reg_strb.mimpid and to_std_logic(decoded_req_op /= OP_WRITE)) else
-(others => '0');
-readback_array(16)(31 downto 0) <= 32x"0" when (decoded_reg_strb.mhartid and to_std_logic(decoded_req_op /= OP_WRITE)) else
-(others => '0');
-readback_array(17)(31 downto 0) <= 32x"0" when (decoded_reg_strb.mconfigptr and to_std_logic(decoded_req_op /= OP_WRITE)) else
-(others => '0');
+    ----------------------------------------------------------------------------
+    -- Readback
+    ----------------------------------------------------------------------------
 
--- Reduce the array
-process (all)
-  variable readback_data_var : std_logic_vector(31 downto 0) := (others => '0');
-begin
-  readback_done <= decoded_req and to_std_logic(decoded_req_op /= OP_WRITE);
-  readback_err  <= '0';
-  readback_data_var := (others => '0');
-  for i in readback_array'range loop
-    readback_data_var := readback_data_var or readback_array(i);
-  end loop;
-  readback_data <= readback_data_var;
-end process;
+    -- Assign readback values to a flattened array
+    readback_array(0)(0 downto 0) <= (others => '0');
+    readback_array(0)(1 downto 1) <= to_std_logic_vector(field_storage.mstatus.sie.value) when (decoded_reg_strb.mstatus and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(0)(2 downto 2) <= (others => '0');
+    readback_array(0)(3 downto 3) <= to_std_logic_vector(field_storage.mstatus.mie.value) when (decoded_reg_strb.mstatus and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(0)(4 downto 4) <= (others => '0');
+    readback_array(0)(5 downto 5) <= to_std_logic_vector(field_storage.mstatus.spie.value) when (decoded_reg_strb.mstatus and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(0)(6 downto 6) <= 1x"0" when (decoded_reg_strb.mstatus and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(0)(7 downto 7) <= to_std_logic_vector(field_storage.mstatus.mpie.value) when (decoded_reg_strb.mstatus and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(0)(8 downto 8) <= to_std_logic_vector(field_storage.mstatus.spp.value) when (decoded_reg_strb.mstatus and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(0)(10 downto 9) <= 2x"0" when (decoded_reg_strb.mstatus and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(0)(12 downto 11) <= field_storage.mstatus.mpp.value when (decoded_reg_strb.mstatus and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(0)(14 downto 13) <= 2x"0" when (decoded_reg_strb.mstatus and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(0)(16 downto 15) <= 2x"0" when (decoded_reg_strb.mstatus and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(0)(17 downto 17) <= 1x"0" when (decoded_reg_strb.mstatus and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(0)(18 downto 18) <= 1x"0" when (decoded_reg_strb.mstatus and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(0)(19 downto 19) <= 1x"0" when (decoded_reg_strb.mstatus and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(0)(20 downto 20) <= 1x"0" when (decoded_reg_strb.mstatus and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(0)(21 downto 21) <= 1x"0" when (decoded_reg_strb.mstatus and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(0)(22 downto 22) <= 1x"0" when (decoded_reg_strb.mstatus and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(0)(30 downto 23) <= (others => '0');
+    readback_array(0)(31 downto 31) <= 1x"0" when (decoded_reg_strb.mstatus and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(1)(0 downto 0) <= 1x"0" when (decoded_reg_strb.misa and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(1)(1 downto 1) <= 1x"0" when (decoded_reg_strb.misa and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(1)(2 downto 2) <= 1x"0" when (decoded_reg_strb.misa and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(1)(3 downto 3) <= 1x"0" when (decoded_reg_strb.misa and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(1)(4 downto 4) <= 1x"0" when (decoded_reg_strb.misa and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(1)(5 downto 5) <= 1x"0" when (decoded_reg_strb.misa and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(1)(6 downto 6) <= (others => '0');
+    readback_array(1)(7 downto 7) <= 1x"0" when (decoded_reg_strb.misa and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(1)(8 downto 8) <= 1x"1" when (decoded_reg_strb.misa and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(1)(11 downto 9) <= (others => '0');
+    readback_array(1)(12 downto 12) <= 1x"0" when (decoded_reg_strb.misa and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(1)(13 downto 13) <= 1x"0" when (decoded_reg_strb.misa and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(1)(14 downto 14) <= (others => '0');
+    readback_array(1)(15 downto 15) <= 1x"0" when (decoded_reg_strb.misa and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(1)(16 downto 16) <= 1x"0" when (decoded_reg_strb.misa and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(1)(17 downto 17) <= (others => '0');
+    readback_array(1)(18 downto 18) <= 1x"0" when (decoded_reg_strb.misa and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(1)(19 downto 19) <= (others => '0');
+    readback_array(1)(20 downto 20) <= 1x"0" when (decoded_reg_strb.misa and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(1)(21 downto 21) <= 1x"0" when (decoded_reg_strb.misa and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(1)(22 downto 22) <= (others => '0');
+    readback_array(1)(23 downto 23) <= 1x"0" when (decoded_reg_strb.misa and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(1)(29 downto 24) <= (others => '0');
+    readback_array(1)(31 downto 30) <= 2x"1" when (decoded_reg_strb.misa and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(2)(31 downto 0) <= 32x"0" when (decoded_reg_strb.medeleg and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(3)(31 downto 0) <= 32x"0" when (decoded_reg_strb.mideleg and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(4)(0 downto 0) <= (others => '0');
+    readback_array(4)(1 downto 1) <= 1x"0" when (decoded_reg_strb.mie and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(4)(2 downto 2) <= (others => '0');
+    readback_array(4)(3 downto 3) <= to_std_logic_vector(field_storage.mie.msie.value) when (decoded_reg_strb.mie and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(4)(4 downto 4) <= (others => '0');
+    readback_array(4)(5 downto 5) <= 1x"0" when (decoded_reg_strb.mie and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(4)(6 downto 6) <= (others => '0');
+    readback_array(4)(7 downto 7) <= to_std_logic_vector(field_storage.mie.mtie.value) when (decoded_reg_strb.mie and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(4)(8 downto 8) <= (others => '0');
+    readback_array(4)(9 downto 9) <= 1x"0" when (decoded_reg_strb.mie and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(4)(10 downto 10) <= (others => '0');
+    readback_array(4)(11 downto 11) <= to_std_logic_vector(field_storage.mie.meie.value) when (decoded_reg_strb.mie and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(4)(31 downto 12) <= (others => '0');
+    readback_array(5)(1 downto 0) <= field_storage.mtvec.mode.value when (decoded_reg_strb.mtvec and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(5)(31 downto 2) <= field_storage.mtvec.base.value when (decoded_reg_strb.mtvec and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(6)(3 downto 0) <= (others => '0');
+    readback_array(6)(4 downto 4) <= 1x"0" when (decoded_reg_strb.mstatush and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(6)(5 downto 5) <= 1x"0" when (decoded_reg_strb.mstatush and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(6)(6 downto 6) <= to_std_logic_vector(field_storage.mstatush.gva.value) when (decoded_reg_strb.mstatush and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(6)(7 downto 7) <= to_std_logic_vector(field_storage.mstatush.mpv.value) when (decoded_reg_strb.mstatush and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(6)(8 downto 8) <= (others => '0');
+    readback_array(6)(9 downto 9) <= to_std_logic_vector(field_storage.mstatush.mpelp.value) when (decoded_reg_strb.mstatush and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(6)(10 downto 10) <= to_std_logic_vector(field_storage.mstatush.mdt.value) when (decoded_reg_strb.mstatush and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(6)(31 downto 11) <= (others => '0');
+    readback_array(7)(31 downto 0) <= 32x"0" when (decoded_reg_strb.medelegh and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(8)(31 downto 0) <= field_storage.mscratch.mscratch.value when (decoded_reg_strb.mscratch and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(9)(31 downto 0) <= field_storage.mepc.mepc.value when (decoded_reg_strb.mepc and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(10)(30 downto 0) <= field_storage.mcause.code.value when (decoded_reg_strb.mcause and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(10)(31 downto 31) <= to_std_logic_vector(field_storage.mcause.interrupt.value) when (decoded_reg_strb.mcause and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(11)(31 downto 0) <= field_storage.mtval.mtval.value when (decoded_reg_strb.mtval and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(12)(0 downto 0) <= (others => '0');
+    readback_array(12)(1 downto 1) <= 1x"0" when (decoded_reg_strb.mip and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(12)(2 downto 2) <= (others => '0');
+    readback_array(12)(3 downto 3) <= to_std_logic_vector(field_storage.mip.msip.value) when (decoded_reg_strb.mip and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(12)(4 downto 4) <= (others => '0');
+    readback_array(12)(5 downto 5) <= 1x"0" when (decoded_reg_strb.mip and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(12)(6 downto 6) <= (others => '0');
+    readback_array(12)(7 downto 7) <= to_std_logic_vector(field_storage.mip.mtip.value) when (decoded_reg_strb.mip and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(12)(8 downto 8) <= (others => '0');
+    readback_array(12)(9 downto 9) <= 1x"0" when (decoded_reg_strb.mip and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(12)(10 downto 10) <= (others => '0');
+    readback_array(12)(11 downto 11) <= to_std_logic_vector(field_storage.mip.meip.value) when (decoded_reg_strb.mip and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(12)(31 downto 12) <= (others => '0');
+    readback_array(13)(6 downto 0) <= 7x"0" when (decoded_reg_strb.mvendorid and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(13)(31 downto 7) <= 25x"0" when (decoded_reg_strb.mvendorid and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(14)(31 downto 0) <= 32x"0" when (decoded_reg_strb.marchid and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(15)(31 downto 0) <= 32x"0" when (decoded_reg_strb.mimpid and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(16)(31 downto 0) <= 32x"0" when (decoded_reg_strb.mhartid and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(17)(31 downto 0) <= 32x"0" when (decoded_reg_strb.mconfigptr and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
 
-cpuif_rd_ack  <= readback_done;
-cpuif_rd_data <= readback_data;
-cpuif_rd_err  <= readback_err;
+    -- Reduce the array
+    process(all)
+        variable readback_data_var : std_logic_vector(31 downto 0) := (others => '0');
+    begin
+        readback_done <= decoded_req and to_std_logic(decoded_req_op /= OP_WRITE);
+        readback_err <= decoded_err;
+        readback_data_var := (others => '0');
+        for i in readback_array'RANGE loop
+            readback_data_var := readback_data_var or readback_array(i);
+        end loop;
+        readback_data <= readback_data_var;
+    end process;
+
+    cpuif_rd_ack <= readback_done;
+    cpuif_rd_data <= readback_data;
+    cpuif_rd_err <= readback_err;
 end architecture rtl;

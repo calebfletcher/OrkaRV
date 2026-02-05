@@ -82,7 +82,7 @@ def main():
         proj_path / "shared" / "hdl" / "RiscVPkg.vhd",
         proj_path / "shared" / "hdl" / "InstructionDecoder.vhd",
         proj_path / "shared" / "hdl" / "Registers.vhd",
-        proj_path / "shared" / "csr" / "hdl" / "CsrPkg.vhd",
+        proj_path / "shared" / "csr" / "hdl" / "csrif_pkg.vhd",
         proj_path / "shared" / "csr" / "hdl" / "Csr.vhd",
         proj_path / "shared" / "csr" / "hdl" / "CsrRegisters_pkg.vhd",
         proj_path / "shared" / "csr" / "hdl" / "CsrRegisters.vhd",

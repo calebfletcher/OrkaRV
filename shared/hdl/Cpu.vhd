@@ -186,7 +186,7 @@ begin
         v.opMemWrite           := '0';
         v.opMemWriteWidthBytes := 1;
         v.opPcFromAlu          := '0';
-        v.csrReq               := '1';
+        v.csrReq               := '0';
 
         v.stage := EXECUTE;
 
