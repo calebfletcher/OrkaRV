@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 common = { path = "../common" }
+riscv = { version = "0.16.0", features = ["critical-section-single-hart"] }
 
 [dev-dependencies]
 riscv-rt = { version = "0.17.0", features = [
