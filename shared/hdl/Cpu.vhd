@@ -22,7 +22,11 @@ entity Cpu is
     axiReadMaster  : out AxiLiteReadMasterType  := AXI_LITE_READ_MASTER_INIT_C;
     axiReadSlave   : in AxiLiteReadSlaveType    := AXI_LITE_READ_SLAVE_INIT_C;
     axiWriteMaster : out AxiLiteWriteMasterType := AXI_LITE_WRITE_MASTER_INIT_C;
-    axiWriteSlave  : in AxiLiteWriteSlaveType   := AXI_LITE_WRITE_SLAVE_INIT_C
+    axiWriteSlave  : in AxiLiteWriteSlaveType   := AXI_LITE_WRITE_SLAVE_INIT_C;
+
+    -- interrupts
+    mExtInt : in std_logic
+    --sExtInt : in std_logic;
   );
 end entity Cpu;
 
@@ -62,6 +66,9 @@ architecture rtl of Cpu is
     csrAddr          : std_logic_vector(11 downto 0);
     csrWrData        : std_logic_vector(XLEN - 1 downto 0);
     csrRdData        : std_logic_vector(XLEN - 1 downto 0);
+    
+    -- csr hardware inputs
+    csrHwIn  : CsrRegisters_in_t;
 
     -- alu
     aluResult : std_logic_vector(31 downto 0); -- todo: XLEN?
@@ -73,6 +80,52 @@ architecture rtl of Cpu is
     opRegWriteSource     : RegWriteSourceType;
     opPcFromAlu          : std_logic;
   end record RegType;
+
+  constant CSR_IN_INIT_C : CsrRegisters_in_t := (
+    mstatus => (
+      mie => (
+        next_q => '0',
+        we => '0' 
+      ),
+      mpie => (
+        next_q => '0',
+        we => '0' 
+      ),
+      mpp => (
+        next_q => PRIV_MACHINE_C,
+        we => '0' 
+      )
+    ),
+    mepc => (
+      mepc => (
+        next_q => (others => '0'),
+        we => '0' 
+      )
+    ),
+    mcause => (
+      code => (
+        next_q => (others => '0'),
+        we => '0' 
+      ),
+      interrupt => (
+        next_q => '0',
+        we => '0' 
+      )
+    ),
+    mtval => (
+      mtval => (
+        next_q => (others => '0'),
+        we => '0' 
+      )
+    ),
+    mip => (
+      meip => (
+        -- next_q is always 1 since we only set the bit not clear it
+        next_q => '1',
+        we => '0' 
+      )
+    )
+  );
 
   constant REG_INIT_C : RegType := (
   stage    => INIT,
@@ -99,6 +152,8 @@ architecture rtl of Cpu is
   csrWrData => (others => '0'),
   csrRdData => (others => '0'),
 
+  csrHwIn => CSR_IN_INIT_C,
+
   aluResult => (others => '0'),
   opMemRead            => '0',
   opMemWrite           => '0',
@@ -123,7 +178,6 @@ architecture rtl of Cpu is
 
   signal instType : InstructionType;
 
-  signal csrHwIn  : CsrRegisters_in_t;
   signal csrHwOut : CsrRegisters_out_t;
 begin
   process (all)
@@ -131,6 +185,13 @@ begin
   begin
     -- initialise from existing state
     v := r;
+
+    -- reset all csr inputs (not very efficient)
+    v.csrHwIn := CSR_IN_INIT_C;
+
+    -- read interrupts
+    -- todo: check what should happen if m_ext_int is held high?
+    v.csrHwIn.mip.meip.we := mExtInt;
 
     v.regWrStrobe := '0';
 
@@ -334,13 +395,61 @@ begin
             v.opRegWriteSource := CSR_SRC;
           when EBREAK =>
             v.stage := HALTED;
+          when WFI =>
+            -- stay in decode until an interrupt arrives
+            -- purposefully ignoring mstatus.mie per priv spec
+            if csrHwOut.mip.meip.value and csrHwOut.mie.meie.value then
+              -- continue on to execute stage
+            else
+              v.stage := DECODE;
+            end if;
+          when MRET =>
+            -- todo: implement mret
+            v.stage := TRAPPED;
           when others =>
             -- on unknown instruction, halt
+            -- todo: raise illegal instruction exception
             v.stage := TRAPPED;
         end case;
       when EXECUTE =>
         -- update PC
-        if v.opPcFromAlu then
+        if csrHwOut.mstatus.mie.value and csrHwOut.mie.meie.value and csrHwOut.mip.meip.value then
+          -- take interrupt
+          
+          -- set mcause
+          v.csrHwIn.mcause.interrupt.next_q := '1';
+          -- todo: how to reset the write-enables
+          v.csrHwIn.mcause.interrupt.we := '1';
+          v.csrHwIn.mcause.code.next_q := (others => '0');
+          v.csrHwIn.mcause.code.we := '1';
+
+          -- set mepc to current instruction for a normal interrupt, so
+          -- execution continues there afterwards. if this is a WFI, set it to
+          -- the next instruction so we don't wait again
+          v.csrHwIn.mepc.mepc.next_q := r.successivePc when r.instType = WFI else r.pc;
+          v.csrHwIn.mepc.mepc.we := '1';
+
+          -- set mpie to mie
+          v.csrHwIn.mstatus.mpie.we := '1';
+          v.csrHwIn.mstatus.mpie.next_q := csrHwOut.mstatus.mie.value;
+          -- set mie to 0
+          v.csrHwIn.mstatus.mie.we := '1';
+          v.csrHwIn.mstatus.mie.next_q := '0';
+          -- set mpp to M-mode
+          v.csrHwIn.mstatus.mpp.we := '1';
+          v.csrHwIn.mstatus.mpp.next_q := PRIV_MACHINE_C;
+
+          -- update pc
+          if csrHwOut.mtvec.mode.value /= "00" then
+            -- invalid mode
+            v.stage := TRAPPED;
+          else
+            -- go to mtvec address
+            v.pc := csrHwOut.mtvec.base.value & "00";
+          end if;
+        -- todo: check for msip
+        -- todo: check for mtip
+        elsif v.opPcFromAlu then
           v.pc := r.aluResult(31 downto 1) & "0";
         else
           v.pc := r.successivePc;
@@ -568,7 +677,7 @@ begin
       wrData           => r.csrWrData,
       rdData           => csrRdData,
       illegalAccess    => csrIllegalAccess,
-      hwif_in          => csrHwIn,
+      hwif_in          => r.csrHwIn,
       hwif_out         => csrHwOut
     );
 

@@ -47,7 +47,7 @@ PACKAGE RiscVPkg IS
         ADDI, SLTI, SLTIU, XORI, ORI, ANDI, SLLI, SRLI, SRAI, -- OP-IMM
         ADD, SUB, \SLL\, SLT, SLTU, \XOR\, \SRL\, \SRA\, \OR\, \AND\, -- OP
         FENCE, FENCE_TSO, PAUSE, -- MISC-MEM
-        ECALL, EBREAK, -- SYSTEM
+        ECALL, EBREAK, WFI, MRET, -- SYSTEM
         CSRRW, CSRRS, CSRRC, CSRRWI, CSRRSI, CSRRCI, -- SYSTEM - Zicsr
 
         UNKNOWN
@@ -311,6 +311,10 @@ PACKAGE BODY RiscVPkg IS
                                 inst := ECALL;
                             WHEN "00000000000100000000000001110011" =>
                                 inst := EBREAK;
+                            WHEN "00010000010100000000000001110011" =>
+                                inst := WFI;
+                            WHEN "00110000001000000000000001110011" =>
+                                inst := MRET;
                             WHEN OTHERS =>
                                 NULL;
                         END CASE;

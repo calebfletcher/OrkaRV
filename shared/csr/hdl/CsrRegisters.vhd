@@ -232,24 +232,12 @@ architecture rtl of CsrRegisters is
         mtval : \CsrRegisters.mtval.mtval_combo_t\;
     end record;
 
-    type \CsrRegisters.mip.msip_combo_t\ is record
-        next_q : std_logic;
-        load_next : std_logic;
-    end record;
-
-    type \CsrRegisters.mip.mtip_combo_t\ is record
-        next_q : std_logic;
-        load_next : std_logic;
-    end record;
-
     type \CsrRegisters.mip.meip_combo_t\ is record
         next_q : std_logic;
         load_next : std_logic;
     end record;
 
     type \CsrRegisters.mip_combo_t\ is record
-        msip : \CsrRegisters.mip.msip_combo_t\;
-        mtip : \CsrRegisters.mip.mtip_combo_t\;
         meip : \CsrRegisters.mip.meip_combo_t\;
     end record;
 
@@ -391,21 +379,11 @@ architecture rtl of CsrRegisters is
         mtval : \CsrRegisters.mtval.mtval_storage_t\;
     end record;
 
-    type \CsrRegisters.mip.msip_storage_t\ is record
-        value : std_logic;
-    end record;
-
-    type \CsrRegisters.mip.mtip_storage_t\ is record
-        value : std_logic;
-    end record;
-
     type \CsrRegisters.mip.meip_storage_t\ is record
         value : std_logic;
     end record;
 
     type \CsrRegisters.mip_storage_t\ is record
-        msip : \CsrRegisters.mip.msip_storage_t\;
-        mtip : \CsrRegisters.mip.mtip_storage_t\;
         meip : \CsrRegisters.mip.meip_storage_t\;
     end record;
 
@@ -505,9 +483,9 @@ begin
         decoded_reg_strb.mtval <= cpuif_req_masked and (cpuif_addr = 16#D0C#);
         is_valid_addr := is_valid_addr or (cpuif_req_masked and (cpuif_addr = 16#D0C#));
         is_invalid_rw := is_invalid_rw or ('0');
-        decoded_reg_strb.mip <= cpuif_req_masked and (cpuif_addr = 16#D10#);
+        decoded_reg_strb.mip <= cpuif_req_masked and (cpuif_addr = 16#D10#) and to_std_logic(cpuif_req_op = OP_READ);
         is_valid_addr := is_valid_addr or (cpuif_req_masked and (cpuif_addr = 16#D10#));
-        is_invalid_rw := is_invalid_rw or ('0');
+        is_invalid_rw := is_invalid_rw or (cpuif_req_masked and (cpuif_addr = 16#D10#) and to_std_logic(cpuif_req_op /= OP_READ));
         decoded_reg_strb.mvendorid <= cpuif_req_masked and (cpuif_addr = 16#3C44#) and to_std_logic(cpuif_req_op = OP_READ);
         is_valid_addr := is_valid_addr or (cpuif_req_masked and (cpuif_addr = 16#3C44#));
         is_invalid_rw := is_invalid_rw or (cpuif_req_masked and (cpuif_addr = 16#3C44#) and to_std_logic(cpuif_req_op /= OP_READ));
@@ -554,17 +532,20 @@ begin
         elsif decoded_reg_strb.mstatus and to_std_logic(decoded_req_op = OP_WRITE or decoded_req_op = OP_READ_WRITE) then -- SW write
             next_c := (field_storage.mstatus.sie.value and not decoded_wr_biten(1)) or (decoded_wr_data(1) and decoded_wr_biten(1));
             load_next_c := '1';
-        elsif hwif_in.mstatus.sie.we then -- HW Write - we
-            next_c := hwif_in.mstatus.sie.next_q;
-            load_next_c := '1';
         end if;
         field_combo.mstatus.sie.next_q <= next_c;
         field_combo.mstatus.sie.load_next <= load_next_c;
     end process;
     process(clk) begin
-        if rising_edge(clk) then
-            if field_combo.mstatus.sie.load_next then
-                field_storage.mstatus.sie.value <= field_combo.mstatus.sie.next_q;
+        if false then -- async reset
+            field_storage.mstatus.sie.value <= '0';
+        elsif rising_edge(clk) then
+            if rst then -- sync reset
+                field_storage.mstatus.sie.value <= '0';
+            else
+                if field_combo.mstatus.sie.load_next then
+                    field_storage.mstatus.sie.value <= field_combo.mstatus.sie.next_q;
+                end if;
             end if;
         end if;
     end process;
@@ -594,9 +575,15 @@ begin
         field_combo.mstatus.mie.load_next <= load_next_c;
     end process;
     process(clk) begin
-        if rising_edge(clk) then
-            if field_combo.mstatus.mie.load_next then
-                field_storage.mstatus.mie.value <= field_combo.mstatus.mie.next_q;
+        if false then -- async reset
+            field_storage.mstatus.mie.value <= '0';
+        elsif rising_edge(clk) then
+            if rst then -- sync reset
+                field_storage.mstatus.mie.value <= '0';
+            else
+                if field_combo.mstatus.mie.load_next then
+                    field_storage.mstatus.mie.value <= field_combo.mstatus.mie.next_q;
+                end if;
             end if;
         end if;
     end process;
@@ -617,9 +604,6 @@ begin
             load_next_c := '1';
         elsif decoded_reg_strb.mstatus and to_std_logic(decoded_req_op = OP_WRITE or decoded_req_op = OP_READ_WRITE) then -- SW write
             next_c := (field_storage.mstatus.spie.value and not decoded_wr_biten(5)) or (decoded_wr_data(5) and decoded_wr_biten(5));
-            load_next_c := '1';
-        elsif hwif_in.mstatus.spie.we then -- HW Write - we
-            next_c := hwif_in.mstatus.spie.next_q;
             load_next_c := '1';
         end if;
         field_combo.mstatus.spie.next_q <= next_c;
@@ -659,9 +643,15 @@ begin
         field_combo.mstatus.mpie.load_next <= load_next_c;
     end process;
     process(clk) begin
-        if rising_edge(clk) then
-            if field_combo.mstatus.mpie.load_next then
-                field_storage.mstatus.mpie.value <= field_combo.mstatus.mpie.next_q;
+        if false then -- async reset
+            field_storage.mstatus.mpie.value <= '0';
+        elsif rising_edge(clk) then
+            if rst then -- sync reset
+                field_storage.mstatus.mpie.value <= '0';
+            else
+                if field_combo.mstatus.mpie.load_next then
+                    field_storage.mstatus.mpie.value <= field_combo.mstatus.mpie.next_q;
+                end if;
             end if;
         end if;
     end process;
@@ -683,17 +673,20 @@ begin
         elsif decoded_reg_strb.mstatus and to_std_logic(decoded_req_op = OP_WRITE or decoded_req_op = OP_READ_WRITE) then -- SW write
             next_c := (field_storage.mstatus.spp.value and not decoded_wr_biten(8)) or (decoded_wr_data(8) and decoded_wr_biten(8));
             load_next_c := '1';
-        elsif hwif_in.mstatus.spp.we then -- HW Write - we
-            next_c := hwif_in.mstatus.spp.next_q;
-            load_next_c := '1';
         end if;
         field_combo.mstatus.spp.next_q <= next_c;
         field_combo.mstatus.spp.load_next <= load_next_c;
     end process;
     process(clk) begin
-        if rising_edge(clk) then
-            if field_combo.mstatus.spp.load_next then
-                field_storage.mstatus.spp.value <= field_combo.mstatus.spp.next_q;
+        if false then -- async reset
+            field_storage.mstatus.spp.value <= '0';
+        elsif rising_edge(clk) then
+            if rst then -- sync reset
+                field_storage.mstatus.spp.value <= '0';
+            else
+                if field_combo.mstatus.spp.load_next then
+                    field_storage.mstatus.spp.value <= field_combo.mstatus.spp.next_q;
+                end if;
             end if;
         end if;
     end process;
@@ -724,9 +717,15 @@ begin
         field_combo.mstatus.mpp.load_next <= load_next_c;
     end process;
     process(clk) begin
-        if rising_edge(clk) then
-            if field_combo.mstatus.mpp.load_next then
-                field_storage.mstatus.mpp.value <= field_combo.mstatus.mpp.next_q;
+        if false then -- async reset
+            field_storage.mstatus.mpp.value <= 2x"0";
+        elsif rising_edge(clk) then
+            if rst then -- sync reset
+                field_storage.mstatus.mpp.value <= 2x"0";
+            else
+                if field_combo.mstatus.mpp.load_next then
+                    field_storage.mstatus.mpp.value <= field_combo.mstatus.mpp.next_q;
+                end if;
             end if;
         end if;
     end process;
@@ -943,9 +942,15 @@ begin
         field_combo.mstatush.gva.load_next <= load_next_c;
     end process;
     process(clk) begin
-        if rising_edge(clk) then
-            if field_combo.mstatush.gva.load_next then
-                field_storage.mstatush.gva.value <= field_combo.mstatush.gva.next_q;
+        if false then -- async reset
+            field_storage.mstatush.gva.value <= '0';
+        elsif rising_edge(clk) then
+            if rst then -- sync reset
+                field_storage.mstatush.gva.value <= '0';
+            else
+                if field_combo.mstatush.gva.load_next then
+                    field_storage.mstatush.gva.value <= field_combo.mstatush.gva.next_q;
+                end if;
             end if;
         end if;
     end process;
@@ -972,9 +977,15 @@ begin
         field_combo.mstatush.mpv.load_next <= load_next_c;
     end process;
     process(clk) begin
-        if rising_edge(clk) then
-            if field_combo.mstatush.mpv.load_next then
-                field_storage.mstatush.mpv.value <= field_combo.mstatush.mpv.next_q;
+        if false then -- async reset
+            field_storage.mstatush.mpv.value <= '0';
+        elsif rising_edge(clk) then
+            if rst then -- sync reset
+                field_storage.mstatush.mpv.value <= '0';
+            else
+                if field_combo.mstatush.mpv.load_next then
+                    field_storage.mstatush.mpv.value <= field_combo.mstatush.mpv.next_q;
+                end if;
             end if;
         end if;
     end process;
@@ -1001,9 +1012,15 @@ begin
         field_combo.mstatush.mpelp.load_next <= load_next_c;
     end process;
     process(clk) begin
-        if rising_edge(clk) then
-            if field_combo.mstatush.mpelp.load_next then
-                field_storage.mstatush.mpelp.value <= field_combo.mstatush.mpelp.next_q;
+        if false then -- async reset
+            field_storage.mstatush.mpelp.value <= '0';
+        elsif rising_edge(clk) then
+            if rst then -- sync reset
+                field_storage.mstatush.mpelp.value <= '0';
+            else
+                if field_combo.mstatush.mpelp.load_next then
+                    field_storage.mstatush.mpelp.value <= field_combo.mstatush.mpelp.next_q;
+                end if;
             end if;
         end if;
     end process;
@@ -1030,9 +1047,15 @@ begin
         field_combo.mstatush.mdt.load_next <= load_next_c;
     end process;
     process(clk) begin
-        if rising_edge(clk) then
-            if field_combo.mstatush.mdt.load_next then
-                field_storage.mstatush.mdt.value <= field_combo.mstatush.mdt.next_q;
+        if false then -- async reset
+            field_storage.mstatush.mdt.value <= '0';
+        elsif rising_edge(clk) then
+            if rst then -- sync reset
+                field_storage.mstatush.mdt.value <= '0';
+            else
+                if field_combo.mstatush.mdt.load_next then
+                    field_storage.mstatush.mdt.value <= field_combo.mstatush.mdt.next_q;
+                end if;
             end if;
         end if;
     end process;
@@ -1225,65 +1248,9 @@ begin
     end process;
     hwif_out.mtval.mtval.value <= field_storage.mtval.mtval.value;
     hwif_out.mip.ssip.value <= '0';
-
-    -- Field: CsrRegisters.mip.msip
-    process(all)
-        variable next_c: std_logic;
-        variable load_next_c: std_logic;
-    begin
-        next_c := field_storage.mip.msip.value;
-        load_next_c := '0';
-        if decoded_reg_strb.mip and to_std_logic(decoded_req_op = OP_READ_SET) then -- SW write custom 1 set
-            next_c := field_storage.mip.msip.value or (decoded_wr_data(3) and decoded_wr_biten(3));
-            load_next_c := '1';
-        elsif decoded_reg_strb.mip and to_std_logic(decoded_req_op = OP_READ_CLEAR) then -- SW write custom 1 clear
-            next_c := field_storage.mip.msip.value and not (decoded_wr_data(3) and decoded_wr_biten(3));
-            load_next_c := '1';
-        elsif decoded_reg_strb.mip and to_std_logic(decoded_req_op = OP_WRITE or decoded_req_op = OP_READ_WRITE) then -- SW write
-            next_c := (field_storage.mip.msip.value and not decoded_wr_biten(3)) or (decoded_wr_data(3) and decoded_wr_biten(3));
-            load_next_c := '1';
-        end if;
-        field_combo.mip.msip.next_q <= next_c;
-        field_combo.mip.msip.load_next <= load_next_c;
-    end process;
-    process(clk) begin
-        if rising_edge(clk) then
-            if field_combo.mip.msip.load_next then
-                field_storage.mip.msip.value <= field_combo.mip.msip.next_q;
-            end if;
-        end if;
-    end process;
-    hwif_out.mip.msip.value <= field_storage.mip.msip.value;
+    hwif_out.mip.msip.value <= '0';
     hwif_out.mip.stip.value <= '0';
-
-    -- Field: CsrRegisters.mip.mtip
-    process(all)
-        variable next_c: std_logic;
-        variable load_next_c: std_logic;
-    begin
-        next_c := field_storage.mip.mtip.value;
-        load_next_c := '0';
-        if decoded_reg_strb.mip and to_std_logic(decoded_req_op = OP_READ_SET) then -- SW write custom 1 set
-            next_c := field_storage.mip.mtip.value or (decoded_wr_data(7) and decoded_wr_biten(7));
-            load_next_c := '1';
-        elsif decoded_reg_strb.mip and to_std_logic(decoded_req_op = OP_READ_CLEAR) then -- SW write custom 1 clear
-            next_c := field_storage.mip.mtip.value and not (decoded_wr_data(7) and decoded_wr_biten(7));
-            load_next_c := '1';
-        elsif decoded_reg_strb.mip and to_std_logic(decoded_req_op = OP_WRITE or decoded_req_op = OP_READ_WRITE) then -- SW write
-            next_c := (field_storage.mip.mtip.value and not decoded_wr_biten(7)) or (decoded_wr_data(7) and decoded_wr_biten(7));
-            load_next_c := '1';
-        end if;
-        field_combo.mip.mtip.next_q <= next_c;
-        field_combo.mip.mtip.load_next <= load_next_c;
-    end process;
-    process(clk) begin
-        if rising_edge(clk) then
-            if field_combo.mip.mtip.load_next then
-                field_storage.mip.mtip.value <= field_combo.mip.mtip.next_q;
-            end if;
-        end if;
-    end process;
-    hwif_out.mip.mtip.value <= field_storage.mip.mtip.value;
+    hwif_out.mip.mtip.value <= '0';
     hwif_out.mip.seip.value <= '0';
 
     -- Field: CsrRegisters.mip.meip
@@ -1293,23 +1260,23 @@ begin
     begin
         next_c := field_storage.mip.meip.value;
         load_next_c := '0';
-        if decoded_reg_strb.mip and to_std_logic(decoded_req_op = OP_READ_SET) then -- SW write custom 1 set
-            next_c := field_storage.mip.meip.value or (decoded_wr_data(11) and decoded_wr_biten(11));
-            load_next_c := '1';
-        elsif decoded_reg_strb.mip and to_std_logic(decoded_req_op = OP_READ_CLEAR) then -- SW write custom 1 clear
-            next_c := field_storage.mip.meip.value and not (decoded_wr_data(11) and decoded_wr_biten(11));
-            load_next_c := '1';
-        elsif decoded_reg_strb.mip and to_std_logic(decoded_req_op = OP_WRITE or decoded_req_op = OP_READ_WRITE) then -- SW write
-            next_c := (field_storage.mip.meip.value and not decoded_wr_biten(11)) or (decoded_wr_data(11) and decoded_wr_biten(11));
+        if hwif_in.mip.meip.we then -- HW Write - we
+            next_c := hwif_in.mip.meip.next_q;
             load_next_c := '1';
         end if;
         field_combo.mip.meip.next_q <= next_c;
         field_combo.mip.meip.load_next <= load_next_c;
     end process;
     process(clk) begin
-        if rising_edge(clk) then
-            if field_combo.mip.meip.load_next then
-                field_storage.mip.meip.value <= field_combo.mip.meip.next_q;
+        if false then -- async reset
+            field_storage.mip.meip.value <= '0';
+        elsif rising_edge(clk) then
+            if rst then -- sync reset
+                field_storage.mip.meip.value <= '0';
+            else
+                if field_combo.mip.meip.load_next then
+                    field_storage.mip.meip.value <= field_combo.mip.meip.next_q;
+                end if;
             end if;
         end if;
     end process;
@@ -1412,11 +1379,11 @@ begin
     readback_array(12)(0 downto 0) <= (others => '0');
     readback_array(12)(1 downto 1) <= 1x"0" when (decoded_reg_strb.mip and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
     readback_array(12)(2 downto 2) <= (others => '0');
-    readback_array(12)(3 downto 3) <= to_std_logic_vector(field_storage.mip.msip.value) when (decoded_reg_strb.mip and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(12)(3 downto 3) <= 1x"0" when (decoded_reg_strb.mip and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
     readback_array(12)(4 downto 4) <= (others => '0');
     readback_array(12)(5 downto 5) <= 1x"0" when (decoded_reg_strb.mip and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
     readback_array(12)(6 downto 6) <= (others => '0');
-    readback_array(12)(7 downto 7) <= to_std_logic_vector(field_storage.mip.mtip.value) when (decoded_reg_strb.mip and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(12)(7 downto 7) <= 1x"0" when (decoded_reg_strb.mip and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
     readback_array(12)(8 downto 8) <= (others => '0');
     readback_array(12)(9 downto 9) <= 1x"0" when (decoded_reg_strb.mip and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
     readback_array(12)(10 downto 10) <= (others => '0');

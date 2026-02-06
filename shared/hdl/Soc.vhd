@@ -51,6 +51,8 @@ ARCHITECTURE rtl OF Soc IS
     SIGNAL sAxiReadSlaves : AxiLiteReadSlaveArray(NUM_SLAVES_C - 1 DOWNTO 0) := (OTHERS => AXI_LITE_READ_SLAVE_INIT_C);
 
     CONSTANT AXIL_XBAR_CFG_C : AxiLiteCrossbarMasterConfigArray(0 TO NUM_SLAVES_C - 1) := (0 => (baseAddr => X"01000000", addrBits => 24, connectivity => X"FFFF"), 1 => (baseAddr => X"03000000", addrBits => 24, connectivity => X"FFFF"), 2 => (baseAddr => X"02000000", addrBits => 16, connectivity => X"FFFF"), 3 => (baseAddr => X"02010000", addrBits => 16, connectivity => X"FFFF"));
+
+    SIGNAL mExtInt : std_logic := '0';
 BEGIN
     Cpu_inst : ENTITY work.Cpu
         PORT MAP(
@@ -62,7 +64,9 @@ BEGIN
             axiReadMaster => mAxiReadMasters(0),
             axiReadSlave => mAxiReadSlaves(0),
             axiWriteMaster => mAxiWriteMasters(0),
-            axiWriteSlave => mAxiWriteSlaves(0)
+            axiWriteSlave => mAxiWriteSlaves(0),
+
+            mExtInt => mExtInt
         );
 
     Ram_inst : ENTITY work.Ram

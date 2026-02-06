@@ -88,7 +88,7 @@ begin
     invalidRequest <= (writeRequested and not writePermitted)
       or (readRequested and not readPermitted);
 
-    cpuif_addr     <= (13 downto 2 => addr, others => '0');
+    cpuif_addr     <= addr & "00";
     cpuif_req      <= req and not invalidRequest;
     cpuif_req_op   <= op;
     cpuif_wr_data  <= wrData;

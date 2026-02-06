@@ -40,14 +40,14 @@ Don't override. Generated from: CsrRegisters
 
 | Bits|Identifier|Access|Reset|Name|
 |-----|----------|------|-----|----|
-|  1  |    sie   |  rw  |  —  |  — |
-|  3  |    mie   |  rw  |  —  |  — |
+|  1  |    sie   |  rw  | 0x0 |  — |
+|  3  |    mie   |  rw  | 0x0 |  — |
 |  5  |   spie   |  rw  |  —  |  — |
 |  6  |    ube   |   r  | 0x0 |  — |
-|  7  |   mpie   |  rw  |  —  |  — |
-|  8  |    spp   |  rw  |  —  |  — |
+|  7  |   mpie   |  rw  | 0x0 |  — |
+|  8  |    spp   |  rw  | 0x0 |  — |
 | 10:9|    vs    |   r  | 0x0 |  — |
-|12:11|    mpp   |  rw  |  —  |  — |
+|12:11|    mpp   |  rw  | 0x0 |  — |
 |14:13|    fs    |   r  | 0x0 |  — |
 |16:15|    xs    |   r  | 0x0 |  — |
 |  17 |   mprv   |   r  | 0x0 |  — |
@@ -140,10 +140,10 @@ Don't override. Generated from: CsrRegisters
 |----|----------|------|-----|----|
 |  4 |    sbe   |   r  | 0x0 |  — |
 |  5 |    mbe   |   r  | 0x0 |  — |
-|  6 |    gva   |  rw  |  —  |  — |
-|  7 |    mpv   |  rw  |  —  |  — |
-|  9 |   mpelp  |  rw  |  —  |  — |
-| 10 |    mdt   |  rw  |  —  |  — |
+|  6 |    gva   |  rw  | 0x0 |  — |
+|  7 |    mpv   |  rw  | 0x0 |  — |
+|  9 |   mpelp  |  rw  | 0x0 |  — |
+| 10 |    mdt   |  rw  | 0x0 |  — |
 
 ### medelegh register
 
@@ -205,11 +205,11 @@ Don't override. Generated from: CsrRegisters
 |Bits|Identifier|Access|Reset|Name|
 |----|----------|------|-----|----|
 |  1 |   ssip   |   r  | 0x0 |  — |
-|  3 |   msip   |  rw  |  —  |  — |
+|  3 |   msip   |   r  | 0x0 |  — |
 |  5 |   stip   |   r  | 0x0 |  — |
-|  7 |   mtip   |  rw  |  —  |  — |
+|  7 |   mtip   |   r  | 0x0 |  — |
 |  9 |   seip   |   r  | 0x0 |  — |
-| 11 |   meip   |  rw  |  —  |  — |
+| 11 |   meip   |   r  | 0x0 |  — |
 
 ### mvendorid register
 

@@ -28,16 +28,16 @@ addrmap CsrRegisters {
     reg {
         default sw = rw;
         field {
-            hw = rw;
-            we;
-        } sie[1:1];
+            // hw = rw;
+            // we;
+        } sie[1:1] = 0;
         field {
             hw = rw;
             we;
-        } mie[3:3];
+        } mie[3:3] = 0;
         field {
-            hw = rw;
-            we;
+            // hw = rw;
+            // we;
         } spie[5:5];
         field {
             sw = r;
@@ -45,18 +45,18 @@ addrmap CsrRegisters {
         field {
             hw = rw;
             we;
-        } mpie[7:7];
+        } mpie[7:7] = 0;
         field {
-            hw = rw;
-            we;
-        } spp[8:8];
+            // hw = rw;
+            // we;
+        } spp[8:8] = 0;
         field {
             sw = r;
         } vs[10:9] = 0;
         field {
             hw = rw;
             we;
-        } mpp[12:11];
+        } mpp[12:11] = 0;
         field {
             sw = r;
         } fs[14:13] = 0;
@@ -144,10 +144,10 @@ addrmap CsrRegisters {
         field {
             sw = r;
         } mbe[5:5] = 0;
-        field {} gva[6:6];
-        field {} mpv[7:7];
-        field {} mpelp[9:9];
-        field {} mdt[10:10];
+        field {} gva[6:6] = 0;
+        field {} mpv[7:7] = 0;
+        field {} mpelp[9:9] = 0;
+        field {} mdt[10:10] = 0;
     } mstatush @ 0x310 << 2;
     
     reg {
@@ -186,18 +186,25 @@ addrmap CsrRegisters {
     } mtval @ 0x343 << 2;
 
     reg {
-        default sw = rw;
+        //default hw = rw;
         field {
             sw = r;
         } ssip[1:1] = 0;
-        field {} msip[3:3];
+        field {
+            //we;
+        } msip[3:3] = 0;
         field {
             sw = r;
         } stip[5:5] = 0;
-        field {} mtip[7:7];
+        field {
+            //we;
+        } mtip[7:7] = 0;
         field {
             sw = r;
         } seip[9:9] = 0;
-        field {} meip[11:11];
+        field {
+            hw = rw;
+            we;
+        } meip[11:11] = 0;
     } mip @ 0x344 << 2;
 };

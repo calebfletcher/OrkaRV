@@ -11,27 +11,12 @@ package CsrRegisters_pkg is
     constant CSRREGISTERS_MIN_ADDR_WIDTH : positive := 14;
     constant CSRREGISTERS_SIZE : positive := 15448;
 
-    type \CsrRegisters.mstatus.sie_in_t\ is record
-        next_q : std_logic;
-        we : std_logic;
-    end record;
-
     type \CsrRegisters.mstatus.mie_in_t\ is record
         next_q : std_logic;
         we : std_logic;
     end record;
 
-    type \CsrRegisters.mstatus.spie_in_t\ is record
-        next_q : std_logic;
-        we : std_logic;
-    end record;
-
     type \CsrRegisters.mstatus.mpie_in_t\ is record
-        next_q : std_logic;
-        we : std_logic;
-    end record;
-
-    type \CsrRegisters.mstatus.spp_in_t\ is record
         next_q : std_logic;
         we : std_logic;
     end record;
@@ -42,11 +27,8 @@ package CsrRegisters_pkg is
     end record;
 
     type \CsrRegisters.mstatus_in_t\ is record
-        sie : \CsrRegisters.mstatus.sie_in_t\;
         mie : \CsrRegisters.mstatus.mie_in_t\;
-        spie : \CsrRegisters.mstatus.spie_in_t\;
         mpie : \CsrRegisters.mstatus.mpie_in_t\;
-        spp : \CsrRegisters.mstatus.spp_in_t\;
         mpp : \CsrRegisters.mstatus.mpp_in_t\;
     end record;
 
@@ -83,11 +65,21 @@ package CsrRegisters_pkg is
         mtval : \CsrRegisters.mtval.mtval_in_t\;
     end record;
 
+    type \CsrRegisters.mip.meip_in_t\ is record
+        next_q : std_logic;
+        we : std_logic;
+    end record;
+
+    type \CsrRegisters.mip_in_t\ is record
+        meip : \CsrRegisters.mip.meip_in_t\;
+    end record;
+
     type CsrRegisters_in_t is record
         mstatus : \CsrRegisters.mstatus_in_t\;
         mepc : \CsrRegisters.mepc_in_t\;
         mcause : \CsrRegisters.mcause_in_t\;
         mtval : \CsrRegisters.mtval_in_t\;
+        mip : \CsrRegisters.mip_in_t\;
     end record;
 
     type \CsrRegisters.mstatus.sie_out_t\ is record
