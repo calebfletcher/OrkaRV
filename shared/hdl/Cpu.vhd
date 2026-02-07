@@ -234,6 +234,56 @@ begin
             v.successivePc := std_logic_vector(UNSIGNED(r.pc) + 4);
 
             v.stage := DECODE;
+
+            -- check for interrupts
+            if csrHwOut.mstatus.mie.value and csrHwOut.mie.meie.value and csrHwOut.mip.meip.value then
+              -- take interrupt
+
+              -- ensure this instruction does nothing
+              v.opMemRead        := '0';
+              v.opMemWrite       := '0';
+              v.opRegWriteSource := NONE_SRC;
+              v.csrReq           := '0';
+
+              -- set mcause
+              v.csrHwIn.mcause.interrupt.next_q := '1';
+              v.csrHwIn.mcause.interrupt.we     := '1';
+              v.csrHwIn.mcause.code.next_q      := std_logic_vector(to_unsigned(11, 31));
+              v.csrHwIn.mcause.code.we          := '1';
+
+              -- set mepc to current instruction for a normal interrupt, so
+              -- execution continues there afterwards. if this is a WFI, set it to
+              -- the next instruction so we don't wait again
+              v.csrHwIn.mepc.mepc.next_q := r.pc;
+              v.csrHwIn.mepc.mepc.we     := '1';
+
+              -- set mpie to mie
+              v.csrHwIn.mstatus.mpie.we     := '1';
+              v.csrHwIn.mstatus.mpie.next_q := csrHwOut.mstatus.mie.value;
+              -- set mie to 0
+              v.csrHwIn.mstatus.mie.we     := '1';
+              v.csrHwIn.mstatus.mie.next_q := '0';
+              -- set mpp to M-mode
+              v.csrHwIn.mstatus.mpp.we     := '1';
+              v.csrHwIn.mstatus.mpp.next_q := PRIV_MACHINE_C;
+
+              -- update pc
+              if csrHwOut.mtvec.mode.value /= "00" then
+                -- invalid mode
+                v.stage := TRAPPED;
+              else
+                -- go to mtvec address
+                v.pc    := csrHwOut.mtvec.base.value & "00";
+                v.stage := FETCH;
+              end if;
+              -- todo: check for msip
+              -- todo: check for mtip
+
+              -- prep instruction fetch
+              v.axiReadMaster.arvalid := '1';
+              v.axiReadMaster.araddr  := v.pc;
+              v.axiReadMaster.rready  := '1';
+            end if;
           else
             v.stage := TRAPPED;
           end if;
@@ -323,7 +373,6 @@ begin
             v.aluResult        := std_logic_vector(SHIFT_RIGHT(signed(rs1Value), to_integer(unsigned(rs2Value(4 downto 0)))));
             v.opRegWriteSource := ALU_SRC;
           when LB | LH | LW | LBU | LHU =>
-            -- todo: read strobes on ram
             v.aluResult        := std_logic_vector(unsigned(rs1Value) + unsigned(r.immediate));
             v.opMemRead        := '1';
             v.opRegWriteSource := MEMORY_SRC;
@@ -427,43 +476,7 @@ begin
         end case;
       when EXECUTE =>
         -- update PC
-        if csrHwOut.mstatus.mie.value and csrHwOut.mie.meie.value and csrHwOut.mip.meip.value then
-          -- take interrupt
-
-          -- set mcause
-          v.csrHwIn.mcause.interrupt.next_q := '1';
-          v.csrHwIn.mcause.interrupt.we     := '1';
-          v.csrHwIn.mcause.code.next_q      := std_logic_vector(to_unsigned(11, 31));
-          v.csrHwIn.mcause.code.we          := '1';
-
-          -- set mepc to current instruction for a normal interrupt, so
-          -- execution continues there afterwards. if this is a WFI, set it to
-          -- the next instruction so we don't wait again
-          v.csrHwIn.mepc.mepc.next_q := r.successivePc when r.instType = WFI else
-          r.pc;
-          v.csrHwIn.mepc.mepc.we := '1';
-
-          -- set mpie to mie
-          v.csrHwIn.mstatus.mpie.we     := '1';
-          v.csrHwIn.mstatus.mpie.next_q := csrHwOut.mstatus.mie.value;
-          -- set mie to 0
-          v.csrHwIn.mstatus.mie.we     := '1';
-          v.csrHwIn.mstatus.mie.next_q := '0';
-          -- set mpp to M-mode
-          v.csrHwIn.mstatus.mpp.we     := '1';
-          v.csrHwIn.mstatus.mpp.next_q := PRIV_MACHINE_C;
-
-          -- update pc
-          if csrHwOut.mtvec.mode.value /= "00" then
-            -- invalid mode
-            v.stage := TRAPPED;
-          else
-            -- go to mtvec address
-            v.pc := csrHwOut.mtvec.base.value & "00";
-          end if;
-          -- todo: check for msip
-          -- todo: check for mtip
-        elsif v.opPcFromAlu then
+        if v.opPcFromAlu then
           v.pc := r.aluResult(31 downto 1) & "0";
         elsif v.opPcFromMepcCsr then
           v.pc := csrHwOut.mepc.mepc.value;
@@ -477,7 +490,7 @@ begin
         v.csrAddr   := (others => '0');
         v.csrWrData := (others => '0');
 
-        if r.opMemRead or r.opMemWrite then
+        if v.opMemRead or v.opMemWrite then
           -- only use memory stage if we are doing memory ops
           v.stage := MEMORY;
         elsif csrIllegalAccess then
