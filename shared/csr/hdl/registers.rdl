@@ -38,7 +38,7 @@ addrmap CsrRegisters {
         field {
             // hw = rw;
             // we;
-        } spie[5:5];
+        } spie[5:5] = 0;
         field {
             sw = r;
         } ube[6:6] = 0;
@@ -119,15 +119,15 @@ addrmap CsrRegisters {
         field {
             sw = r;
         } ssie[1:1] = 0;
-        field {} msie[3:3];
+        field {} msie[3:3] = 0;
         field {
             sw = r;
         } stie[5:5] = 0;
-        field {} mtie[7:7];
+        field {} mtie[7:7] = 0;
         field {
             sw = r;
         } seie[9:9] = 0;
-        field {} meie[11:11];
+        field {} meie[11:11] = 0;
     } mie @ 0x304 << 2;
     
     reg {

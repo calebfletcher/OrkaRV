@@ -610,9 +610,15 @@ begin
         field_combo.mstatus.spie.load_next <= load_next_c;
     end process;
     process(clk) begin
-        if rising_edge(clk) then
-            if field_combo.mstatus.spie.load_next then
-                field_storage.mstatus.spie.value <= field_combo.mstatus.spie.next_q;
+        if false then -- async reset
+            field_storage.mstatus.spie.value <= '0';
+        elsif rising_edge(clk) then
+            if rst then -- sync reset
+                field_storage.mstatus.spie.value <= '0';
+            else
+                if field_combo.mstatus.spie.load_next then
+                    field_storage.mstatus.spie.value <= field_combo.mstatus.spie.next_q;
+                end if;
             end if;
         end if;
     end process;
@@ -781,9 +787,15 @@ begin
         field_combo.mie.msie.load_next <= load_next_c;
     end process;
     process(clk) begin
-        if rising_edge(clk) then
-            if field_combo.mie.msie.load_next then
-                field_storage.mie.msie.value <= field_combo.mie.msie.next_q;
+        if false then -- async reset
+            field_storage.mie.msie.value <= '0';
+        elsif rising_edge(clk) then
+            if rst then -- sync reset
+                field_storage.mie.msie.value <= '0';
+            else
+                if field_combo.mie.msie.load_next then
+                    field_storage.mie.msie.value <= field_combo.mie.msie.next_q;
+                end if;
             end if;
         end if;
     end process;
@@ -811,9 +823,15 @@ begin
         field_combo.mie.mtie.load_next <= load_next_c;
     end process;
     process(clk) begin
-        if rising_edge(clk) then
-            if field_combo.mie.mtie.load_next then
-                field_storage.mie.mtie.value <= field_combo.mie.mtie.next_q;
+        if false then -- async reset
+            field_storage.mie.mtie.value <= '0';
+        elsif rising_edge(clk) then
+            if rst then -- sync reset
+                field_storage.mie.mtie.value <= '0';
+            else
+                if field_combo.mie.mtie.load_next then
+                    field_storage.mie.mtie.value <= field_combo.mie.mtie.next_q;
+                end if;
             end if;
         end if;
     end process;
@@ -841,9 +859,15 @@ begin
         field_combo.mie.meie.load_next <= load_next_c;
     end process;
     process(clk) begin
-        if rising_edge(clk) then
-            if field_combo.mie.meie.load_next then
-                field_storage.mie.meie.value <= field_combo.mie.meie.next_q;
+        if false then -- async reset
+            field_storage.mie.meie.value <= '0';
+        elsif rising_edge(clk) then
+            if rst then -- sync reset
+                field_storage.mie.meie.value <= '0';
+            else
+                if field_combo.mie.meie.load_next then
+                    field_storage.mie.meie.value <= field_combo.mie.meie.next_q;
+                end if;
             end if;
         end if;
     end process;

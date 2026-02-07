@@ -42,7 +42,7 @@ Don't override. Generated from: CsrRegisters
 |-----|----------|------|-----|----|
 |  1  |    sie   |  rw  | 0x0 |  — |
 |  3  |    mie   |  rw  | 0x0 |  — |
-|  5  |   spie   |  rw  |  —  |  — |
+|  5  |   spie   |  rw  | 0x0 |  — |
 |  6  |    ube   |   r  | 0x0 |  — |
 |  7  |   mpie   |  rw  | 0x0 |  — |
 |  8  |    spp   |  rw  | 0x0 |  — |
@@ -113,11 +113,11 @@ Don't override. Generated from: CsrRegisters
 |Bits|Identifier|Access|Reset|Name|
 |----|----------|------|-----|----|
 |  1 |   ssie   |   r  | 0x0 |  — |
-|  3 |   msie   |  rw  |  —  |  — |
+|  3 |   msie   |  rw  | 0x0 |  — |
 |  5 |   stie   |   r  | 0x0 |  — |
-|  7 |   mtie   |  rw  |  —  |  — |
+|  7 |   mtie   |  rw  | 0x0 |  — |
 |  9 |   seie   |   r  | 0x0 |  — |
-| 11 |   meie   |  rw  |  —  |  — |
+| 11 |   meie   |  rw  | 0x0 |  — |
 
 ### mtvec register
 

@@ -7,7 +7,9 @@ use riscv_rt::entry;
 
 #[entry]
 fn main() -> ! {
-    riscv::register::mhartid::read();
+    unsafe { riscv::register::mie::set_mext() };
+    unsafe { riscv::register::mstatus::set_mie() };
+
     riscv::register::mscratch::read();
     unsafe { riscv::register::mscratch::write(0x12345678) };
     riscv::register::mscratch::read();

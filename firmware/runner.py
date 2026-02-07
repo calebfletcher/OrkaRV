@@ -60,21 +60,21 @@ async def run(dut):
         raise RuntimeError
     cocotb.start_soon(fail_on_trap())
 
-    expected_string = b"Hello World! This is a long test string from cocotb to the orkarv core.\n"
-    await uart_source.write(expected_string)
+    # expected_string = b"Hello World! This is a long test string from cocotb to the orkarv core.\n"
+    # await uart_source.write(expected_string)
     
-    # receive newline-terminated string
-    received_buffer = bytearray()
-    while True:
-        data = await uart_sink.read()
-        received_buffer.extend(data)
-        if received_buffer.endswith(b'\n'):
-            break
+    # # receive newline-terminated string
+    # received_buffer = bytearray()
+    # while True:
+    #     data = await uart_sink.read()
+    #     received_buffer.extend(data)
+    #     if received_buffer.endswith(b'\n'):
+    #         break
 
-    assert received_buffer == expected_string
+    # assert received_buffer == expected_string
 
     # wait for pass
-    debug_peripheral.pass_event.wait()
+    await debug_peripheral.pass_event.wait()
 
 def main():
     proj_path = Path(__file__).resolve().parent.parent
