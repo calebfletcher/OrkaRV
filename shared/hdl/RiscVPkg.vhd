@@ -59,14 +59,18 @@ PACKAGE RiscVPkg IS
 
     -- privilege levels
     SUBTYPE Privilege IS STD_LOGIC_VECTOR(1 DOWNTO 0);
-    CONSTANT PRIV_USER_C : Privilege := "00";
+    CONSTANT PRIV_USER_C       : Privilege := "00";
     CONSTANT PRIV_SUPERVISOR_C : Privilege := "01";
-    CONSTANT PRIV_MACHINE_C : Privilege := "11";
+    CONSTANT PRIV_MACHINE_C    : Privilege := "11";
+
+    -- trap causes
+    SUBTYPE InterruptCause IS INTEGER RANGE 0 TO 31;
+    CONSTANT INTERRUPT_CAUSE_M_EXT_C : InterruptCause := 11;
 END PACKAGE;
 
 PACKAGE BODY RiscVPkg IS
     FUNCTION opcodeToMajorOpcode (opcode : IN STD_LOGIC_VECTOR(6 DOWNTO 0)) RETURN MajorOpcode IS
-        VARIABLE major : MajorOpcode;
+        VARIABLE major                       : MajorOpcode;
     BEGIN
         CASE opcode(1 DOWNTO 0) IS
             WHEN "11" =>
