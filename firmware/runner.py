@@ -66,8 +66,8 @@ async def run(dut):
     async def set_ext_int():
         await Timer(50, 'us')
         dut.mExtInt.value = 1
-        # await RisingEdge(dut.clk)
-        # dut.mExtInt.value = 0
+        await Timer(5, 'us')
+        dut.mExtInt.value = 0
     cocotb.start_soon(set_ext_int())
 
     # expected_string = b"Hello World! This is a long test string from cocotb to the orkarv core.\n"

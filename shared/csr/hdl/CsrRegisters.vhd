@@ -1284,10 +1284,10 @@ begin
     begin
         next_c := field_storage.mip.meip.value;
         load_next_c := '0';
-        if hwif_in.mip.meip.we then -- HW Write - we
-            next_c := hwif_in.mip.meip.next_q;
-            load_next_c := '1';
-        end if;
+        
+        -- HW Write
+        next_c := hwif_in.mip.meip.next_q;
+        load_next_c := '1';
         field_combo.mip.meip.next_q <= next_c;
         field_combo.mip.meip.load_next <= load_next_c;
     end process;

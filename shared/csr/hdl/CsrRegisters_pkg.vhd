@@ -67,7 +67,6 @@ package CsrRegisters_pkg is
 
     type \CsrRegisters.mip.meip_in_t\ is record
         next_q : std_logic;
-        we : std_logic;
     end record;
 
     type \CsrRegisters.mip_in_t\ is record

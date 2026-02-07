@@ -78,6 +78,7 @@ architecture rtl of Cpu is
     opMemWriteWidthBytes : natural range 1 to 4;
     opRegWriteSource     : RegWriteSourceType;
     opPcFromAlu          : std_logic;
+    opPcFromMepcCsr      : std_logic;
   end record RegType;
 
   constant CSR_IN_INIT_C : CsrRegisters_in_t := (
@@ -117,11 +118,9 @@ architecture rtl of Cpu is
   we    => '0'
   )
   ),
-  mip  => (
-  meip => (
-  -- next_q is always 1 since we only set the bit not clear it
-  next_q => '1',
-  we     => '0'
+  mip    => (
+  meip   => (
+  next_q => '0'
   )
   )
   );
@@ -158,7 +157,8 @@ architecture rtl of Cpu is
   opMemWrite           => '0',
   opMemWriteWidthBytes => 1,
   opRegWriteSource     => NONE_SRC,
-  opPcFromAlu          => '0'
+  opPcFromAlu          => '0',
+  opPcFromMepcCsr      => '0'
   );
 
   signal r   : RegType := REG_INIT_C;
@@ -189,8 +189,8 @@ begin
     v.csrHwIn := CSR_IN_INIT_C;
 
     -- read interrupts
-    -- todo: check what should happen if m_ext_int is held high?
-    v.csrHwIn.mip.meip.we := mExtInt;
+    -- todo: cdc?
+    v.csrHwIn.mip.meip.next_q := mExtInt;
 
     v.regWrStrobe := '0';
 
@@ -246,6 +246,7 @@ begin
         v.opMemWrite           := '0';
         v.opMemWriteWidthBytes := 1;
         v.opPcFromAlu          := '0';
+        v.opPcFromMepcCsr      := '0';
         v.csrReq               := '0';
 
         v.stage := EXECUTE;
@@ -403,8 +404,19 @@ begin
               v.stage := DECODE;
             end if;
           when MRET =>
-            -- todo: implement mret
-            v.stage := TRAPPED;
+            -- return pc to mepc
+            v.opPcFromMepcCsr := '1';
+
+            -- set mie to mpie
+            v.csrHwIn.mstatus.mie.we     := '1';
+            v.csrHwIn.mstatus.mie.next_q := csrHwOut.mstatus.mpie.value;
+            -- set mpie to 0
+            v.csrHwIn.mstatus.mpie.we     := '1';
+            v.csrHwIn.mstatus.mpie.next_q := '1';
+            -- set mpp to M-mode
+            v.csrHwIn.mstatus.mpp.we     := '1';
+            v.csrHwIn.mstatus.mpp.next_q := PRIV_MACHINE_C;
+
           when others =>
             -- on unknown instruction, halt
             -- todo: raise illegal instruction exception
@@ -450,6 +462,8 @@ begin
           -- todo: check for mtip
         elsif v.opPcFromAlu then
           v.pc := r.aluResult(31 downto 1) & "0";
+        elsif v.opPcFromMepcCsr then
+          v.pc := csrHwOut.mepc.mepc.value;
         else
           v.pc := r.successivePc;
         end if;

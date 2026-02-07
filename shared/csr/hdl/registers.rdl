@@ -187,24 +187,13 @@ addrmap CsrRegisters {
 
     reg {
         //default hw = rw;
-        field {
-            sw = r;
-        } ssip[1:1] = 0;
-        field {
-            //we;
-        } msip[3:3] = 0;
-        field {
-            sw = r;
-        } stip[5:5] = 0;
-        field {
-            //we;
-        } mtip[7:7] = 0;
-        field {
-            sw = r;
-        } seip[9:9] = 0;
+        field {} ssip[1:1] = 0;
+        field {} msip[3:3] = 0;
+        field {} stip[5:5] = 0;
+        field {} mtip[7:7] = 0;
+        field {} seip[9:9] = 0;
         field {
             hw = rw;
-            we;
         } meip[11:11] = 0;
     } mip @ 0x344 << 2;
 };
