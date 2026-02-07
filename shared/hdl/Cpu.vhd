@@ -371,27 +371,30 @@ begin
             v.aluResult   := std_logic_vector(unsigned(r.pc) + unsigned(r.immediate));
             v.opPcFromAlu := '1' when UNSIGNED(rs1Value) >= UNSIGNED(rs2Value) else
             '0';
-          when CSRRW =>
+          when CSRRW | CSRRWI =>
             v.csrReq := '1';
             v.csrOp  := OP_WRITE when r.rd = 0 else
             OP_READ_WRITE;
-            v.csrAddr          := r.immediate(11 downto 0);
-            v.csrWrData        := rs1Value;
+            v.csrAddr   := r.immediate(11 downto 0);
+            v.csrWrData := rs1Value when r.instType = CSRRW else
+            std_logic_vector(to_unsigned(r.rs1, rs1Value'length));
             v.opRegWriteSource := NONE_SRC when r.rd = 0 else
             CSR_SRC;
-          when CSRRS =>
+          when CSRRS | CSRRSI =>
             v.csrReq := '1';
             v.csrOp  := OP_READ when r.rs1 = 0 else
             OP_READ_SET;
-            v.csrAddr          := r.immediate(11 downto 0);
-            v.csrWrData        := rs1Value;
+            v.csrAddr   := r.immediate(11 downto 0);
+            v.csrWrData := rs1Value when r.instType = CSRRS else
+            std_logic_vector(to_unsigned(r.rs1, rs1Value'length));
             v.opRegWriteSource := CSR_SRC;
-          when CSRRC =>
+          when CSRRC | CSRRCI =>
             v.csrReq := '1';
             v.csrOp  := OP_READ when r.rs1 = 0 else
             OP_READ_CLEAR;
-            v.csrAddr          := r.immediate(11 downto 0);
-            v.csrWrData        := rs1Value;
+            v.csrAddr   := r.immediate(11 downto 0);
+            v.csrWrData := rs1Value when r.instType = CSRRC else
+            std_logic_vector(to_unsigned(r.rs1, rs1Value'length));
             v.opRegWriteSource := CSR_SRC;
           when EBREAK =>
             v.stage := HALTED;
