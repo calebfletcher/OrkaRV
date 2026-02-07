@@ -26,7 +26,6 @@ entity Cpu is
 
     -- interrupts
     mExtInt : in std_logic
-    --sExtInt : in std_logic;
   );
 end entity Cpu;
 
@@ -66,9 +65,9 @@ architecture rtl of Cpu is
     csrAddr          : std_logic_vector(11 downto 0);
     csrWrData        : std_logic_vector(XLEN - 1 downto 0);
     csrRdData        : std_logic_vector(XLEN - 1 downto 0);
-    
+
     -- csr hardware inputs
-    csrHwIn  : CsrRegisters_in_t;
+    csrHwIn : CsrRegisters_in_t;
 
     -- alu
     aluResult : std_logic_vector(31 downto 0); -- todo: XLEN?
@@ -82,49 +81,49 @@ architecture rtl of Cpu is
   end record RegType;
 
   constant CSR_IN_INIT_C : CsrRegisters_in_t := (
-    mstatus => (
-      mie => (
-        next_q => '0',
-        we => '0' 
-      ),
-      mpie => (
-        next_q => '0',
-        we => '0' 
-      ),
-      mpp => (
-        next_q => PRIV_MACHINE_C,
-        we => '0' 
-      )
-    ),
-    mepc => (
-      mepc => (
-        next_q => (others => '0'),
-        we => '0' 
-      )
-    ),
-    mcause => (
-      code => (
-        next_q => (others => '0'),
-        we => '0' 
-      ),
-      interrupt => (
-        next_q => '0',
-        we => '0' 
-      )
-    ),
-    mtval => (
-      mtval => (
-        next_q => (others => '0'),
-        we => '0' 
-      )
-    ),
-    mip => (
-      meip => (
-        -- next_q is always 1 since we only set the bit not clear it
-        next_q => '1',
-        we => '0' 
-      )
-    )
+  mstatus => (
+  mie     => (
+  next_q  => '0',
+  we      => '0'
+  ),
+  mpie   => (
+  next_q => '0',
+  we     => '0'
+  ),
+  mpp    => (
+  next_q => PRIV_MACHINE_C,
+  we     => '0'
+  )
+  ),
+  mepc => (
+  mepc => (
+  next_q => (others => '0'),
+  we   => '0'
+  )
+  ),
+  mcause => (
+  code   => (
+  next_q => (others => '0'),
+  we     => '0'
+  ),
+  interrupt => (
+  next_q    => '0',
+  we        => '0'
+  )
+  ),
+  mtval => (
+  mtval => (
+  next_q => (others => '0'),
+  we    => '0'
+  )
+  ),
+  mip  => (
+  meip => (
+  -- next_q is always 1 since we only set the bit not clear it
+  next_q => '1',
+  we     => '0'
+  )
+  )
   );
 
   constant REG_INIT_C : RegType := (
@@ -415,28 +414,28 @@ begin
         -- update PC
         if csrHwOut.mstatus.mie.value and csrHwOut.mie.meie.value and csrHwOut.mip.meip.value then
           -- take interrupt
-          
+
           -- set mcause
           v.csrHwIn.mcause.interrupt.next_q := '1';
-          -- todo: how to reset the write-enables
-          v.csrHwIn.mcause.interrupt.we := '1';
-          v.csrHwIn.mcause.code.next_q := (others => '0');
-          v.csrHwIn.mcause.code.we := '1';
+          v.csrHwIn.mcause.interrupt.we     := '1';
+          v.csrHwIn.mcause.code.next_q      := std_logic_vector(to_unsigned(11, 31));
+          v.csrHwIn.mcause.code.we          := '1';
 
           -- set mepc to current instruction for a normal interrupt, so
           -- execution continues there afterwards. if this is a WFI, set it to
           -- the next instruction so we don't wait again
-          v.csrHwIn.mepc.mepc.next_q := r.successivePc when r.instType = WFI else r.pc;
+          v.csrHwIn.mepc.mepc.next_q := r.successivePc when r.instType = WFI else
+          r.pc;
           v.csrHwIn.mepc.mepc.we := '1';
 
           -- set mpie to mie
-          v.csrHwIn.mstatus.mpie.we := '1';
+          v.csrHwIn.mstatus.mpie.we     := '1';
           v.csrHwIn.mstatus.mpie.next_q := csrHwOut.mstatus.mie.value;
           -- set mie to 0
-          v.csrHwIn.mstatus.mie.we := '1';
+          v.csrHwIn.mstatus.mie.we     := '1';
           v.csrHwIn.mstatus.mie.next_q := '0';
           -- set mpp to M-mode
-          v.csrHwIn.mstatus.mpp.we := '1';
+          v.csrHwIn.mstatus.mpp.we     := '1';
           v.csrHwIn.mstatus.mpp.next_q := PRIV_MACHINE_C;
 
           -- update pc
@@ -447,8 +446,8 @@ begin
             -- go to mtvec address
             v.pc := csrHwOut.mtvec.base.value & "00";
           end if;
-        -- todo: check for msip
-        -- todo: check for mtip
+          -- todo: check for msip
+          -- todo: check for mtip
         elsif v.opPcFromAlu then
           v.pc := r.aluResult(31 downto 1) & "0";
         else

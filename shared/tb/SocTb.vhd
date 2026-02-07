@@ -44,7 +44,9 @@ BEGIN
             reset => reset,
             halt => halt,
 
-            uart_txd_in => '1'
+            uart_txd_in => '1',
+
+            mExtInt => '0'
         );
 
     -- Stop simulation on halt or timeout
