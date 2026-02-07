@@ -29,15 +29,19 @@ addrmap UartRegisters {
     reg {
         name = "Control Register";
         field {
-            name = "Enable TX/RX";
-        } enable = 1;
+            name = "RX Data Ready Interrupt Enable";
+        } rxie = 0;
+        field {
+            name = "TX Empty Interrupt Enable";
+        } txie = 0;
+        
     } ctrl;
     
     reg {
         name = "Status Register";
         
         default sw = r;
-        default hw = w;
+        default hw = rw;
 
         field {
             name = "RX Data Ready";

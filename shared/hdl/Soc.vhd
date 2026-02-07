@@ -22,8 +22,6 @@ entity Soc is
     uart_rxd_out : out std_logic;
     uart_txd_in  : in std_logic;
 
-    mExtInt : in std_logic;
-
     -- external master interface
     mAxilReadMaster  : in AxiLiteReadMasterType := AXI_LITE_READ_MASTER_INIT_C;
     mAxilReadSlave   : out AxiLiteReadSlaveType;
@@ -54,7 +52,8 @@ architecture rtl of Soc is
 
   constant AXIL_XBAR_CFG_C : AxiLiteCrossbarMasterConfigArray(0 to NUM_SLAVES_C - 1) := (0 => (baseAddr => X"01000000", addrBits => 24, connectivity => X"FFFF"), 1 => (baseAddr => X"03000000", addrBits => 24, connectivity => X"FFFF"), 2 => (baseAddr => X"02000000", addrBits => 16, connectivity => X"FFFF"), 3 => (baseAddr => X"02010000", addrBits => 16, connectivity => X"FFFF"));
 
-  --SIGNAL mExtInt : std_logic := '0';
+  signal mExtInt : std_logic;
+  signal uartInt : std_logic;
 begin
   Cpu_inst : entity work.Cpu
     port map
@@ -110,8 +109,12 @@ begin
       axilReadMaster  => sAxiReadMasters(3),
       axilReadSlave   => sAxiReadSlaves(3),
       uart_rxd_out    => uart_rxd_out,
-      uart_txd_in     => uart_txd_in
+      uart_txd_in     => uart_txd_in,
+      int             => uartInt
     );
+
+  -- interrupts
+  mExtInt <= uartInt;
 
   -- external master interface
   mAxiWriteMasters(1) <= mAxilWriteMaster;

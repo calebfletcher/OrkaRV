@@ -54,20 +54,30 @@ package UartRegisters_pkg is
         tx : \UartRegisters.tx.tx_out_t\;
     end record;
 
-    type \UartRegisters.ctrl.enable_out_t\ is record
+    type \UartRegisters.ctrl.rxie_out_t\ is record
+        value : std_logic;
+    end record;
+
+    type \UartRegisters.ctrl.txie_out_t\ is record
         value : std_logic;
     end record;
 
     type \UartRegisters.ctrl_out_t\ is record
-        enable : \UartRegisters.ctrl.enable_out_t\;
+        rxie : \UartRegisters.ctrl.rxie_out_t\;
+        txie : \UartRegisters.ctrl.txie_out_t\;
     end record;
 
     type \UartRegisters.status.rxr_out_t\ is record
         value : std_logic;
     end record;
 
+    type \UartRegisters.status.txe_out_t\ is record
+        value : std_logic;
+    end record;
+
     type \UartRegisters.status_out_t\ is record
         rxr : \UartRegisters.status.rxr_out_t\;
+        txe : \UartRegisters.status.txe_out_t\;
     end record;
 
     type UartRegisters_out_t is record

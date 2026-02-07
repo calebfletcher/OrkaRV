@@ -11,6 +11,8 @@ pub struct Uart {
     ptr: *mut (),
 }
 
+unsafe impl Send for Uart {}
+
 impl Uart {
     /// Claim an address as a UART peripheral instance
     ///
@@ -38,15 +40,23 @@ impl Uart {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct Ctrl(pub u8);
+pub struct Ctrl(pub u32);
 
 impl Ctrl {
-    pub fn enable(&self) -> bool {
+    pub fn rxie(&self) -> bool {
         self.0.get_bit(0)
     }
 
-    pub fn set_enable(&mut self, value: bool) {
+    pub fn set_rxie(&mut self, value: bool) {
         self.0.set_bit(0, value);
+    }
+
+    pub fn txie(&self) -> bool {
+        self.0.get_bit(1)
+    }
+
+    pub fn set_txie(&mut self, value: bool) {
+        self.0.set_bit(1, value);
     }
 }
 

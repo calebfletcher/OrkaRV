@@ -46,9 +46,10 @@ Don't override. Generated from: UartRegisters
 - Base Offset: 0x8
 - Size: 0x4
 
-|Bits|Identifier|Access|Reset|    Name    |
-|----|----------|------|-----|------------|
-|  0 |  enable  |  rw  | 0x1 |Enable TX/RX|
+|Bits|Identifier|Access|Reset|             Name             |
+|----|----------|------|-----|------------------------------|
+|  0 |   rxie   |  rw  | 0x0 |RX Data Ready Interrupt Enable|
+|  1 |   txie   |  rw  | 0x0 |   TX Empty Interrupt Enable  |
 
 ### status register
 

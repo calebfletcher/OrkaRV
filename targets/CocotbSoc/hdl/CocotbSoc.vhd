@@ -18,8 +18,6 @@ entity CocotbSoc is
     uart_rxd_out : out std_logic;
     uart_txd_in  : in std_logic;
 
-    mExtInt : in std_logic;
-
     -- slave interface for cocotb master
     S_AXI_AWADDR  : in std_logic_vector(31 downto 0);
     S_AXI_AWPROT  : in std_logic_vector(2 downto 0);
@@ -94,7 +92,6 @@ begin
       gpioPins     => gpioPins,
       uart_rxd_out => uart_rxd_out,
       uart_txd_in  => uart_txd_in,
-      mExtInt      => mExtInt,
 
       -- cocotb master interface
       mAxilReadMaster  => mAxilReadMaster,

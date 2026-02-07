@@ -100,13 +100,19 @@ architecture rtl of UartRegisters is
         tx : \UartRegisters.tx.tx_combo_t\;
     end record;
 
-    type \UartRegisters.ctrl.enable_combo_t\ is record
+    type \UartRegisters.ctrl.rxie_combo_t\ is record
+        next_q : std_logic;
+        load_next : std_logic;
+    end record;
+
+    type \UartRegisters.ctrl.txie_combo_t\ is record
         next_q : std_logic;
         load_next : std_logic;
     end record;
 
     type \UartRegisters.ctrl_combo_t\ is record
-        enable : \UartRegisters.ctrl.enable_combo_t\;
+        rxie : \UartRegisters.ctrl.rxie_combo_t\;
+        txie : \UartRegisters.ctrl.txie_combo_t\;
     end record;
 
     type \UartRegisters.status.rxr_combo_t\ is record
@@ -114,8 +120,14 @@ architecture rtl of UartRegisters is
         load_next : std_logic;
     end record;
 
+    type \UartRegisters.status.txe_combo_t\ is record
+        next_q : std_logic;
+        load_next : std_logic;
+    end record;
+
     type \UartRegisters.status_combo_t\ is record
         rxr : \UartRegisters.status.rxr_combo_t\;
+        txe : \UartRegisters.status.txe_combo_t\;
     end record;
 
     type field_combo_t is record
@@ -134,20 +146,30 @@ architecture rtl of UartRegisters is
         tx : \UartRegisters.tx.tx_storage_t\;
     end record;
 
-    type \UartRegisters.ctrl.enable_storage_t\ is record
+    type \UartRegisters.ctrl.rxie_storage_t\ is record
+        value : std_logic;
+    end record;
+
+    type \UartRegisters.ctrl.txie_storage_t\ is record
         value : std_logic;
     end record;
 
     type \UartRegisters.ctrl_storage_t\ is record
-        enable : \UartRegisters.ctrl.enable_storage_t\;
+        rxie : \UartRegisters.ctrl.rxie_storage_t\;
+        txie : \UartRegisters.ctrl.txie_storage_t\;
     end record;
 
     type \UartRegisters.status.rxr_storage_t\ is record
         value : std_logic;
     end record;
 
+    type \UartRegisters.status.txe_storage_t\ is record
+        value : std_logic;
+    end record;
+
     type \UartRegisters.status_storage_t\ is record
         rxr : \UartRegisters.status.rxr_storage_t\;
+        txe : \UartRegisters.status.txe_storage_t\;
     end record;
 
     type field_storage_t is record
@@ -431,34 +453,63 @@ begin
     hwif_out.tx.tx.value <= field_storage.tx.tx.value;
     hwif_out.tx.tx.swacc <= decoded_reg_strb.tx;
 
-    -- Field: UartRegisters.ctrl.enable
+    -- Field: UartRegisters.ctrl.rxie
     process(all)
         variable next_c: std_logic;
         variable load_next_c: std_logic;
     begin
-        next_c := field_storage.ctrl.enable.value;
+        next_c := field_storage.ctrl.rxie.value;
         load_next_c := '0';
         if decoded_reg_strb.ctrl and decoded_req_is_wr then -- SW write
-            next_c := (field_storage.ctrl.enable.value and not decoded_wr_biten(0)) or (decoded_wr_data(0) and decoded_wr_biten(0));
+            next_c := (field_storage.ctrl.rxie.value and not decoded_wr_biten(0)) or (decoded_wr_data(0) and decoded_wr_biten(0));
             load_next_c := '1';
         end if;
-        field_combo.ctrl.enable.next_q <= next_c;
-        field_combo.ctrl.enable.load_next <= load_next_c;
+        field_combo.ctrl.rxie.next_q <= next_c;
+        field_combo.ctrl.rxie.load_next <= load_next_c;
     end process;
     process(clk) begin
         if false then -- async reset
-            field_storage.ctrl.enable.value <= '1';
+            field_storage.ctrl.rxie.value <= '0';
         elsif rising_edge(clk) then
             if rst then -- sync reset
-                field_storage.ctrl.enable.value <= '1';
+                field_storage.ctrl.rxie.value <= '0';
             else
-                if field_combo.ctrl.enable.load_next then
-                    field_storage.ctrl.enable.value <= field_combo.ctrl.enable.next_q;
+                if field_combo.ctrl.rxie.load_next then
+                    field_storage.ctrl.rxie.value <= field_combo.ctrl.rxie.next_q;
                 end if;
             end if;
         end if;
     end process;
-    hwif_out.ctrl.enable.value <= field_storage.ctrl.enable.value;
+    hwif_out.ctrl.rxie.value <= field_storage.ctrl.rxie.value;
+
+    -- Field: UartRegisters.ctrl.txie
+    process(all)
+        variable next_c: std_logic;
+        variable load_next_c: std_logic;
+    begin
+        next_c := field_storage.ctrl.txie.value;
+        load_next_c := '0';
+        if decoded_reg_strb.ctrl and decoded_req_is_wr then -- SW write
+            next_c := (field_storage.ctrl.txie.value and not decoded_wr_biten(1)) or (decoded_wr_data(1) and decoded_wr_biten(1));
+            load_next_c := '1';
+        end if;
+        field_combo.ctrl.txie.next_q <= next_c;
+        field_combo.ctrl.txie.load_next <= load_next_c;
+    end process;
+    process(clk) begin
+        if false then -- async reset
+            field_storage.ctrl.txie.value <= '0';
+        elsif rising_edge(clk) then
+            if rst then -- sync reset
+                field_storage.ctrl.txie.value <= '0';
+            else
+                if field_combo.ctrl.txie.load_next then
+                    field_storage.ctrl.txie.value <= field_combo.ctrl.txie.next_q;
+                end if;
+            end if;
+        end if;
+    end process;
+    hwif_out.ctrl.txie.value <= field_storage.ctrl.txie.value;
 
     -- Field: UartRegisters.status.rxr
     process(all)
@@ -489,6 +540,29 @@ begin
     end process;
     hwif_out.status.rxr.value <= field_storage.status.rxr.value;
 
+    -- Field: UartRegisters.status.txe
+    process(all)
+        variable next_c: std_logic;
+        variable load_next_c: std_logic;
+    begin
+        next_c := field_storage.status.txe.value;
+        load_next_c := '0';
+        
+        -- HW Write
+        next_c := hwif_in.status.txe.next_q;
+        load_next_c := '1';
+        field_combo.status.txe.next_q <= next_c;
+        field_combo.status.txe.load_next <= load_next_c;
+    end process;
+    process(clk) begin
+        if rising_edge(clk) then
+            if field_combo.status.txe.load_next then
+                field_storage.status.txe.value <= field_combo.status.txe.next_q;
+            end if;
+        end if;
+    end process;
+    hwif_out.status.txe.value <= field_storage.status.txe.value;
+
     ----------------------------------------------------------------------------
     -- Write response
     ----------------------------------------------------------------------------
@@ -503,10 +577,11 @@ begin
     -- Assign readback values to a flattened array
     readback_array(0)(7 downto 0) <= hwif_in.rx.rx.next_q when (decoded_reg_strb.rx and not decoded_req_is_wr) else (others => '0');
     readback_array(0)(31 downto 8) <= (others => '0');
-    readback_array(1)(0 downto 0) <= to_std_logic_vector(field_storage.ctrl.enable.value) when (decoded_reg_strb.ctrl and not decoded_req_is_wr) else (others => '0');
-    readback_array(1)(31 downto 1) <= (others => '0');
+    readback_array(1)(0 downto 0) <= to_std_logic_vector(field_storage.ctrl.rxie.value) when (decoded_reg_strb.ctrl and not decoded_req_is_wr) else (others => '0');
+    readback_array(1)(1 downto 1) <= to_std_logic_vector(field_storage.ctrl.txie.value) when (decoded_reg_strb.ctrl and not decoded_req_is_wr) else (others => '0');
+    readback_array(1)(31 downto 2) <= (others => '0');
     readback_array(2)(0 downto 0) <= to_std_logic_vector(field_storage.status.rxr.value) when (decoded_reg_strb.status and not decoded_req_is_wr) else (others => '0');
-    readback_array(2)(1 downto 1) <= to_std_logic_vector(hwif_in.status.txe.next_q) when (decoded_reg_strb.status and not decoded_req_is_wr) else (others => '0');
+    readback_array(2)(1 downto 1) <= to_std_logic_vector(field_storage.status.txe.value) when (decoded_reg_strb.status and not decoded_req_is_wr) else (others => '0');
     readback_array(2)(31 downto 2) <= (others => '0');
 
     -- Reduce the array
