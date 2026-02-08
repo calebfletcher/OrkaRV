@@ -196,10 +196,62 @@ ARCHITECTURE rtl OF Cpu IS
         v.csrHwIn.mcause.code.next_q      := STD_LOGIC_VECTOR(to_unsigned(cause, 31));
         v.csrHwIn.mcause.code.we          := '1';
 
+        -- set mepc to the instruction we were about to execute so execution
+        -- continues there afterwards. with how wfi is implemented, this will
+        -- be the following instruction anyway
+        v.csrHwIn.mepc.mepc.next_q := v.pc;
+        v.csrHwIn.mepc.mepc.we     := '1';
+
+        -- set mpie to mie
+        v.csrHwIn.mstatus.mpie.we     := '1';
+        v.csrHwIn.mstatus.mpie.next_q := csrHwOut.mstatus.mie.value;
+        -- set mie to 0
+        v.csrHwIn.mstatus.mie.we     := '1';
+        v.csrHwIn.mstatus.mie.next_q := '0';
+        -- set mpp to M-mode
+        v.csrHwIn.mstatus.mpp.we     := '1';
+        v.csrHwIn.mstatus.mpp.next_q := PRIV_MACHINE_C;
+
+        -- update pc
+        IF csrHwOut.mtvec.mode.value /= "00" THEN
+            -- invalid mode
+            v.stage := TRAPPED;
+        ELSE
+            -- go to mtvec address
+            v.pc    := csrHwOut.mtvec.base.value & "00";
+            v.stage := FETCH;
+        END IF;
+        -- todo: check for msip
+        -- todo: check for mtip
+
+        -- prep instruction fetch
+        v.axiReadMaster.arvalid := '1';
+        v.axiReadMaster.araddr  := v.pc;
+        v.axiReadMaster.rready  := '1';
+    END PROCEDURE;
+
+    -- take exception
+    -- assumes v.pc is pointing to the current instruction
+    PROCEDURE exception (
+        VARIABLE v     : INOUT RegType;
+        CONSTANT cause : IN ExceptionCause
+    ) IS
+    BEGIN
+        -- ensure this instruction does nothing
+        v.opMemRead        := '0';
+        v.opMemWrite       := '0';
+        v.opRegWriteSource := NONE_SRC;
+
+        -- set mcause
+        v.csrHwIn.mcause.interrupt.next_q := '0';
+        v.csrHwIn.mcause.interrupt.we     := '1';
+        v.csrHwIn.mcause.code.next_q      := STD_LOGIC_VECTOR(to_unsigned(cause, 31));
+        v.csrHwIn.mcause.code.we          := '1';
+
         -- set mepc to current instruction for a normal interrupt, so
         -- execution continues there afterwards. if this is a WFI, set it to
         -- the next instruction so we don't wait again
-        v.csrHwIn.mepc.mepc.next_q := r.pc;
+        v.csrHwIn.mepc.mepc.next_q := v.pc;
         v.csrHwIn.mepc.mepc.we     := '1';
 
         -- set mpie to mie
@@ -291,7 +343,7 @@ BEGIN
                             interrupt(v, INTERRUPT_M_EXT_C);
                         END IF;
                     ELSE
-                        v.stage := TRAPPED;
+                        exception(v, EXCEPTION_INST_ACCESS_FAULT_C);
                     END IF;
                 END IF;
             WHEN DECODE =>
@@ -452,7 +504,8 @@ BEGIN
                         STD_LOGIC_VECTOR(to_unsigned(r.rs1, rs1Value'length));
                         v.opRegWriteSource := CSR_SRC;
                     WHEN EBREAK =>
-                        v.stage := HALTED;
+                        --v.stage := HALTED;
+                        exception(v, EXCEPTION_BREAKPOINT_C);
                     WHEN WFI =>
                         -- stay in decode until an interrupt arrives
                         -- purposefully ignoring mstatus.mie per priv spec
@@ -476,20 +529,9 @@ BEGIN
                         v.csrHwIn.mstatus.mpp.next_q := PRIV_MACHINE_C;
 
                     WHEN OTHERS =>
-                        -- on unknown instruction, halt
-                        -- todo: raise illegal instruction exception
-                        v.stage := TRAPPED;
+                        exception(v, EXCEPTION_ILLEGAL_INST_C);
                 END CASE;
             WHEN EXECUTE =>
-                -- update PC
-                IF v.opPcFromAlu THEN
-                    v.pc := r.aluResult(31 DOWNTO 1) & "0";
-                ELSIF v.opPcFromMepcCsr THEN
-                    v.pc := csrHwOut.mepc.mepc.value;
-                ELSE
-                    v.pc := r.successivePc;
-                END IF;
-
                 -- handle potential csr read and reset
                 v.csrRdData := csrRdData;
                 v.csrReq    := '0';
@@ -500,15 +542,9 @@ BEGIN
                     -- only use memory stage if we are doing memory ops
                     v.stage := MEMORY;
                 ELSIF csrIllegalAccess THEN
-                    -- handle illegal csr access
-                    v.stage := TRAPPED;
+                    exception(v, EXCEPTION_ILLEGAL_INST_C);
                 ELSE
                     v.stage := WRITEBACK;
-
-                    -- prepare ram read for fetch in advance due to the memory latency
-                    v.axiReadMaster.arvalid := '1';
-                    v.axiReadMaster.araddr  := v.pc;
-                    v.axiReadMaster.rready  := '1';
                 END IF;
 
                 -- prepare memory ops in advance due to the memory latency
@@ -536,13 +572,13 @@ BEGIN
                 CASE r.opMemWriteWidthBytes IS
                     WHEN 1 =>
                         FOR i IN 0 TO 3 LOOP
-                            IF v.aluResult(1 DOWNTO 0) = STD_LOGIC_VECTOR(to_unsigned(i, 2)) THEN
+                            IF r.aluResult(1 DOWNTO 0) = STD_LOGIC_VECTOR(to_unsigned(i, 2)) THEN
                                 v.axiWriteMaster.wstrb(i)                            := '1';
                                 v.axiWriteMaster.wdata((i + 1) * 8 - 1 DOWNTO i * 8) := rs2Value(7 DOWNTO 0);
                             END IF;
                         END LOOP;
                     WHEN 2 =>
-                        IF v.aluResult(1) THEN
+                        IF r.aluResult(1) THEN
                             v.axiWriteMaster.wstrb               := "1100";
                             v.axiWriteMaster.wdata(31 DOWNTO 16) := rs2Value(15 DOWNTO 0);
                         ELSE
@@ -560,14 +596,9 @@ BEGIN
                 -- once mem transaction completes
                 IF r.opMemWrite AND r.axiWriteMaster.bready AND axiWriteSlave.bvalid THEN
                     IF axiWriteSlave.bresp = AXI_RESP_OK_C THEN
-                        -- prepare ram read for fetch in advance due to the memory latency
-                        v.axiReadMaster.arvalid := '1';
-                        v.axiReadMaster.araddr  := v.pc;
-                        v.axiReadMaster.rready  := '1';
-
                         v.stage := WRITEBACK;
                     ELSE
-                        v.stage := TRAPPED;
+                        exception(v, EXCEPTION_STORE_ACCESS_FAULT_C);
                     END IF;
                 END IF;
                 IF r.opMemRead AND r.axiReadMaster.rready AND axiReadSlave.rvalid THEN
@@ -575,17 +606,13 @@ BEGIN
                         -- register read data
                         v.memReadData := axiReadSlave.rdata;
 
-                        -- prepare ram read for fetch in advance due to the memory latency
-                        v.axiReadMaster.arvalid := '1';
-                        v.axiReadMaster.araddr  := v.pc;
-                        v.axiReadMaster.rready  := '1';
-
                         v.stage := WRITEBACK;
                     ELSE
-                        v.stage := TRAPPED;
+                        exception(v, EXCEPTION_LOAD_ACCESS_FAULT_C);
                     END IF;
                 END IF;
             WHEN WRITEBACK =>
+                -- nothing at this stage can cause exceptions
                 -- write to register from alu, ram, or immediate
                 v.regWrStrobe := '1' WHEN r.opRegWriteSource /= NONE_SRC ELSE
                 '0';
@@ -644,6 +671,20 @@ BEGIN
                     WHEN OTHERS            =>
                         v.regWrData := (OTHERS => '0');
                 END CASE;
+
+                -- update PC
+                IF v.opPcFromAlu THEN
+                    v.pc := r.aluResult(31 DOWNTO 1) & "0";
+                ELSIF v.opPcFromMepcCsr THEN
+                    v.pc := csrHwOut.mepc.mepc.value;
+                ELSE
+                    v.pc := r.successivePc;
+                END IF;
+
+                -- prepare ram read for fetch in advance due to the memory latency
+                v.axiReadMaster.arvalid := '1';
+                v.axiReadMaster.araddr  := v.pc;
+                v.axiReadMaster.rready  := '1';
 
                 v.stage := FETCH;
             WHEN HALTED =>
