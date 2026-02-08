@@ -288,7 +288,7 @@ BEGIN
 
                         -- check for interrupts
                         IF csrHwOut.mstatus.mie.value AND csrHwOut.mip.meip.value AND csrHwOut.mie.meie.value THEN
-                            interrupt(v, INTERRUPT_CAUSE_M_EXT_C);
+                            interrupt(v, INTERRUPT_M_EXT_C);
                         END IF;
                     ELSE
                         v.stage := TRAPPED;

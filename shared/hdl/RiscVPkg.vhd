@@ -65,7 +65,27 @@ PACKAGE RiscVPkg IS
 
     -- trap causes
     SUBTYPE InterruptCause IS INTEGER RANGE 0 TO 31;
-    CONSTANT INTERRUPT_CAUSE_M_EXT_C : InterruptCause := 11;
+    CONSTANT INTERRUPT_M_SOFT_C : InterruptCause := 3;
+    CONSTANT INTERRUPT_M_TIM_C  : InterruptCause := 7;
+    CONSTANT INTERRUPT_M_EXT_C  : InterruptCause := 11;
+    SUBTYPE ExceptionCause IS INTEGER RANGE 0 TO 31;
+    CONSTANT EXCEPTION_INST_ADDR_MISALIGNED_C  : ExceptionCause := 0;
+    CONSTANT EXCEPTION_INST_ACCESS_FAULT_C     : ExceptionCause := 1;
+    CONSTANT EXCEPTION_ILLEGAL_INST_C          : ExceptionCause := 2;
+    CONSTANT EXCEPTION_BREAKPOINT_C            : ExceptionCause := 3;
+    CONSTANT EXCEPTION_LOAD_ADDR_MISALIGNED_C  : ExceptionCause := 4;
+    CONSTANT EXCEPTION_LOAD_ACCESS_FAULT_C     : ExceptionCause := 5;
+    CONSTANT EXCEPTION_STORE_ADDR_MISALIGNED_C : ExceptionCause := 6;
+    CONSTANT EXCEPTION_STORE_ACCESS_FAULT_C    : ExceptionCause := 7;
+    CONSTANT EXCEPTION_ECALL_FROM_U_C          : ExceptionCause := 8;
+    CONSTANT EXCEPTION_ECALL_FROM_S_C          : ExceptionCause := 9;
+    CONSTANT EXCEPTION_ECALL_FROM_M_C          : ExceptionCause := 11;
+    CONSTANT EXCEPTION_INST_PAGE_FAULT_C       : ExceptionCause := 12;
+    CONSTANT EXCEPTION_LOAD_PAGE_FAULT_C       : ExceptionCause := 13;
+    CONSTANT EXCEPTION_STORE_PAGE_FAULT_C      : ExceptionCause := 15;
+    CONSTANT EXCEPTION_DOUBLE_TRAP_C           : ExceptionCause := 16;
+    CONSTANT EXCEPTION_SOFTWARE_CHECK_C        : ExceptionCause := 18;
+    CONSTANT EXCEPTION_HARDWARE_ERROR_C        : ExceptionCause := 19;
 END PACKAGE;
 
 PACKAGE BODY RiscVPkg IS
