@@ -5,6 +5,7 @@ LIBRARY std;
 USE std.textio.ALL;
 
 LIBRARY surf;
+USE surf.AxiPkg.ALL;
 USE surf.AxiLitePkg.ALL;
 USE surf.StdRtlPkg.ALL;
 
@@ -18,10 +19,10 @@ ENTITY Ram IS
         clk   : IN STD_LOGIC;
         reset : IN STD_LOGIC;
 
-        axiReadMaster  : IN AxiLiteReadMasterType;
-        axiReadSlave   : OUT AxiLiteReadSlaveType;
-        axiWriteMaster : IN AxiLiteWriteMasterType;
-        axiWriteSlave  : OUT AxiLiteWriteSlaveType
+        axiReadMaster  : IN AxiReadMasterType;
+        axiReadSlave   : OUT AxiReadSlaveType;
+        axiWriteMaster : IN AxiWriteMasterType;
+        axiWriteSlave  : OUT AxiWriteSlaveType
     );
 END ENTITY Ram;
 
@@ -84,15 +85,15 @@ BEGIN
 
         VARIABLE writeData      : STD_LOGIC_VECTOR(31 DOWNTO 0);
         VARIABLE writeStrb      : STD_LOGIC_VECTOR(3 DOWNTO 0);
-        VARIABLE axiStatus      : AxiLiteStatusType     := AXI_LITE_STATUS_INIT_C;
-        VARIABLE vAxiReadSlave  : AxiLiteReadSlaveType  := AXI_LITE_READ_SLAVE_INIT_C;
-        VARIABLE vAxiWriteSlave : AxiLiteWriteSlaveType := AXI_LITE_WRITE_SLAVE_INIT_C;
+        VARIABLE axiStatus      : AxiLiteStatusType := AXI_LITE_STATUS_INIT_C;
+        VARIABLE vAxiReadSlave  : AxiReadSlaveType  := AXI_READ_SLAVE_INIT_C;
+        VARIABLE vAxiWriteSlave : AxiWriteSlaveType := AXI_WRITE_SLAVE_INIT_C;
     BEGIN
         IF rising_edge(clk) THEN
             IF (reset) THEN
-                vAxiReadSlave          := AXI_LITE_READ_SLAVE_INIT_C;
+                vAxiReadSlave          := AXI_READ_SLAVE_INIT_C;
                 vAxiReadSlave.arready  := '1';
-                vAxiWriteSlave         := AXI_LITE_WRITE_SLAVE_INIT_C;
+                vAxiWriteSlave         := AXI_WRITE_SLAVE_INIT_C;
                 vAxiWriteSlave.awready := '1';
                 vAxiWriteSlave.wready  := '1';
                 axiStatus              := AXI_LITE_STATUS_INIT_C;
@@ -136,8 +137,8 @@ BEGIN
 
                     axiStatus.writeDataEnable := '1';
 
-                    writeData := axiWriteMaster.wdata;
-                    writeStrb := axiWriteMaster.wstrb;
+                    writeData := axiWriteMaster.wdata(31 DOWNTO 0);
+                    writeStrb := axiWriteMaster.wstrb(3 DOWNTO 0);
                 END IF;
 
                 -- Write
@@ -175,8 +176,8 @@ BEGIN
                         readWordAddress := (readAddress - AXI_BASE_ADDR_G) / 4;
 
                         -- address is in range of the ram
-                        vAxiReadSlave.rdata := ramValue(to_integer(readWordAddress));
-                        vAxiReadSlave.rresp := AXI_RESP_OK_C;
+                        vAxiReadSlave.rdata(31 DOWNTO 0) := ramValue(to_integer(readWordAddress));
+                        vAxiReadSlave.rresp              := AXI_RESP_OK_C;
                     ELSE
                         -- out of range, return with SLVERR
                         vAxiReadSlave.rdata := (OTHERS => '0');
