@@ -19,41 +19,67 @@ USE ieee.std_logic_unsigned.ALL;
 
 LIBRARY surf;
 USE surf.StdRtlPkg.ALL;
-USE surf.AxiLitePkg.ALL;
+USE surf.AxiPkg.ALL;
+USE surf.AxiLitePkg.ALL; -- For AXI_RESP_* constants
 USE surf.ArbiterPkg.ALL;
 USE surf.TextUtilPkg.ALL;
 
-ENTITY AxiLiteCrossbar IS
+-- Package for AXI4 Crossbar configuration types
+PACKAGE AxiCrossbarPkg IS
+    -- Config type for AXI4 crossbar (similar to AxiLite version)
+    TYPE AxiCrossbarMasterConfigType IS RECORD
+        baseAddr     : slv(31 DOWNTO 0);
+        addrBits     : INTEGER RANGE 1 TO 32;
+        connectivity : slv(15 DOWNTO 0);
+    END RECORD AxiCrossbarMasterConfigType;
+    TYPE AxiCrossbarMasterConfigArray IS ARRAY (NATURAL RANGE <>) OF AxiCrossbarMasterConfigType;
+END PACKAGE AxiCrossbarPkg;
+
+LIBRARY ieee;
+USE ieee.std_logic_1164.ALL;
+USE ieee.std_logic_arith.ALL;
+USE ieee.std_logic_unsigned.ALL;
+
+LIBRARY surf;
+USE surf.StdRtlPkg.ALL;
+USE surf.AxiPkg.ALL;
+USE surf.AxiLitePkg.ALL; -- For AXI_RESP_* constants
+USE surf.ArbiterPkg.ALL;
+USE surf.TextUtilPkg.ALL;
+
+USE work.AxiCrossbarPkg.ALL;
+
+ENTITY AxiCrossbar IS
     GENERIC (
-        TPD_G              : TIME                             := 1 ns;
-        RST_POLARITY_G     : sl                               := '1'; -- '1' for active HIGH reset, '0' for active LOW reset
-        RST_ASYNC_G        : BOOLEAN                          := false;
-        NUM_SLAVE_SLOTS_G  : NATURAL RANGE 1 TO 16            := 4;
-        NUM_MASTER_SLOTS_G : NATURAL RANGE 1 TO 64            := 4;
-        DEC_ERROR_RESP_G   : slv(1 DOWNTO 0)                  := AXI_RESP_DECERR_C;
-        MASTERS_CONFIG_G   : AxiLiteCrossbarMasterConfigArray := AXIL_XBAR_CFG_DEFAULT_C;
-        DEBUG_G            : BOOLEAN                          := false);
+        TPD_G              : TIME                  := 1 ns;
+        RST_POLARITY_G     : sl                    := '1'; -- '1' for active HIGH reset, '0' for active LOW reset
+        RST_ASYNC_G        : BOOLEAN               := false;
+        NUM_SLAVE_SLOTS_G  : NATURAL RANGE 1 TO 16 := 4;
+        NUM_MASTER_SLOTS_G : NATURAL RANGE 1 TO 64 := 4;
+        DEC_ERROR_RESP_G   : slv(1 DOWNTO 0)       := AXI_RESP_DECERR_C;
+        MASTERS_CONFIG_G   : AxiCrossbarMasterConfigArray;
+        DEBUG_G            : BOOLEAN := false);
     PORT (
         -- Clock and Reset
         axiClk    : IN sl;
         axiClkRst : IN sl;
 
-        -- Slave Slots (Connect to AxiLite Masters
-        sAxiWriteMasters : IN AxiLiteWriteMasterArray(NUM_SLAVE_SLOTS_G - 1 DOWNTO 0);
-        sAxiWriteSlaves  : OUT AxiLiteWriteSlaveArray(NUM_SLAVE_SLOTS_G - 1 DOWNTO 0);
-        sAxiReadMasters  : IN AxiLiteReadMasterArray(NUM_SLAVE_SLOTS_G - 1 DOWNTO 0);
-        sAxiReadSlaves   : OUT AxiLiteReadSlaveArray(NUM_SLAVE_SLOTS_G - 1 DOWNTO 0);
+        -- Slave Slots (Connect to Axi Masters
+        sAxiWriteMasters : IN AxiWriteMasterArray(NUM_SLAVE_SLOTS_G - 1 DOWNTO 0);
+        sAxiWriteSlaves  : OUT AxiWriteSlaveArray(NUM_SLAVE_SLOTS_G - 1 DOWNTO 0);
+        sAxiReadMasters  : IN AxiReadMasterArray(NUM_SLAVE_SLOTS_G - 1 DOWNTO 0);
+        sAxiReadSlaves   : OUT AxiReadSlaveArray(NUM_SLAVE_SLOTS_G - 1 DOWNTO 0);
 
         -- Master Slots (Connect to AXI Slaves)
-        mAxiWriteMasters : OUT AxiLiteWriteMasterArray(NUM_MASTER_SLOTS_G - 1 DOWNTO 0);
-        mAxiWriteSlaves  : IN AxiLiteWriteSlaveArray(NUM_MASTER_SLOTS_G - 1 DOWNTO 0);
-        mAxiReadMasters  : OUT AxiLiteReadMasterArray(NUM_MASTER_SLOTS_G - 1 DOWNTO 0);
-        mAxiReadSlaves   : IN AxiLiteReadSlaveArray(NUM_MASTER_SLOTS_G - 1 DOWNTO 0));
-END ENTITY AxiLiteCrossbar;
+        mAxiWriteMasters : OUT AxiWriteMasterArray(NUM_MASTER_SLOTS_G - 1 DOWNTO 0);
+        mAxiWriteSlaves  : IN AxiWriteSlaveArray(NUM_MASTER_SLOTS_G - 1 DOWNTO 0);
+        mAxiReadMasters  : OUT AxiReadMasterArray(NUM_MASTER_SLOTS_G - 1 DOWNTO 0);
+        mAxiReadSlaves   : IN AxiReadSlaveArray(NUM_MASTER_SLOTS_G - 1 DOWNTO 0));
+END ENTITY AxiCrossbar;
 
-ARCHITECTURE rtl OF AxiLiteCrossbar IS
+ARCHITECTURE rtl OF AxiCrossbar IS
 
-    FUNCTION getHighAddr(config : AxiLiteCrossbarMasterConfigType) RETURN slv IS
+    FUNCTION getHighAddr(config : AxiCrossbarMasterConfigType) RETURN slv IS
         VARIABLE result             : slv(31 DOWNTO 0);
     BEGIN
         result := config.baseAddr;
@@ -69,12 +95,14 @@ ARCHITECTURE rtl OF AxiLiteCrossbar IS
     CONSTANT ACK_NUM_SIZE_C : INTEGER := bitSize(NUM_SLAVE_SLOTS_G - 1);
 
     TYPE SlaveType IS RECORD
-        wrState  : SlaveStateType;
-        wrReqs   : slv(NUM_MASTER_SLOTS_G - 1 DOWNTO 0);
-        wrReqNum : slv(REQ_NUM_SIZE_C - 1 DOWNTO 0);
-        rdState  : SlaveStateType;
-        rdReqs   : slv(NUM_MASTER_SLOTS_G - 1 DOWNTO 0);
-        rdReqNum : slv(REQ_NUM_SIZE_C - 1 DOWNTO 0);
+        wrState   : SlaveStateType;
+        wrReqs    : slv(NUM_MASTER_SLOTS_G - 1 DOWNTO 0);
+        wrReqNum  : slv(REQ_NUM_SIZE_C - 1 DOWNTO 0);
+        wrInBurst : sl; -- Track if in burst transaction
+        rdState   : SlaveStateType;
+        rdReqs    : slv(NUM_MASTER_SLOTS_G - 1 DOWNTO 0);
+        rdReqNum  : slv(REQ_NUM_SIZE_C - 1 DOWNTO 0);
+        rdInBurst : sl; -- Track if in burst transaction
     END RECORD SlaveType;
 
     TYPE SlaveArray IS ARRAY (NATURAL RANGE <>) OF SlaveType;
@@ -97,40 +125,40 @@ ARCHITECTURE rtl OF AxiLiteCrossbar IS
     TYPE RegType IS RECORD
         slave            : SlaveArray(NUM_SLAVE_SLOTS_G - 1 DOWNTO 0);
         master           : MasterArray(NUM_MASTER_SLOTS_G - 1 DOWNTO 0);
-        sAxiWriteSlaves  : AxiLiteWriteSlaveArray(NUM_SLAVE_SLOTS_G - 1 DOWNTO 0);
-        sAxiReadSlaves   : AxiLiteReadSlaveArray(NUM_SLAVE_SLOTS_G - 1 DOWNTO 0);
-        mAxiWriteMasters : AxiLiteWriteMasterArray(NUM_MASTER_SLOTS_G - 1 DOWNTO 0);
-        mAxiReadMasters  : AxiLiteReadMasterArray(NUM_MASTER_SLOTS_G - 1 DOWNTO 0);
+        sAxiWriteSlaves  : AxiWriteSlaveArray(NUM_SLAVE_SLOTS_G - 1 DOWNTO 0);
+        sAxiReadSlaves   : AxiReadSlaveArray(NUM_SLAVE_SLOTS_G - 1 DOWNTO 0);
+        mAxiWriteMasters : AxiWriteMasterArray(NUM_MASTER_SLOTS_G - 1 DOWNTO 0);
+        mAxiReadMasters  : AxiReadMasterArray(NUM_MASTER_SLOTS_G - 1 DOWNTO 0);
     END RECORD RegType;
 
     CONSTANT REG_INIT_C : RegType := (
-    slave            => (
-    OTHERS           => (
-    wrState          => S_WAIT_AXI_TXN_S,
+    slave     => (
+    OTHERS    => (
+    wrState   => S_WAIT_AXI_TXN_S,
     wrReqs => (OTHERS => '0'),
     wrReqNum => (OTHERS => '0'),
-    rdState          => S_WAIT_AXI_TXN_S,
+    wrInBurst => '0',
+    rdState   => S_WAIT_AXI_TXN_S,
     rdReqs => (OTHERS => '0'),
-    rdReqNum => (OTHERS => '0'))),
-    master           => (
-    OTHERS           => (
-    wrState          => M_WAIT_REQ_S,
+    rdReqNum => (OTHERS => '0'),
+    rdInBurst => '0')),
+    master    => (
+    OTHERS    => (
+    wrState   => M_WAIT_REQ_S,
     wrAcks => (OTHERS => '0'),
     wrAckNum => (OTHERS => '0'),
-    wrValid          => '0',
-    rdState          => M_WAIT_REQ_S,
+    wrValid   => '0',
+    rdState   => M_WAIT_REQ_S,
     rdAcks => (OTHERS => '0'),
     rdAckNum => (OTHERS => '0'),
-    rdValid          => '0')),
-    sAxiWriteSlaves => (OTHERS => AXI_LITE_WRITE_SLAVE_INIT_C),
-    sAxiReadSlaves => (OTHERS => AXI_LITE_READ_SLAVE_INIT_C),
-    mAxiWriteMasters => axiWriteMasterInit(MASTERS_CONFIG_G),
-    mAxiReadMasters  => axiReadMasterInit(MASTERS_CONFIG_G));
+    rdValid   => '0')),
+    sAxiWriteSlaves => (OTHERS => AXI_WRITE_SLAVE_INIT_C),
+    sAxiReadSlaves => (OTHERS => AXI_READ_SLAVE_INIT_C),
+    mAxiWriteMasters => (OTHERS => AXI_WRITE_MASTER_INIT_C),
+    mAxiReadMasters => (OTHERS => AXI_READ_MASTER_INIT_C));
 
     SIGNAL r   : RegType := REG_INIT_C;
     SIGNAL rin : RegType;
-
-    TYPE AxiStatusArray IS ARRAY (NATURAL RANGE <>) OF AxiLiteStatusType;
 
 BEGIN
 
@@ -180,10 +208,9 @@ BEGIN
 
     comb : PROCESS (axiClkRst, mAxiReadSlaves, mAxiWriteSlaves, r,
         sAxiReadMasters, sAxiWriteMasters) IS
-        VARIABLE v            : RegType;
-        VARIABLE sAxiStatuses : AxiStatusArray(NUM_SLAVE_SLOTS_G - 1 DOWNTO 0);
-        VARIABLE mRdReqs      : slv(NUM_SLAVE_SLOTS_G - 1 DOWNTO 0);
-        VARIABLE mWrReqs      : slv(NUM_SLAVE_SLOTS_G - 1 DOWNTO 0);
+        VARIABLE v       : RegType;
+        VARIABLE mRdReqs : slv(NUM_SLAVE_SLOTS_G - 1 DOWNTO 0);
+        VARIABLE mWrReqs : slv(NUM_SLAVE_SLOTS_G - 1 DOWNTO 0);
     BEGIN
         v := r;
 
@@ -208,8 +235,8 @@ BEGIN
             CASE (r.slave(s).wrState) IS
                 WHEN S_WAIT_AXI_TXN_S =>
 
-                    -- Incoming write
-                    IF (sAxiWriteMasters(s).awvalid = '1' AND sAxiWriteMasters(s).wvalid = '1') THEN
+                    -- Incoming write (address phase)
+                    IF (sAxiWriteMasters(s).awvalid = '1') THEN
 
                         FOR m IN MASTERS_CONFIG_G'RANGE LOOP
                             -- Check for address match
@@ -229,7 +256,7 @@ BEGIN
                         -- Respond with error if decode fails
                         IF (uOr(v.slave(s).wrReqs) = '0') THEN
                             v.sAxiWriteSlaves(s).awready := '1';
-                            v.sAxiWriteSlaves(s).wready  := '1';
+                            v.slave(s).wrInBurst         := '1'; -- Track burst for error response
                             v.slave(s).wrState           := S_DEC_ERR_S;
                         ELSE
                             v.slave(s).wrState := S_ACK_S;
@@ -238,9 +265,16 @@ BEGIN
 
                     -- Send error
                 WHEN S_DEC_ERR_S =>
-                    -- Send error response
-                    v.sAxiWriteSlaves(s).bresp  := DEC_ERROR_RESP_G;
-                    v.sAxiWriteSlaves(s).bvalid := '1';
+                    -- Accept write data with error
+                    v.sAxiWriteSlaves(s).wready := '1';
+
+                    -- Wait for WLAST then send error response
+                    IF (sAxiWriteMasters(s).wvalid = '1' AND sAxiWriteMasters(s).wlast = '1') THEN
+                        v.sAxiWriteSlaves(s).wready := '0';
+                        v.sAxiWriteSlaves(s).bresp  := DEC_ERROR_RESP_G;
+                        v.sAxiWriteSlaves(s).bvalid := '1';
+                        v.slave(s).wrInBurst        := '0';
+                    END IF;
 
                     -- Clear when acked by master
                     IF (r.sAxiWriteSlaves(s).bvalid = '1' AND sAxiWriteMasters(s).bready = '1') THEN
@@ -253,7 +287,7 @@ BEGIN
                     FOR m IN NUM_MASTER_SLOTS_G - 1 DOWNTO 0 LOOP
                         IF (r.slave(s).wrReqNum = m AND r.slave(s).wrReqs(m) = '1' AND r.master(m).wrAcks(s) = '1') THEN
                             v.sAxiWriteSlaves(s).awready := '1';
-                            v.sAxiWriteSlaves(s).wready  := '1';
+                            v.slave(s).wrInBurst         := '1'; -- Now in burst
                             v.slave(s).wrState           := S_TXN_S;
                         END IF;
                     END LOOP;
@@ -263,14 +297,18 @@ BEGIN
                     FOR m IN NUM_MASTER_SLOTS_G - 1 DOWNTO 0 LOOP
                         IF (r.slave(s).wrReqNum = m AND r.slave(s).wrReqs(m) = '1' AND r.master(m).wrAcks(s) = '1') THEN
 
+                            -- Forward write data ready
+                            v.sAxiWriteSlaves(s).wready := mAxiWriteSlaves(m).wready;
+
                             -- Forward write response
                             v.sAxiWriteSlaves(s).bresp  := mAxiWriteSlaves(m).bresp;
                             v.sAxiWriteSlaves(s).bvalid := mAxiWriteSlaves(m).bvalid;
 
-                            -- bvalid or rvalid indicates txn concluding
+                            -- bvalid indicates txn concluding
                             IF (r.sAxiWriteSlaves(s).bvalid = '1' AND sAxiWriteMasters(s).bready = '1') THEN
-                                v.sAxiWriteSlaves(s) := AXI_LITE_WRITE_SLAVE_INIT_C;
+                                v.sAxiWriteSlaves(s) := AXI_WRITE_SLAVE_INIT_C;
                                 v.slave(s).wrReqs    := (OTHERS => '0');
+                                v.slave(s).wrInBurst := '0';
                                 v.slave(s).wrState   := S_WAIT_AXI_TXN_S;
                             END IF;
                         END IF;
@@ -311,6 +349,7 @@ BEGIN
                     v.sAxiReadSlaves(s).rresp  := DEC_ERROR_RESP_G;
                     v.sAxiReadSlaves(s).rdata  := (OTHERS => '0');
                     v.sAxiReadSlaves(s).rvalid := '1';
+                    v.sAxiReadSlaves(s).rlast  := '1'; -- Single beat error response
 
                     IF (r.sAxiReadSlaves(s).rvalid = '1' AND sAxiReadMasters(s).rready = '1') THEN
                         v.sAxiReadSlaves(s).rvalid := '0';
@@ -322,6 +361,7 @@ BEGIN
                     FOR m IN NUM_MASTER_SLOTS_G - 1 DOWNTO 0 LOOP
                         IF (r.slave(s).rdReqNum = m AND r.slave(s).rdReqs(m) = '1' AND r.master(m).rdAcks(s) = '1') THEN
                             v.sAxiReadSlaves(s).arready := '1';
+                            v.slave(s).rdInBurst        := '1'; -- Now in burst
                             v.slave(s).rdState          := S_TXN_S;
                         END IF;
                     END LOOP;
@@ -335,12 +375,14 @@ BEGIN
                             v.sAxiReadSlaves(s).rresp  := mAxiReadSlaves(m).rresp;
                             v.sAxiReadSlaves(s).rdata  := mAxiReadSlaves(m).rdata;
                             v.sAxiReadSlaves(s).rvalid := mAxiReadSlaves(m).rvalid;
+                            v.sAxiReadSlaves(s).rlast  := mAxiReadSlaves(m).rlast;
 
-                            -- rvalid indicates txn concluding
-                            IF (r.sAxiReadSlaves(s).rvalid = '1' AND sAxiReadMasters(s).rready = '1') THEN
-                                v.sAxiReadSlaves(s) := AXI_LITE_READ_SLAVE_INIT_C;
-                                v.slave(s).rdReqs   := (OTHERS => '0');
-                                v.slave(s).rdState  := S_WAIT_AXI_TXN_S; --S_WAIT_DONE_S;
+                            -- rvalid with rlast indicates burst concluding
+                            IF (r.sAxiReadSlaves(s).rvalid = '1' AND sAxiReadMasters(s).rready = '1' AND r.sAxiReadSlaves(s).rlast = '1') THEN
+                                v.sAxiReadSlaves(s)  := AXI_READ_SLAVE_INIT_C;
+                                v.slave(s).rdReqs    := (OTHERS => '0');
+                                v.slave(s).rdInBurst := '0';
+                                v.slave(s).rdState   := S_WAIT_AXI_TXN_S;
                             END IF;
                         END IF;
                     END LOOP;
@@ -363,7 +405,9 @@ BEGIN
 
                     -- Keep these in reset state while waiting for requests
                     v.master(m).wrAcks    := (OTHERS => '0');
-                    v.mAxiWriteMasters(m) := axiWriteMasterInit(MASTERS_CONFIG_G(m));
+                    v.mAxiWriteMasters(m) := AXI_WRITE_MASTER_INIT_C;
+                    -- Set base address
+                    v.mAxiWriteMasters(m).awaddr(31 DOWNTO 0) := MASTERS_CONFIG_G(m).baseAddr;
 
                     -- Wait for a request, arbitrate between simultaneous requests
                     IF (r.master(m).wrValid = '0') THEN
@@ -381,16 +425,22 @@ BEGIN
                 WHEN M_WAIT_READYS_S =>
 
                     -- Wait for attached slave to respond
-                    -- Clear *valid signals upon *ready responses
+                    -- Clear awvalid upon awready
                     IF (mAxiWriteSlaves(m).awready = '1') THEN
                         v.mAxiWriteMasters(m).awvalid := '0';
                     END IF;
-                    IF (mAxiWriteSlaves(m).wready = '1') THEN
-                        v.mAxiWriteMasters(m).wvalid := '0';
-                    END IF;
 
-                    -- When all *valid signals cleared, wait for slave side to clear request
-                    IF (v.mAxiWriteMasters(m).awvalid = '0' AND v.mAxiWriteMasters(m).wvalid = '0') THEN
+                    -- Forward write data and handle WLAST
+                    v.mAxiWriteMasters(m).wdata  := sAxiWriteMasters(conv_integer(r.master(m).wrAckNum)).wdata;
+                    v.mAxiWriteMasters(m).wstrb  := sAxiWriteMasters(conv_integer(r.master(m).wrAckNum)).wstrb;
+                    v.mAxiWriteMasters(m).wvalid := sAxiWriteMasters(conv_integer(r.master(m).wrAckNum)).wvalid;
+                    v.mAxiWriteMasters(m).wlast  := sAxiWriteMasters(conv_integer(r.master(m).wrAckNum)).wlast;
+
+                    -- When address phase done and WLAST seen, wait for slave side to clear request
+                    IF (v.mAxiWriteMasters(m).awvalid = '0' AND
+                        sAxiWriteMasters(conv_integer(r.master(m).wrAckNum)).wvalid = '1' AND
+                        sAxiWriteMasters(conv_integer(r.master(m).wrAckNum)).wlast = '1' AND
+                        mAxiWriteSlaves(m).wready = '1') THEN
                         v.master(m).wrState := M_WAIT_REQ_FALL_S;
                     END IF;
 
@@ -418,7 +468,9 @@ BEGIN
 
                     -- Keep these in reset state while waiting for requests
                     v.master(m).rdAcks   := (OTHERS => '0');
-                    v.mAxiReadMasters(m) := axiReadMasterInit(MASTERS_CONFIG_G(m));
+                    v.mAxiReadMasters(m) := AXI_READ_MASTER_INIT_C;
+                    -- Set base address
+                    v.mAxiReadMasters(m).araddr(31 DOWNTO 0) := MASTERS_CONFIG_G(m).baseAddr;
 
                     -- Wait for a request, arbitrate between simultaneous requests
                     IF (r.master(m).rdValid = '0') THEN
