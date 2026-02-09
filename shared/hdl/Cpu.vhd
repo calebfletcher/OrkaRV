@@ -7,6 +7,7 @@ USE work.CsrRegisters_pkg.ALL;
 
 LIBRARY surf;
 USE surf.AxiLitePkg.ALL;
+USE surf.AxiPkg.ALL;
 
 ENTITY Cpu IS
     GENERIC (
@@ -19,10 +20,10 @@ ENTITY Cpu IS
         trap  : OUT STD_LOGIC := '0';
 
         -- memory interface
-        axiReadMaster  : OUT AxiLiteReadMasterType  := AXI_LITE_READ_MASTER_INIT_C;
-        axiReadSlave   : IN AxiLiteReadSlaveType    := AXI_LITE_READ_SLAVE_INIT_C;
-        axiWriteMaster : OUT AxiLiteWriteMasterType := AXI_LITE_WRITE_MASTER_INIT_C;
-        axiWriteSlave  : IN AxiLiteWriteSlaveType   := AXI_LITE_WRITE_SLAVE_INIT_C;
+        axiReadMaster  : OUT AxiReadMasterType  := AXI_READ_MASTER_INIT_C;
+        axiReadSlave   : IN AxiReadSlaveType    := AXI_READ_SLAVE_INIT_C;
+        axiWriteMaster : OUT AxiWriteMasterType := AXI_WRITE_MASTER_INIT_C;
+        axiWriteSlave  : IN AxiWriteSlaveType   := AXI_WRITE_SLAVE_INIT_C;
 
         -- interrupts
         mExtInt : IN STD_LOGIC
@@ -49,8 +50,8 @@ ARCHITECTURE rtl OF Cpu IS
         rd          : RegisterIndex;
 
         -- ram write control
-        axiReadMaster  : AxiLiteReadMasterType;
-        axiWriteMaster : AxiLiteWriteMasterType;
+        axiReadMaster  : AxiReadMasterType;
+        axiWriteMaster : AxiWriteMasterType;
         memReadData    : STD_LOGIC_VECTOR(31 DOWNTO 0);
 
         -- register write control
@@ -136,8 +137,8 @@ ARCHITECTURE rtl OF Cpu IS
     rs2      => 0,
     rd       => 0,
     -- axi read master defaults to reading addr 0 for first fetch
-    axiReadMaster  => AXI_LITE_READ_MASTER_INIT_C,
-    axiWriteMaster => AXI_LITE_WRITE_MASTER_INIT_C,
+    axiReadMaster  => AXI_READ_MASTER_INIT_C,
+    axiWriteMaster => AXI_WRITE_MASTER_INIT_C,
     memReadData => (OTHERS => '0'),
     regWrAddr      => 0,
     regWrData => (OTHERS => '0'),
@@ -226,7 +227,7 @@ ARCHITECTURE rtl OF Cpu IS
 
         -- prep instruction fetch
         v.axiReadMaster.arvalid := '1';
-        v.axiReadMaster.araddr  := v.pc;
+        v.axiReadMaster.araddr  := x"00000000" & v.pc;
         v.axiReadMaster.rready  := '1';
     END PROCEDURE;
 
@@ -278,7 +279,7 @@ ARCHITECTURE rtl OF Cpu IS
 
         -- prep instruction fetch
         v.axiReadMaster.arvalid := '1';
-        v.axiReadMaster.araddr  := v.pc;
+        v.axiReadMaster.araddr  := x"00000000" & v.pc;
         v.axiReadMaster.rready  := '1';
     END PROCEDURE;
 BEGIN
@@ -321,13 +322,13 @@ BEGIN
             WHEN INIT =>
                 -- initial read of the pc to start the cpu running
                 v.axiReadMaster.arvalid := '1';
-                v.axiReadMaster.araddr  := v.pc;
+                v.axiReadMaster.araddr  := x"00000000" & v.pc;
 
                 v.stage := FETCH;
             WHEN FETCH =>
                 IF (r.axiReadMaster.rready AND axiReadSlave.rvalid) THEN
                     IF axiReadSlave.rresp = AXI_RESP_OK_C THEN
-                        v.instruction := axiReadSlave.rdata;
+                        v.instruction := axiReadSlave.rdata(31 DOWNTO 0);
                         v.immediate   := immediate;
                         v.instType    := instType;
                         v.rs1         := rs1;
@@ -561,9 +562,9 @@ BEGIN
                     v.axiWriteMaster.awaddr(31 DOWNTO 2) := r.aluResult(31 DOWNTO 2);
                     v.axiWriteMaster.awvalid             := '1';
 
-                    v.axiWriteMaster.wstrb  := "0000";
-                    v.axiWriteMaster.wdata  := (OTHERS => '0');
-                    v.axiWriteMaster.wvalid := '1';
+                    v.axiWriteMaster.wstrb(3 DOWNTO 0) := "0000";
+                    v.axiWriteMaster.wdata             := (OTHERS => '0');
+                    v.axiWriteMaster.wvalid            := '1';
 
                     v.axiWriteMaster.bready := '1';
                 END IF;
@@ -579,18 +580,18 @@ BEGIN
                         END LOOP;
                     WHEN 2 =>
                         IF r.aluResult(1) THEN
-                            v.axiWriteMaster.wstrb               := "1100";
+                            v.axiWriteMaster.wstrb(3 DOWNTO 0)   := "1100";
                             v.axiWriteMaster.wdata(31 DOWNTO 16) := rs2Value(15 DOWNTO 0);
                         ELSE
-                            v.axiWriteMaster.wstrb              := "0011";
+                            v.axiWriteMaster.wstrb(3 DOWNTO 0)  := "0011";
                             v.axiWriteMaster.wdata(15 DOWNTO 0) := rs2Value(15 DOWNTO 0);
                         END IF;
                     WHEN 3 =>
                         -- invalid (3 bytes)
-                        v.axiWriteMaster.wstrb := "0000";
+                        v.axiWriteMaster.wstrb(3 DOWNTO 0) := "0000";
                     WHEN 4 =>
-                        v.axiWriteMaster.wstrb := "1111";
-                        v.axiWriteMaster.wdata := rs2Value;
+                        v.axiWriteMaster.wstrb(3 DOWNTO 0)  := "1111";
+                        v.axiWriteMaster.wdata(31 DOWNTO 0) := rs2Value;
                 END CASE;
             WHEN MEMORY =>
                 -- once mem transaction completes
@@ -604,7 +605,7 @@ BEGIN
                 IF r.opMemRead AND r.axiReadMaster.rready AND axiReadSlave.rvalid THEN
                     IF axiReadSlave.rresp = AXI_RESP_OK_C THEN
                         -- register read data
-                        v.memReadData := axiReadSlave.rdata;
+                        v.memReadData := axiReadSlave.rdata(31 DOWNTO 0);
 
                         v.stage := WRITEBACK;
                     ELSE
@@ -683,7 +684,7 @@ BEGIN
 
                 -- prepare ram read for fetch in advance due to the memory latency
                 v.axiReadMaster.arvalid := '1';
-                v.axiReadMaster.araddr  := v.pc;
+                v.axiReadMaster.araddr  := x"00000000" & v.pc;
                 v.axiReadMaster.rready  := '1';
 
                 v.stage := FETCH;
@@ -734,7 +735,7 @@ BEGIN
         PORT MAP
         (
             instructionType => instType,
-            instruction     => axiReadSlave.rdata,
+            instruction     => axiReadSlave.rdata(31 DOWNTO 0),
             immediate       => immediate,
             rs1             => rs1,
             rs2             => rs2,
