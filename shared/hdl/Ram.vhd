@@ -11,17 +11,17 @@ USE surf.StdRtlPkg.ALL;
 ENTITY Ram IS
     GENERIC (
         RAM_FILE_PATH_G : STRING;
-        LENGTH_WORDS_G : INTEGER := 16384;
+        LENGTH_WORDS_G  : INTEGER := 16384;
         AXI_BASE_ADDR_G : UNSIGNED(31 DOWNTO 0)
     );
     PORT (
-        clk : IN STD_LOGIC;
+        clk   : IN STD_LOGIC;
         reset : IN STD_LOGIC;
 
-        axiReadMaster : IN AxiLiteReadMasterType;
-        axiReadSlave : OUT AxiLiteReadSlaveType;
+        axiReadMaster  : IN AxiLiteReadMasterType;
+        axiReadSlave   : OUT AxiLiteReadSlaveType;
         axiWriteMaster : IN AxiLiteWriteMasterType;
-        axiWriteSlave : OUT AxiLiteWriteSlaveType
+        axiWriteSlave  : OUT AxiLiteWriteSlaveType
     );
 END ENTITY Ram;
 
@@ -32,17 +32,17 @@ ARCHITECTURE rtl OF Ram IS
     TYPE AxiLiteStatusType IS RECORD
         writeAddrEnable : sl;
         writeDataEnable : sl;
-        readEnable : sl;
+        readEnable      : sl;
     END RECORD AxiLiteStatusType;
     CONSTANT AXI_LITE_STATUS_INIT_C : AxiLiteStatusType := (writeAddrEnable => '0', writeDataEnable => '0', readEnable => '0');
 
     IMPURE FUNCTION InitRamFromFile (RamFileName : IN STRING) RETURN RamType IS
-        FILE RamFile : text;
-        VARIABLE RamFileLine : line;
-        VARIABLE RamTemp : RamType := (OTHERS => (OTHERS => '0'));
-        VARIABLE status : FILE_OPEN_STATUS;
-        VARIABLE line_count : NATURAL := 0;
-        VARIABLE extra_lines : NATURAL := 0;
+        FILE RamFile                                 : text;
+        VARIABLE RamFileLine                         : line;
+        VARIABLE RamTemp                             : RamType := (OTHERS => (OTHERS => '0'));
+        VARIABLE status                              : FILE_OPEN_STATUS;
+        VARIABLE line_count                          : NATURAL := 0;
+        VARIABLE extra_lines                         : NATURAL := 0;
     BEGIN
         FILE_OPEN(status, RamFile, RamFileName, READ_MODE);
         IF status = OPEN_OK THEN
@@ -72,52 +72,52 @@ ARCHITECTURE rtl OF Ram IS
         RETURN RamTemp;
     END FUNCTION;
 
-    SIGNAL ramValue : RamType := InitRamFromFile(RAM_FILE_PATH_G);
+    SIGNAL ramValue   : RamType := InitRamFromFile(RAM_FILE_PATH_G);
     SIGNAL axiStatusS : AxiLiteStatusType;
 
 BEGIN
     PROCESS (clk)
-        VARIABLE readAddress : unsigned(31 DOWNTO 0);
-        VARIABLE writeAddress : unsigned(31 DOWNTO 0);
-        VARIABLE readWordAddress : unsigned(31 DOWNTO 0);
+        VARIABLE readAddress      : unsigned(31 DOWNTO 0);
+        VARIABLE writeAddress     : unsigned(31 DOWNTO 0);
+        VARIABLE readWordAddress  : unsigned(31 DOWNTO 0);
         VARIABLE writeWordAddress : unsigned(31 DOWNTO 0);
 
-        VARIABLE writeData : STD_LOGIC_VECTOR(31 DOWNTO 0);
-        VARIABLE writeStrb : STD_LOGIC_VECTOR(3 DOWNTO 0);
-        VARIABLE axiStatus : AxiLiteStatusType := AXI_LITE_STATUS_INIT_C;
-        VARIABLE vAxiReadSlave : AxiLiteReadSlaveType := AXI_LITE_READ_SLAVE_INIT_C;
+        VARIABLE writeData      : STD_LOGIC_VECTOR(31 DOWNTO 0);
+        VARIABLE writeStrb      : STD_LOGIC_VECTOR(3 DOWNTO 0);
+        VARIABLE axiStatus      : AxiLiteStatusType     := AXI_LITE_STATUS_INIT_C;
+        VARIABLE vAxiReadSlave  : AxiLiteReadSlaveType  := AXI_LITE_READ_SLAVE_INIT_C;
         VARIABLE vAxiWriteSlave : AxiLiteWriteSlaveType := AXI_LITE_WRITE_SLAVE_INIT_C;
     BEGIN
         IF rising_edge(clk) THEN
             IF (reset) THEN
-                vAxiReadSlave := AXI_LITE_READ_SLAVE_INIT_C;
-                vAxiReadSlave.arready := '1';
-                vAxiWriteSlave := AXI_LITE_WRITE_SLAVE_INIT_C;
+                vAxiReadSlave          := AXI_LITE_READ_SLAVE_INIT_C;
+                vAxiReadSlave.arready  := '1';
+                vAxiWriteSlave         := AXI_LITE_WRITE_SLAVE_INIT_C;
                 vAxiWriteSlave.awready := '1';
-                vAxiWriteSlave.wready := '1';
-                axiStatus := AXI_LITE_STATUS_INIT_C;
+                vAxiWriteSlave.wready  := '1';
+                axiStatus              := AXI_LITE_STATUS_INIT_C;
 
-                readAddress := (OTHERS => '0');
-                writeAddress := (OTHERS => '0');
-                readWordAddress := (OTHERS => '0');
+                readAddress      := (OTHERS => '0');
+                writeAddress     := (OTHERS => '0');
+                readWordAddress  := (OTHERS => '0');
                 writeWordAddress := (OTHERS => '0');
             ELSE
                 -- check write complete
                 IF axiWriteSlave.bvalid AND axiWriteMaster.bready THEN
-                    vAxiWriteSlave.bvalid := '0';
+                    vAxiWriteSlave.bvalid  := '0';
                     vAxiWriteSlave.awready := '1';
-                    vAxiWriteSlave.wready := '1';
+                    vAxiWriteSlave.wready  := '1';
                 END IF;
 
                 -- check read complete
                 IF axiReadSlave.rvalid AND axiReadMaster.rready THEN
-                    vAxiReadSlave.rvalid := '0';
+                    vAxiReadSlave.rvalid  := '0';
                     vAxiReadSlave.arready := '1';
                 END IF;
 
                 -- accept reads
                 IF axiReadMaster.arvalid AND axiReadSlave.arready THEN
-                    axiStatus.readEnable := '1';
+                    axiStatus.readEnable  := '1';
                     vAxiReadSlave.arready := '0';
 
                     readAddress := unsigned(axiReadMaster.araddr);
@@ -188,8 +188,8 @@ BEGIN
 
             -- update output ports
             axiWriteSlave <= vAxiWriteSlave;
-            axiReadSlave <= vAxiReadSlave;
-            axiStatusS <= axiStatus;
+            axiReadSlave  <= vAxiReadSlave;
+            axiStatusS    <= axiStatus;
         END IF;
     END PROCESS;
 END ARCHITECTURE;

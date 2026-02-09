@@ -9,18 +9,18 @@ ENTITY Registers IS
     );
     PORT (
         -- common signals
-        clk : IN STD_LOGIC;
+        clk   : IN STD_LOGIC;
         reset : IN STD_LOGIC;
 
         -- register reads
-        rs1 : IN RegisterIndex;
-        rs2 : IN RegisterIndex;
+        rs1      : IN RegisterIndex;
+        rs2      : IN RegisterIndex;
         rs1Value : OUT STD_LOGIC_VECTOR(XLEN - 1 DOWNTO 0);
         rs2Value : OUT STD_LOGIC_VECTOR(XLEN - 1 DOWNTO 0);
 
         -- register writes
-        wr_addr : IN RegisterIndex;
-        wr_data : IN STD_LOGIC_VECTOR(XLEN - 1 DOWNTO 0);
+        wr_addr   : IN RegisterIndex;
+        wr_data   : IN STD_LOGIC_VECTOR(XLEN - 1 DOWNTO 0);
         wr_strobe : IN STD_LOGIC
     );
 END ENTITY Registers;

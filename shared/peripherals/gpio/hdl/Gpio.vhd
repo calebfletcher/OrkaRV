@@ -17,13 +17,13 @@ USE work.GpioRegisters_pkg.ALL;
 
 ENTITY Gpio IS
     PORT (
-        clk : IN STD_LOGIC;
+        clk   : IN STD_LOGIC;
         reset : IN STD_LOGIC;
 
         axilWriteMaster : IN AxiLiteWriteMasterType;
-        axilWriteSlave : OUT AxiLiteWriteSlaveType;
-        axilReadMaster : IN AxiLiteReadMasterType;
-        axilReadSlave : OUT AxiLiteReadSlaveType;
+        axilWriteSlave  : OUT AxiLiteWriteSlaveType;
+        axilReadMaster  : IN AxiLiteReadMasterType;
+        axilReadSlave   : OUT AxiLiteReadSlaveType;
 
         pins : INOUT STD_LOGIC_VECTOR(31 DOWNTO 0)
     );
@@ -44,7 +44,7 @@ ARCHITECTURE rtl OF Gpio IS
     RDATA(31 DOWNTO 0)
     );
 
-    SIGNAL hwif_in : GpioRegisters_in_t;
+    SIGNAL hwif_in  : GpioRegisters_in_t;
     SIGNAL hwif_out : GpioRegisters_out_t;
 BEGIN
     -- convert surf axilite to peakrdl's
@@ -54,21 +54,21 @@ BEGIN
         )
         PORT MAP(
             axilWriteMaster => axilWriteMaster,
-            axilWriteSlave => axilWriteSlave,
-            axilReadMaster => axilReadMaster,
-            axilReadSlave => axilReadSlave,
-            s_axil_i => s_axil_i,
-            s_axil_o => s_axil_o
+            axilWriteSlave  => axilWriteSlave,
+            axilReadMaster  => axilReadMaster,
+            axilReadSlave   => axilReadSlave,
+            s_axil_i        => s_axil_i,
+            s_axil_o        => s_axil_o
         );
 
     -- register map
     GpioRegisters_inst : ENTITY work.GpioRegisters
         PORT MAP(
-            clk => clk,
-            rst => reset,
+            clk      => clk,
+            rst      => reset,
             s_axil_i => s_axil_i,
             s_axil_o => s_axil_o,
-            hwif_in => hwif_in,
+            hwif_in  => hwif_in,
             hwif_out => hwif_out
         );
 
@@ -78,9 +78,9 @@ BEGIN
             WIDTH_G => 32
         )
         PORT MAP(
-            clk => clk,
-            rst => reset,
-            dataIn => pinsInput,
+            clk     => clk,
+            rst     => reset,
+            dataIn  => pinsInput,
             dataOut => hwif_in.input.input.next_q
         );
 
@@ -88,10 +88,10 @@ BEGIN
     IoBufGen : FOR i IN 0 TO 31 GENERATE
         IoBufWrapper_inst : ENTITY surf.IoBufWrapper
             PORT MAP(
-                O => pinsInput(i),
+                O  => pinsInput(i),
                 IO => pins(i),
-                I => hwif_out.output.output.value(i),
-                T => hwif_out.direction.direction.value(i)
+                I  => hwif_out.output.output.value(i),
+                T  => hwif_out.direction.direction.value(i)
             );
     END GENERATE;
 
