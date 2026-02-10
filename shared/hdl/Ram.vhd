@@ -114,6 +114,7 @@ BEGIN
                 -- check read complete
                 IF axiReadSlave.rvalid AND axiReadMaster.rready THEN
                     vAxiReadSlave.rvalid  := '0';
+                    vAxiReadSlave.rlast   := '0';
                     vAxiReadSlave.arready := '1';
                 END IF;
 
@@ -172,6 +173,8 @@ BEGIN
 
                     -- output data this clock
                     vAxiReadSlave.rvalid := '1';
+                    -- todo: multi beats per burst
+                    vAxiReadSlave.rlast := '1';
 
                     IF (readAddress >= AXI_BASE_ADDR_G AND readAddress < AXI_BASE_ADDR_G + LENGTH_BYTES_G) THEN
                         readWordAddress := (readAddress - AXI_BASE_ADDR_G) / 4;

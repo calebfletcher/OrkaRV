@@ -227,7 +227,7 @@ ARCHITECTURE rtl OF Cpu IS
 
         -- prep instruction fetch
         v.axiReadMaster.arvalid := '1';
-        v.axiReadMaster.araddr  := x"00000000" & v.pc;
+        v.axiReadMaster.araddr  := v.pc;
         v.axiReadMaster.rready  := '1';
     END PROCEDURE;
 
@@ -279,7 +279,7 @@ ARCHITECTURE rtl OF Cpu IS
 
         -- prep instruction fetch
         v.axiReadMaster.arvalid := '1';
-        v.axiReadMaster.araddr  := x"00000000" & v.pc;
+        v.axiReadMaster.araddr  := v.pc;
         v.axiReadMaster.rready  := '1';
     END PROCEDURE;
 BEGIN
@@ -312,6 +312,7 @@ BEGIN
         END IF;
         IF (axiWriteSlave.wready AND r.axiWriteMaster.wvalid) THEN
             v.axiWriteMaster.wvalid := '0';
+            v.axiWriteMaster.wlast  := '0';
             v.axiWriteMaster.wdata  := (OTHERS => '0');
         END IF;
         IF (axiWriteSlave.bvalid AND r.axiWriteMaster.bready) THEN
@@ -323,6 +324,7 @@ BEGIN
                 -- initial read of the pc to start the cpu running
                 v.axiReadMaster.arvalid := '1';
                 v.axiReadMaster.araddr  := v.pc;
+                v.axiReadMaster.rready  := '1';
 
                 v.stage := FETCH;
             WHEN FETCH =>
@@ -565,6 +567,7 @@ BEGIN
                     v.axiWriteMaster.wstrb(3 DOWNTO 0) := "0000";
                     v.axiWriteMaster.wdata             := (OTHERS => '0');
                     v.axiWriteMaster.wvalid            := '1';
+                    v.axiWriteMaster.wlast             := '1';
 
                     v.axiWriteMaster.bready := '1';
                 END IF;
@@ -684,7 +687,7 @@ BEGIN
 
                 -- prepare ram read for fetch in advance due to the memory latency
                 v.axiReadMaster.arvalid := '1';
-                v.axiReadMaster.araddr  := x"00000000" & v.pc;
+                v.axiReadMaster.araddr  := v.pc;
                 v.axiReadMaster.rready  := '1';
 
                 v.stage := FETCH;
