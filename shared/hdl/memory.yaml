@@ -1,0 +1,46 @@
+soc:
+  name: my_soc
+
+defaults:
+  protocol: axi4
+
+masters:
+  - name: cpu_i
+  - name: cpu_d
+  - name: debug
+
+slaves:
+  - name: ram
+    protocol: axi4
+    base: 0x80000000
+    size: 0x10000000  # 256 MiB
+
+  - name: uart0
+    protocol: axi4lite
+    base: 0x40000000
+    size: 0x00001000  # 4 KiB
+
+  - name: gpio
+    protocol: axi4lite
+    base: 0x40001000
+    size: 0x00001000  # 4 KiB
+
+  - name: timer0
+    protocol: axi4lite
+    base: 0x40002000
+    size: 0x00001000  # 4 KiB
+
+  - name: spi0
+    protocol: axi4lite
+    base: 0x40003000
+    size: 0x00001000  # 4 KiB
+
+  - name: dma_regs
+    protocol: axi4lite
+    base: 0x50000000
+    size: 0x00010000  # 64 KiB
+
+  - name: dma_mem
+    protocol: axi4
+    base: 0x60000000
+    size: 0x01000000  # 16 MiB

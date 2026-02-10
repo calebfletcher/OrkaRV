@@ -15,7 +15,9 @@ dependencies = [
     "peakrdl-regblock-vhdl>=1.1.1.0",
     "peakrdl-regblock-vhdl-csr>=1.1.1.0",
     "peakrdl-rust[cli]>=0.4.0",
+    "pydantic>=2.12.5",
     "pytest>=8.4.2",
+    "pyyaml>=6.0.3",
 ]
 
 [tool.pytest.ini_options]
