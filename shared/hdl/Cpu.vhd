@@ -4,10 +4,10 @@ CONTEXT ieee.ieee_std_context;
 USE work.RiscVPkg.ALL;
 USE work.csrif_pkg.ALL;
 USE work.CsrRegisters_pkg.ALL;
+USE work.AxiPkg.ALL;
 
 LIBRARY surf;
 USE surf.AxiLitePkg.ALL;
-USE surf.AxiPkg.ALL;
 
 ENTITY Cpu IS
     GENERIC (
@@ -322,7 +322,7 @@ BEGIN
             WHEN INIT =>
                 -- initial read of the pc to start the cpu running
                 v.axiReadMaster.arvalid := '1';
-                v.axiReadMaster.araddr  := x"00000000" & v.pc;
+                v.axiReadMaster.araddr  := v.pc;
 
                 v.stage := FETCH;
             WHEN FETCH =>

@@ -4,8 +4,9 @@ CONTEXT ieee.ieee_std_context;
 LIBRARY std;
 USE std.textio.ALL;
 
+USE work.AxiPkg.ALL;
+
 LIBRARY surf;
-USE surf.AxiPkg.ALL;
 USE surf.AxiLitePkg.ALL;
 USE surf.StdRtlPkg.ALL;
 

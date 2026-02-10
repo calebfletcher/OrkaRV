@@ -1,9 +1,10 @@
 LIBRARY ieee;
 CONTEXT ieee.ieee_std_context;
 
+USE work.AxiPkg.ALL;
+
 LIBRARY surf;
 USE surf.AxiLitePkg.ALL;
-USE surf.AxiPkg.ALL;
 
 ENTITY CocotbSoc IS
     GENERIC (
@@ -107,7 +108,7 @@ BEGIN
             sAxilWriteSlave  => sAxilWriteSlave
         );
     -- adapter for cocotb master
-    SlaveAxiLiteIpIntegrator_inst : ENTITY surf.SlaveAxiIpIntegrator
+    SlaveAxiLiteIpIntegrator_inst : ENTITY work.SlaveAxiIpIntegrator
         GENERIC MAP(
             HAS_WSTRB  => 1,
             ADDR_WIDTH => 32

@@ -2,10 +2,10 @@ LIBRARY ieee;
 CONTEXT ieee.ieee_std_context;
 
 USE work.RiscVPkg.ALL;
+USE work.AxiPkg.ALL;
 USE work.AxiCrossbarPkg.ALL;
 
 LIBRARY surf;
-USE surf.AxiPkg.ALL;
 USE surf.AxiLitePkg.ALL;
 
 ENTITY Soc IS
@@ -141,7 +141,7 @@ BEGIN
     AxiLiteCrossbar_inst : ENTITY work.AxiCrossbar
         GENERIC MAP(
             NUM_SLAVE_SLOTS_G  => NUM_MASTERS_C,
-            NUM_MASTER_SLOTS_G => NUM_PERIPH_SLAVES_C,
+            NUM_MASTER_SLOTS_G => NUM_PERIPH_SLAVES_C + NUM_MEM_SLAVES_C,
             MASTERS_CONFIG_G   => AXI_XBAR_CFG_C,
             DEBUG_G            => true
         )
@@ -161,8 +161,8 @@ BEGIN
         );
 
     -- bridges from axi4 to axi4-lite
-    axi_periph_bridges : FOR i IN 0 TO NUM_PERIPH_SLAVES_C GENERATE
-        AxiToAxiLite_inst : ENTITY surf.AxiToAxiLite
+    axi_periph_bridges : FOR i IN 0 TO NUM_PERIPH_SLAVES_C - 1 GENERATE
+        AxiToAxiLite_inst : ENTITY work.AxiToAxiLite
             PORT MAP(
                 axiClk          => clk,
                 axiClkRst       => reset,

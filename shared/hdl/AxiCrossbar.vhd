@@ -19,10 +19,11 @@ USE ieee.std_logic_unsigned.ALL;
 
 LIBRARY surf;
 USE surf.StdRtlPkg.ALL;
-USE surf.AxiPkg.ALL;
 USE surf.AxiLitePkg.ALL; -- For AXI_RESP_* constants
 USE surf.ArbiterPkg.ALL;
 USE surf.TextUtilPkg.ALL;
+
+USE work.AxiPkg.ALL;
 
 -- Package for AXI4 Crossbar configuration types
 PACKAGE AxiCrossbarPkg IS
@@ -42,12 +43,12 @@ USE ieee.std_logic_unsigned.ALL;
 
 LIBRARY surf;
 USE surf.StdRtlPkg.ALL;
-USE surf.AxiPkg.ALL;
 USE surf.AxiLitePkg.ALL; -- For AXI_RESP_* constants
 USE surf.ArbiterPkg.ALL;
 USE surf.TextUtilPkg.ALL;
 
 USE work.AxiCrossbarPkg.ALL;
+USE work.AxiPkg.ALL;
 
 ENTITY AxiCrossbar IS
     GENERIC (
