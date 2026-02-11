@@ -53,9 +53,6 @@ ARCHITECTURE rtl OF Cpu IS
         rs2         : RegisterIndex;
         rd          : RegisterIndex;
 
-        -- instruction bus
-        instAxiReadMaster : AxiReadMasterType;
-
         -- data bus
         dataAxiReadMaster  : AxiReadMasterType;
         dataAxiWriteMaster : AxiWriteMasterType;
@@ -143,7 +140,6 @@ ARCHITECTURE rtl OF Cpu IS
     rs1                => 0,
     rs2                => 0,
     rd                 => 0,
-    instAxiReadMaster  => AXI_READ_MASTER_INIT_C,
     dataAxiReadMaster  => AXI_READ_MASTER_INIT_C,
     dataAxiWriteMaster => AXI_WRITE_MASTER_INIT_C,
     memReadData => (OTHERS => '0'),
@@ -182,8 +178,11 @@ ARCHITECTURE rtl OF Cpu IS
 
     SIGNAL csrRdData        : STD_LOGIC_VECTOR(XLEN - 1 DOWNTO 0);
     SIGNAL csrIllegalAccess : STD_LOGIC;
+    SIGNAL instType         : InstructionType;
 
-    SIGNAL instType : InstructionType;
+    SIGNAL instruction       : STD_LOGIC_VECTOR(XLEN - 1 DOWNTO 0);
+    SIGNAL instValid         : STD_LOGIC;
+    SIGNAL instCacheMemFault : STD_LOGIC;
 
     SIGNAL csrHwOut : CsrRegisters_out_t;
 
@@ -231,11 +230,6 @@ ARCHITECTURE rtl OF Cpu IS
         END IF;
         -- todo: check for msip
         -- todo: check for mtip
-
-        -- prep instruction fetch
-        v.instAxiReadMaster.arvalid := '1';
-        v.instAxiReadMaster.araddr  := v.pc;
-        v.instAxiReadMaster.rready  := '1';
     END PROCEDURE;
 
     -- take exception
@@ -283,11 +277,6 @@ ARCHITECTURE rtl OF Cpu IS
         END IF;
         -- todo: check for msip
         -- todo: check for mtip
-
-        -- prep instruction fetch
-        v.instAxiReadMaster.arvalid := '1';
-        v.instAxiReadMaster.araddr  := v.pc;
-        v.instAxiReadMaster.rready  := '1';
     END PROCEDURE;
 BEGIN
     PROCESS (ALL)
@@ -304,15 +293,6 @@ BEGIN
         v.csrHwIn.mip.meip.next_q := mExtInt;
 
         v.regWrStrobe := '0';
-
-        -- accept instruction bus transactions
-        IF (instAxiReadSlave.arready AND r.instAxiReadMaster.arvalid) THEN
-            v.instAxiReadMaster.arvalid := '0';
-            v.instAxiReadMaster.araddr  := (OTHERS => '0');
-        END IF;
-        IF (instAxiReadSlave.rvalid AND r.instAxiReadMaster.rready) THEN
-            v.instAxiReadMaster.rready := '0';
-        END IF;
 
         -- accept axi-lite transactions
         IF (dataAxiReadSlave.arready AND r.dataAxiReadMaster.arvalid) THEN
@@ -337,15 +317,11 @@ BEGIN
 
         CASE (r.stage) IS
             WHEN INIT =>
-                -- initial read of the pc to start the cpu running
-                v.instAxiReadMaster.arvalid := '1';
-                v.instAxiReadMaster.araddr  := v.pc;
-                v.instAxiReadMaster.rready  := '1';
-
+                -- todo: this stage might not be needed anymore
                 v.stage := FETCH;
             WHEN FETCH =>
-                IF (r.instAxiReadMaster.rready AND instAxiReadSlave.rvalid) THEN
-                    IF dataAxiReadSlave.rresp = AXI_RESP_OK_C THEN
+                IF (instValid) THEN
+                    IF NOT instCacheMemFault THEN
                         v.instruction := instAxiReadSlave.rdata(31 DOWNTO 0);
                         v.immediate   := immediate;
                         v.instType    := instType;
@@ -701,11 +677,6 @@ BEGIN
                     v.pc := r.successivePc;
                 END IF;
 
-                -- prepare ram read for fetch in advance due to the memory latency
-                v.instAxiReadMaster.arvalid := '1';
-                v.instAxiReadMaster.araddr  := v.pc;
-                v.instAxiReadMaster.rready  := '1';
-
                 v.stage := FETCH;
             WHEN HALTED =>
                 -- do nothing
@@ -725,7 +696,6 @@ BEGIN
             '0';
         trap <= '1' WHEN r.stage = TRAPPED ELSE
             '0';
-        instAxiReadMaster  <= r.instAxiReadMaster;
         dataAxiReadMaster  <= r.dataAxiReadMaster;
         dataAxiWriteMaster <= r.dataAxiWriteMaster;
     END PROCESS;
@@ -736,6 +706,19 @@ BEGIN
             r <= rin AFTER TPD_G;
         END IF;
     END PROCESS;
+
+    InstCache_inst : ENTITY work.InstCache
+        PORT MAP(
+            clk           => clk,
+            reset         => reset,
+            axiReadMaster => instAxiReadMaster,
+            axiReadSlave  => instAxiReadSlave,
+            pc            => r.pc,
+            flush         => '0',
+            instruction   => instruction,
+            instValid     => instValid,
+            memFault      => instCacheMemFault
+        );
 
     Registers_inst : ENTITY work.Registers
         PORT MAP
