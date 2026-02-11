@@ -39,7 +39,7 @@ ENTITY Soc IS
 END ENTITY Soc;
 
 ARCHITECTURE rtl OF Soc IS
-    CONSTANT NUM_MASTERS_C       : NATURAL := 2;
+    CONSTANT NUM_MASTERS_C       : NATURAL := 3;
     CONSTANT NUM_MEM_SLAVES_C    : NATURAL := 1;
     CONSTANT NUM_PERIPH_SLAVES_C : NATURAL := 3;
 
@@ -77,10 +77,12 @@ BEGIN
             halt  => halt,
             trap  => trap,
 
-            axiReadMaster  => mAxiReadMasters(0),
-            axiReadSlave   => mAxiReadSlaves(0),
-            axiWriteMaster => mAxiWriteMasters(0),
-            axiWriteSlave  => mAxiWriteSlaves(0),
+            instAxiReadMaster  => mAxiReadMasters(0),
+            instAxiReadSlave   => mAxiReadSlaves(0),
+            dataAxiReadMaster  => mAxiReadMasters(1),
+            dataAxiReadSlave   => mAxiReadSlaves(1),
+            dataAxiWriteMaster => mAxiWriteMasters(1),
+            dataAxiWriteSlave  => mAxiWriteSlaves(1),
 
             mExtInt => mExtInt
         );
@@ -131,10 +133,10 @@ BEGIN
     mExtInt <= uartInt;
 
     -- external master interface
-    mAxiWriteMasters(1) <= mAxiWriteMaster;
-    mAxiWriteSlave      <= mAxiWriteSlaves(1);
-    mAxiReadMasters(1)  <= mAxiReadMaster;
-    mAxiReadSlave       <= mAxiReadSlaves(1);
+    mAxiWriteMasters(2) <= mAxiWriteMaster;
+    mAxiWriteSlave      <= mAxiWriteSlaves(2);
+    mAxiReadMasters(2)  <= mAxiReadMaster;
+    mAxiReadSlave       <= mAxiReadSlaves(2);
 
     -- external slave interface
     sAxilWriteMaster       <= sAxiLiteWriteMasters(0);

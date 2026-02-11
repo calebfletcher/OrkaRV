@@ -19,11 +19,15 @@ ENTITY Cpu IS
         halt  : OUT STD_LOGIC := '0';
         trap  : OUT STD_LOGIC := '0';
 
-        -- memory interface
-        axiReadMaster  : OUT AxiReadMasterType  := AXI_READ_MASTER_INIT_C;
-        axiReadSlave   : IN AxiReadSlaveType    := AXI_READ_SLAVE_INIT_C;
-        axiWriteMaster : OUT AxiWriteMasterType := AXI_WRITE_MASTER_INIT_C;
-        axiWriteSlave  : IN AxiWriteSlaveType   := AXI_WRITE_SLAVE_INIT_C;
+        -- instruction bus
+        instAxiReadMaster : OUT AxiReadMasterType := AXI_READ_MASTER_INIT_C;
+        instAxiReadSlave  : IN AxiReadSlaveType   := AXI_READ_SLAVE_INIT_C;
+
+        -- data bus
+        dataAxiReadMaster  : OUT AxiReadMasterType  := AXI_READ_MASTER_INIT_C;
+        dataAxiReadSlave   : IN AxiReadSlaveType    := AXI_READ_SLAVE_INIT_C;
+        dataAxiWriteMaster : OUT AxiWriteMasterType := AXI_WRITE_MASTER_INIT_C;
+        dataAxiWriteSlave  : IN AxiWriteSlaveType   := AXI_WRITE_SLAVE_INIT_C;
 
         -- interrupts
         mExtInt : IN STD_LOGIC
@@ -49,10 +53,13 @@ ARCHITECTURE rtl OF Cpu IS
         rs2         : RegisterIndex;
         rd          : RegisterIndex;
 
-        -- ram write control
-        axiReadMaster  : AxiReadMasterType;
-        axiWriteMaster : AxiWriteMasterType;
-        memReadData    : STD_LOGIC_VECTOR(31 DOWNTO 0);
+        -- instruction bus
+        instAxiReadMaster : AxiReadMasterType;
+
+        -- data bus
+        dataAxiReadMaster  : AxiReadMasterType;
+        dataAxiWriteMaster : AxiWriteMasterType;
+        memReadData        : STD_LOGIC_VECTOR(31 DOWNTO 0);
 
         -- register write control
         regWrAddr   : RegisterIndex;
@@ -127,22 +134,22 @@ ARCHITECTURE rtl OF Cpu IS
     );
 
     CONSTANT REG_INIT_C : RegType := (
-    stage    => INIT,
-    pc       => x"01000000", -- reset vector
+    stage              => INIT,
+    pc                 => x"01000000", -- reset vector
     successivePc => (OTHERS => '0'),
     instruction => (OTHERS => '0'),
     immediate => (OTHERS => '0'),
-    instType => UNKNOWN,
-    rs1      => 0,
-    rs2      => 0,
-    rd       => 0,
-    -- axi read master defaults to reading addr 0 for first fetch
-    axiReadMaster  => AXI_READ_MASTER_INIT_C,
-    axiWriteMaster => AXI_WRITE_MASTER_INIT_C,
+    instType           => UNKNOWN,
+    rs1                => 0,
+    rs2                => 0,
+    rd                 => 0,
+    instAxiReadMaster  => AXI_READ_MASTER_INIT_C,
+    dataAxiReadMaster  => AXI_READ_MASTER_INIT_C,
+    dataAxiWriteMaster => AXI_WRITE_MASTER_INIT_C,
     memReadData => (OTHERS => '0'),
-    regWrAddr      => 0,
+    regWrAddr          => 0,
     regWrData => (OTHERS => '0'),
-    regWrStrobe    => '0',
+    regWrStrobe        => '0',
 
     currentPrivilege => PRIV_MACHINE_C,
     csrReq           => '0',
@@ -226,9 +233,9 @@ ARCHITECTURE rtl OF Cpu IS
         -- todo: check for mtip
 
         -- prep instruction fetch
-        v.axiReadMaster.arvalid := '1';
-        v.axiReadMaster.araddr  := v.pc;
-        v.axiReadMaster.rready  := '1';
+        v.instAxiReadMaster.arvalid := '1';
+        v.instAxiReadMaster.araddr  := v.pc;
+        v.instAxiReadMaster.rready  := '1';
     END PROCEDURE;
 
     -- take exception
@@ -278,9 +285,9 @@ ARCHITECTURE rtl OF Cpu IS
         -- todo: check for mtip
 
         -- prep instruction fetch
-        v.axiReadMaster.arvalid := '1';
-        v.axiReadMaster.araddr  := v.pc;
-        v.axiReadMaster.rready  := '1';
+        v.instAxiReadMaster.arvalid := '1';
+        v.instAxiReadMaster.araddr  := v.pc;
+        v.instAxiReadMaster.rready  := '1';
     END PROCEDURE;
 BEGIN
     PROCESS (ALL)
@@ -298,39 +305,48 @@ BEGIN
 
         v.regWrStrobe := '0';
 
+        -- accept instruction bus transactions
+        IF (instAxiReadSlave.arready AND r.instAxiReadMaster.arvalid) THEN
+            v.instAxiReadMaster.arvalid := '0';
+            v.instAxiReadMaster.araddr  := (OTHERS => '0');
+        END IF;
+        IF (instAxiReadSlave.rvalid AND r.instAxiReadMaster.rready) THEN
+            v.instAxiReadMaster.rready := '0';
+        END IF;
+
         -- accept axi-lite transactions
-        IF (axiReadSlave.arready AND r.axiReadMaster.arvalid) THEN
-            v.axiReadMaster.arvalid := '0';
-            v.axiReadMaster.araddr  := (OTHERS => '0');
+        IF (dataAxiReadSlave.arready AND r.dataAxiReadMaster.arvalid) THEN
+            v.dataAxiReadMaster.arvalid := '0';
+            v.dataAxiReadMaster.araddr  := (OTHERS => '0');
         END IF;
-        IF (axiReadSlave.rvalid AND r.axiReadMaster.rready) THEN
-            v.axiReadMaster.rready := '0';
+        IF (dataAxiReadSlave.rvalid AND r.dataAxiReadMaster.rready) THEN
+            v.dataAxiReadMaster.rready := '0';
         END IF;
-        IF (axiWriteSlave.awready AND r.axiWriteMaster.awvalid) THEN
-            v.axiWriteMaster.awvalid := '0';
-            v.axiWriteMaster.awaddr  := (OTHERS => '0');
+        IF (dataAxiWriteSlave.awready AND r.dataAxiWriteMaster.awvalid) THEN
+            v.dataAxiWriteMaster.awvalid := '0';
+            v.dataAxiWriteMaster.awaddr  := (OTHERS => '0');
         END IF;
-        IF (axiWriteSlave.wready AND r.axiWriteMaster.wvalid) THEN
-            v.axiWriteMaster.wvalid := '0';
-            v.axiWriteMaster.wlast  := '0';
-            v.axiWriteMaster.wdata  := (OTHERS => '0');
+        IF (dataAxiWriteSlave.wready AND r.dataAxiWriteMaster.wvalid) THEN
+            v.dataAxiWriteMaster.wvalid := '0';
+            v.dataAxiWriteMaster.wlast  := '0';
+            v.dataAxiWriteMaster.wdata  := (OTHERS => '0');
         END IF;
-        IF (axiWriteSlave.bvalid AND r.axiWriteMaster.bready) THEN
-            v.axiWriteMaster.bready := '0';
+        IF (dataAxiWriteSlave.bvalid AND r.dataAxiWriteMaster.bready) THEN
+            v.dataAxiWriteMaster.bready := '0';
         END IF;
 
         CASE (r.stage) IS
             WHEN INIT =>
                 -- initial read of the pc to start the cpu running
-                v.axiReadMaster.arvalid := '1';
-                v.axiReadMaster.araddr  := v.pc;
-                v.axiReadMaster.rready  := '1';
+                v.instAxiReadMaster.arvalid := '1';
+                v.instAxiReadMaster.araddr  := v.pc;
+                v.instAxiReadMaster.rready  := '1';
 
                 v.stage := FETCH;
             WHEN FETCH =>
-                IF (r.axiReadMaster.rready AND axiReadSlave.rvalid) THEN
-                    IF axiReadSlave.rresp = AXI_RESP_OK_C THEN
-                        v.instruction := axiReadSlave.rdata(31 DOWNTO 0);
+                IF (r.instAxiReadMaster.rready AND instAxiReadSlave.rvalid) THEN
+                    IF dataAxiReadSlave.rresp = AXI_RESP_OK_C THEN
+                        v.instruction := instAxiReadSlave.rdata(31 DOWNTO 0);
                         v.immediate   := immediate;
                         v.instType    := instType;
                         v.rs1         := rs1;
@@ -552,24 +568,24 @@ BEGIN
 
                 -- prepare memory ops in advance due to the memory latency
                 IF r.opMemRead THEN
-                    v.axiReadMaster.araddr              := (OTHERS => '0');
-                    v.axiReadMaster.araddr(31 DOWNTO 2) := r.aluResult(31 DOWNTO 2);
-                    v.axiReadMaster.arvalid             := '1';
+                    v.dataAxiReadMaster.araddr              := (OTHERS => '0');
+                    v.dataAxiReadMaster.araddr(31 DOWNTO 2) := r.aluResult(31 DOWNTO 2);
+                    v.dataAxiReadMaster.arvalid             := '1';
 
-                    v.axiReadMaster.rready := '1';
+                    v.dataAxiReadMaster.rready := '1';
                 END IF;
 
                 IF r.opMemWrite THEN
-                    v.axiWriteMaster.awaddr              := (OTHERS => '0');
-                    v.axiWriteMaster.awaddr(31 DOWNTO 2) := r.aluResult(31 DOWNTO 2);
-                    v.axiWriteMaster.awvalid             := '1';
+                    v.dataAxiWriteMaster.awaddr              := (OTHERS => '0');
+                    v.dataAxiWriteMaster.awaddr(31 DOWNTO 2) := r.aluResult(31 DOWNTO 2);
+                    v.dataAxiWriteMaster.awvalid             := '1';
 
-                    v.axiWriteMaster.wstrb(3 DOWNTO 0) := "0000";
-                    v.axiWriteMaster.wdata             := (OTHERS => '0');
-                    v.axiWriteMaster.wvalid            := '1';
-                    v.axiWriteMaster.wlast             := '1';
+                    v.dataAxiWriteMaster.wstrb(3 DOWNTO 0) := "0000";
+                    v.dataAxiWriteMaster.wdata             := (OTHERS => '0');
+                    v.dataAxiWriteMaster.wvalid            := '1';
+                    v.dataAxiWriteMaster.wlast             := '1';
 
-                    v.axiWriteMaster.bready := '1';
+                    v.dataAxiWriteMaster.bready := '1';
                 END IF;
 
                 -- set wstrb and wdata for mem write
@@ -577,38 +593,38 @@ BEGIN
                     WHEN 1 =>
                         FOR i IN 0 TO 3 LOOP
                             IF r.aluResult(1 DOWNTO 0) = STD_LOGIC_VECTOR(to_unsigned(i, 2)) THEN
-                                v.axiWriteMaster.wstrb(i)                            := '1';
-                                v.axiWriteMaster.wdata((i + 1) * 8 - 1 DOWNTO i * 8) := rs2Value(7 DOWNTO 0);
+                                v.dataAxiWriteMaster.wstrb(i)                            := '1';
+                                v.dataAxiWriteMaster.wdata((i + 1) * 8 - 1 DOWNTO i * 8) := rs2Value(7 DOWNTO 0);
                             END IF;
                         END LOOP;
                     WHEN 2 =>
                         IF r.aluResult(1) THEN
-                            v.axiWriteMaster.wstrb(3 DOWNTO 0)   := "1100";
-                            v.axiWriteMaster.wdata(31 DOWNTO 16) := rs2Value(15 DOWNTO 0);
+                            v.dataAxiWriteMaster.wstrb(3 DOWNTO 0)   := "1100";
+                            v.dataAxiWriteMaster.wdata(31 DOWNTO 16) := rs2Value(15 DOWNTO 0);
                         ELSE
-                            v.axiWriteMaster.wstrb(3 DOWNTO 0)  := "0011";
-                            v.axiWriteMaster.wdata(15 DOWNTO 0) := rs2Value(15 DOWNTO 0);
+                            v.dataAxiWriteMaster.wstrb(3 DOWNTO 0)  := "0011";
+                            v.dataAxiWriteMaster.wdata(15 DOWNTO 0) := rs2Value(15 DOWNTO 0);
                         END IF;
                     WHEN 3 =>
                         -- invalid (3 bytes)
-                        v.axiWriteMaster.wstrb(3 DOWNTO 0) := "0000";
+                        v.dataAxiWriteMaster.wstrb(3 DOWNTO 0) := "0000";
                     WHEN 4 =>
-                        v.axiWriteMaster.wstrb(3 DOWNTO 0)  := "1111";
-                        v.axiWriteMaster.wdata(31 DOWNTO 0) := rs2Value;
+                        v.dataAxiWriteMaster.wstrb(3 DOWNTO 0)  := "1111";
+                        v.dataAxiWriteMaster.wdata(31 DOWNTO 0) := rs2Value;
                 END CASE;
             WHEN MEMORY =>
                 -- once mem transaction completes
-                IF r.opMemWrite AND r.axiWriteMaster.bready AND axiWriteSlave.bvalid THEN
-                    IF axiWriteSlave.bresp = AXI_RESP_OK_C THEN
+                IF r.opMemWrite AND r.dataAxiWriteMaster.bready AND dataAxiWriteSlave.bvalid THEN
+                    IF dataAxiWriteSlave.bresp = AXI_RESP_OK_C THEN
                         v.stage := WRITEBACK;
                     ELSE
                         exception(v, EXCEPTION_STORE_ACCESS_FAULT_C);
                     END IF;
                 END IF;
-                IF r.opMemRead AND r.axiReadMaster.rready AND axiReadSlave.rvalid THEN
-                    IF axiReadSlave.rresp = AXI_RESP_OK_C THEN
+                IF r.opMemRead AND r.dataAxiReadMaster.rready AND dataAxiReadSlave.rvalid THEN
+                    IF dataAxiReadSlave.rresp = AXI_RESP_OK_C THEN
                         -- register read data
-                        v.memReadData := axiReadSlave.rdata(31 DOWNTO 0);
+                        v.memReadData := dataAxiReadSlave.rdata(31 DOWNTO 0);
 
                         v.stage := WRITEBACK;
                     ELSE
@@ -686,9 +702,9 @@ BEGIN
                 END IF;
 
                 -- prepare ram read for fetch in advance due to the memory latency
-                v.axiReadMaster.arvalid := '1';
-                v.axiReadMaster.araddr  := v.pc;
-                v.axiReadMaster.rready  := '1';
+                v.instAxiReadMaster.arvalid := '1';
+                v.instAxiReadMaster.araddr  := v.pc;
+                v.instAxiReadMaster.rready  := '1';
 
                 v.stage := FETCH;
             WHEN HALTED =>
@@ -709,8 +725,9 @@ BEGIN
             '0';
         trap <= '1' WHEN r.stage = TRAPPED ELSE
             '0';
-        axiReadMaster  <= r.axiReadMaster;
-        axiWriteMaster <= r.axiWriteMaster;
+        instAxiReadMaster  <= r.instAxiReadMaster;
+        dataAxiReadMaster  <= r.dataAxiReadMaster;
+        dataAxiWriteMaster <= r.dataAxiWriteMaster;
     END PROCESS;
 
     PROCESS (clk)
@@ -738,7 +755,7 @@ BEGIN
         PORT MAP
         (
             instructionType => instType,
-            instruction     => axiReadSlave.rdata(31 DOWNTO 0),
+            instruction     => instAxiReadSlave.rdata(31 DOWNTO 0),
             immediate       => immediate,
             rs1             => rs1,
             rs2             => rs2,
