@@ -55,8 +55,8 @@ fn main() -> ! {
                     uart.tx(byte);
                 }
 
-                //debug::set_pass();
-                unsafe { riscv::asm::ebreak() };
+                debug::set_pass();
+                //unsafe { riscv::asm::ebreak() };
             }
         });
 

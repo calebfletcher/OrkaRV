@@ -59,7 +59,12 @@ ARCHITECTURE rtl OF Soc IS
     SIGNAL sAxiLiteReadMasters  : AxiLiteReadMasterArray(NUM_PERIPH_SLAVES_C - 1 DOWNTO 0);
     SIGNAL sAxiLiteReadSlaves   : AxiLiteReadSlaveArray(NUM_PERIPH_SLAVES_C - 1 DOWNTO 0) := (OTHERS => AXI_LITE_READ_SLAVE_INIT_C);
 
-    CONSTANT AXI_XBAR_CFG_C : AxiCrossbarMasterConfigArray(0 TO NUM_PERIPH_SLAVES_C + NUM_MEM_SLAVES_C - 1) := (0 => (baseAddr => X"01000000", addrBits => 24, connectivity => X"FFFF"), 1 => (baseAddr => X"03000000", addrBits => 24, connectivity => X"FFFF"), 2 => (baseAddr => X"02000000", addrBits => 16, connectivity => X"FFFF"), 3 => (baseAddr => X"02010000", addrBits => 16, connectivity => X"FFFF"));
+    CONSTANT AXI_XBAR_CFG_C : AxiLiteCrossbarMasterConfigArray(0 TO NUM_PERIPH_SLAVES_C + NUM_MEM_SLAVES_C - 1) := (
+    0 => (baseAddr => X"01000000", addrBits => 24, connectivity => X"FFFF"), -- ram
+    1 => (baseAddr => X"03000000", addrBits => 24, connectivity => X"FFFF"), -- debug
+    2 => (baseAddr => X"02000000", addrBits => 16, connectivity => X"FFFF"), -- gpio
+    3 => (baseAddr => X"02010000", addrBits => 16, connectivity => X"FFFF") -- uart
+    );
 
     SIGNAL mExtInt : STD_LOGIC;
     SIGNAL uartInt : STD_LOGIC;
@@ -101,10 +106,10 @@ BEGIN
         (
             clk             => clk,
             reset           => reset,
-            axilReadMaster  => sAxiLiteReadMasters(0),
-            axilReadSlave   => sAxiLiteReadSlaves(0),
-            axilWriteMaster => sAxiLiteWriteMasters(0),
-            axilWriteSlave  => sAxiLiteWriteSlaves(0),
+            axilReadMaster  => sAxiLiteReadMasters(1),
+            axilReadSlave   => sAxiLiteReadSlaves(1),
+            axilWriteMaster => sAxiLiteWriteMasters(1),
+            axilWriteSlave  => sAxiLiteWriteSlaves(1),
             pins            => gpioPins
         );
 
@@ -113,10 +118,10 @@ BEGIN
         (
             clk             => clk,
             reset           => reset,
-            axilWriteMaster => sAxiLiteWriteMasters(1),
-            axilWriteSlave  => sAxiLiteWriteSlaves(1),
-            axilReadMaster  => sAxiLiteReadMasters(1),
-            axilReadSlave   => sAxiLiteReadSlaves(1),
+            axilWriteMaster => sAxiLiteWriteMasters(2),
+            axilWriteSlave  => sAxiLiteWriteSlaves(2),
+            axilReadMaster  => sAxiLiteReadMasters(2),
+            axilReadSlave   => sAxiLiteReadSlaves(2),
             uart_rxd_out    => uart_rxd_out,
             uart_txd_in     => uart_txd_in,
             int             => uartInt
@@ -132,10 +137,10 @@ BEGIN
     mAxiReadSlave       <= mAxiReadSlaves(1);
 
     -- external slave interface
-    sAxilWriteMaster       <= sAxiLiteWriteMasters(2);
-    sAxiLiteWriteSlaves(2) <= sAxilWriteSlave;
-    sAxilReadMaster        <= sAxiLiteReadMasters(2);
-    sAxiLiteReadSlaves(2)  <= sAxilReadSlave;
+    sAxilWriteMaster       <= sAxiLiteWriteMasters(0);
+    sAxiLiteWriteSlaves(0) <= sAxilWriteSlave;
+    sAxilReadMaster        <= sAxiLiteReadMasters(0);
+    sAxiLiteReadSlaves(0)  <= sAxilReadSlave;
 
     -- crossbar
     AxiLiteCrossbar_inst : ENTITY work.AxiCrossbar
