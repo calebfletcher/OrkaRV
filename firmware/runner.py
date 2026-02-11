@@ -92,12 +92,13 @@ def main():
         proj_path / "shared" / "hdl" / "Ram.vhd",
 
         proj_path / "shared" / "hdl" / "reg_utils.vhd",
-        proj_path / "shared" / "hdl" / "axi4lite_intf_pkg.vhd",
-        proj_path / "shared" / "hdl" / "AxiLitePeakRdlBridge.vhd",
-        proj_path / "shared" / "hdl" / "AxiToAxiLite.vhd",
-        proj_path / "shared" / "hdl" / "AxiPkg.vhd",
-        proj_path / "shared" / "hdl" / "AxiCrossbar.vhd",
-        proj_path / "shared" / "hdl" / "SlaveAxiIpIntegrator.vhd",
+
+        proj_path / "shared" / "axi" / "hdl" / "axi4lite_intf_pkg.vhd",
+        proj_path / "shared" / "axi" / "hdl" / "AxiLitePeakRdlBridge.vhd",
+        proj_path / "shared" / "axi" / "hdl" / "AxiToAxiLite.vhd",
+        proj_path / "shared" / "axi" / "hdl" / "AxiPkg.vhd",
+        proj_path / "shared" / "axi" / "hdl" / "AxiCrossbar.vhd",
+        proj_path / "shared" / "axi" / "hdl" / "SlaveAxiIpIntegrator.vhd",
         
         proj_path / "shared" / "peripherals" / "gpio" / "hdl" / "GpioRegisters_pkg.vhd",
         proj_path / "shared" / "peripherals" / "gpio" / "hdl" / "GpioRegisters.vhd",
