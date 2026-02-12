@@ -82,6 +82,7 @@ def main():
     sources = [
         proj_path / "shared" / "hdl" / "RiscVPkg.vhd",
         proj_path / "shared" / "hdl" / "InstructionDecoder.vhd",
+        proj_path / "shared" / "hdl" / "InstCache.vhd",
         proj_path / "shared" / "hdl" / "Registers.vhd",
         proj_path / "shared" / "csr" / "hdl" / "csrif_pkg.vhd",
         proj_path / "shared" / "csr" / "hdl" / "Csr.vhd",
@@ -147,6 +148,7 @@ def main():
         parameters={"RAM_FILE_PATH_G": memory_file_path},
         waves=True,
         test_args=["--std=08", "-fsynopsys", "-frelaxed-rules"],
+        #plusargs=["--max-stack-alloc=0"] # for GHDL LLVM generator
     )
 
     copyfile(runner.test_dir.joinpath("cocotbsoc.ghw"), "build/sim/out.ghw")

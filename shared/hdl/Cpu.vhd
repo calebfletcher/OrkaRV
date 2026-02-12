@@ -40,9 +40,10 @@ ARCHITECTURE rtl OF Cpu IS
 
     TYPE RegType IS RECORD
         stage : StageType;
-        -- address of the current instruction, will be updated if there
-        -- are jumps
-        pc : STD_LOGIC_VECTOR(XLEN - 1 DOWNTO 0);
+
+        pc        : STD_LOGIC_VECTOR(XLEN - 1 DOWNTO 0);
+        pcValid   : STD_LOGIC;
+        instReady : STD_LOGIC;
         -- address of the instruction directly after the current one
         successivePc : STD_LOGIC_VECTOR(XLEN - 1 DOWNTO 0);
 
@@ -133,6 +134,8 @@ ARCHITECTURE rtl OF Cpu IS
     CONSTANT REG_INIT_C : RegType := (
     stage              => INIT,
     pc                 => x"01000000", -- reset vector
+    pcValid            => '1', -- on reset, start off requesting the instruction
+    instReady          => '1',
     successivePc => (OTHERS => '0'),
     instruction => (OTHERS => '0'),
     immediate => (OTHERS => '0'),
@@ -183,6 +186,7 @@ ARCHITECTURE rtl OF Cpu IS
     SIGNAL instruction       : STD_LOGIC_VECTOR(XLEN - 1 DOWNTO 0);
     SIGNAL instValid         : STD_LOGIC;
     SIGNAL instCacheMemFault : STD_LOGIC;
+    SIGNAL pcReady           : STD_LOGIC;
 
     SIGNAL csrHwOut : CsrRegisters_out_t;
 
@@ -225,8 +229,10 @@ ARCHITECTURE rtl OF Cpu IS
             v.stage := TRAPPED;
         ELSE
             -- go to mtvec address
-            v.pc    := csrHwOut.mtvec.base.value & "00";
-            v.stage := FETCH;
+            v.pc        := csrHwOut.mtvec.base.value & "00";
+            v.pcValid   := '1';
+            v.instReady := '1';
+            v.stage     := FETCH;
         END IF;
         -- todo: check for msip
         -- todo: check for mtip
@@ -272,8 +278,10 @@ ARCHITECTURE rtl OF Cpu IS
             v.stage := TRAPPED;
         ELSE
             -- go to mtvec address
-            v.pc    := csrHwOut.mtvec.base.value & "00";
-            v.stage := FETCH;
+            v.pc        := csrHwOut.mtvec.base.value & "00";
+            v.pcValid   := '1';
+            v.instReady := '1';
+            v.stage     := FETCH;
         END IF;
         -- todo: check for msip
         -- todo: check for mtip
@@ -315,14 +323,19 @@ BEGIN
             v.dataAxiWriteMaster.bready := '0';
         END IF;
 
+        IF pcReady AND r.pcValid THEN
+            v.pcValid := '0';
+        END IF;
+
         CASE (r.stage) IS
             WHEN INIT =>
                 -- todo: this stage might not be needed anymore
                 v.stage := FETCH;
             WHEN FETCH =>
-                IF (instValid) THEN
+                IF instValid AND r.instReady THEN
+                    v.instReady := '0';
                     IF NOT instCacheMemFault THEN
-                        v.instruction := instAxiReadSlave.rdata(31 DOWNTO 0);
+                        v.instruction := instruction;
                         v.immediate   := immediate;
                         v.instType    := instType;
                         v.rs1         := rs1;
@@ -676,6 +689,8 @@ BEGIN
                 ELSE
                     v.pc := r.successivePc;
                 END IF;
+                v.pcValid   := '1';
+                v.instReady := '1';
 
                 v.stage := FETCH;
             WHEN HALTED =>
@@ -707,17 +722,20 @@ BEGIN
         END IF;
     END PROCESS;
 
-    InstCache_inst : ENTITY work.InstCache
+    InstCache_inst : ENTITY work.InstCache(passthrough)
         PORT MAP(
             clk           => clk,
             reset         => reset,
             axiReadMaster => instAxiReadMaster,
             axiReadSlave  => instAxiReadSlave,
             pc            => r.pc,
-            flush         => '0',
+            pcValid       => r.pcValid,
+            pcReady       => pcReady,
             instruction   => instruction,
             instValid     => instValid,
-            memFault      => instCacheMemFault
+            instReady     => r.instReady,
+            memFault      => instCacheMemFault,
+            flush         => '0'
         );
 
     Registers_inst : ENTITY work.Registers
@@ -738,7 +756,7 @@ BEGIN
         PORT MAP
         (
             instructionType => instType,
-            instruction     => instAxiReadSlave.rdata(31 DOWNTO 0),
+            instruction     => instruction,
             immediate       => immediate,
             rs1             => rs1,
             rs2             => rs2,

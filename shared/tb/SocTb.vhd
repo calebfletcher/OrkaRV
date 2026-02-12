@@ -6,12 +6,12 @@ ENTITY SocTb IS
 END ENTITY;
 
 ARCHITECTURE sim OF SocTb IS
-    SIGNAL clk : STD_LOGIC := '0';
+    SIGNAL clk   : STD_LOGIC := '0';
     SIGNAL reset : STD_LOGIC := '1';
-    SIGNAL halt : STD_LOGIC;
+    SIGNAL halt  : STD_LOGIC;
 
     CONSTANT clk_period : TIME := 10 ns; -- 100 MHz
-    CONSTANT timeout : TIME := 1 ms;
+    CONSTANT timeout    : TIME := 1 ms;
 BEGIN
     -- Clock generation
     clk_process : PROCESS
@@ -40,13 +40,11 @@ BEGIN
             RAM_FILE_PATH_G => "build/program.hex"
         )
         PORT MAP(
-            clk => clk,
+            clk   => clk,
             reset => reset,
-            halt => halt,
+            halt  => halt,
 
-            uart_txd_in => '1',
-
-            mExtInt => '0'
+            uart_txd_in => '1'
         );
 
     -- Stop simulation on halt or timeout
