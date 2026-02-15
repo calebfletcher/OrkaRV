@@ -41,7 +41,7 @@ END ENTITY Soc;
 ARCHITECTURE rtl OF Soc IS
     CONSTANT NUM_MASTERS_C       : NATURAL := 3;
     CONSTANT NUM_MEM_SLAVES_C    : NATURAL := 1;
-    CONSTANT NUM_PERIPH_SLAVES_C : NATURAL := 3;
+    CONSTANT NUM_PERIPH_SLAVES_C : NATURAL := 4;
 
     SIGNAL mAxiWriteMasters : AxiWriteMasterArray(NUM_MASTERS_C - 1 DOWNTO 0) := (OTHERS => AXI_WRITE_MASTER_INIT_C);
     SIGNAL mAxiWriteSlaves  : AxiWriteSlaveArray(NUM_MASTERS_C - 1 DOWNTO 0);
@@ -62,12 +62,15 @@ ARCHITECTURE rtl OF Soc IS
     CONSTANT AXI_XBAR_CFG_C : AxiLiteCrossbarMasterConfigArray(0 TO NUM_PERIPH_SLAVES_C + NUM_MEM_SLAVES_C - 1) := (
     0 => (baseAddr => X"01000000", addrBits => 24, connectivity => X"FFFF"), -- ram
     1 => (baseAddr => X"03000000", addrBits => 24, connectivity => X"FFFF"), -- debug
-    2 => (baseAddr => X"02000000", addrBits => 16, connectivity => X"FFFF"), -- gpio
-    3 => (baseAddr => X"02010000", addrBits => 16, connectivity => X"FFFF") -- uart
+    2 => (baseAddr => X"02020000", addrBits => 16, connectivity => X"FFFF"), -- clint
+    3 => (baseAddr => X"02000000", addrBits => 16, connectivity => X"FFFF"), -- gpio
+    4 => (baseAddr => X"02010000", addrBits => 16, connectivity => X"FFFF") -- uart
     );
 
-    SIGNAL mExtInt : STD_LOGIC;
-    SIGNAL uartInt : STD_LOGIC;
+    SIGNAL mExtInt  : STD_LOGIC;
+    SIGNAL mTimInt  : STD_LOGIC;
+    SIGNAL mSoftInt : STD_LOGIC;
+    SIGNAL uartInt  : STD_LOGIC;
 BEGIN
     Cpu_inst : ENTITY work.Cpu
         PORT MAP
@@ -84,7 +87,9 @@ BEGIN
             dataAxiWriteMaster => mAxiWriteMasters(1),
             dataAxiWriteSlave  => mAxiWriteSlaves(1),
 
-            mExtInt => mExtInt
+            mExtInt  => mExtInt,
+            mSoftInt => mSoftInt,
+            mTimInt  => mTimInt
         );
 
     Ram_inst : ENTITY work.Ram
@@ -103,15 +108,27 @@ BEGIN
             axiWriteSlave  => sAxiWriteSlaves(0)
         );
 
+    Clint_inst : ENTITY work.Clint
+        PORT MAP(
+            clk             => clk,
+            reset           => reset,
+            axilWriteMaster => sAxiLiteWriteMasters(1),
+            axilWriteSlave  => sAxiLiteWriteSlaves(1),
+            axilReadMaster  => sAxiLiteReadMasters(1),
+            axilReadSlave   => sAxiLiteReadSlaves(1),
+            mTimInt         => mTimInt,
+            mSoftInt        => mSoftInt
+        );
+
     Gpio_inst : ENTITY work.Gpio
         PORT MAP
         (
             clk             => clk,
             reset           => reset,
-            axilReadMaster  => sAxiLiteReadMasters(1),
-            axilReadSlave   => sAxiLiteReadSlaves(1),
-            axilWriteMaster => sAxiLiteWriteMasters(1),
-            axilWriteSlave  => sAxiLiteWriteSlaves(1),
+            axilReadMaster  => sAxiLiteReadMasters(2),
+            axilReadSlave   => sAxiLiteReadSlaves(2),
+            axilWriteMaster => sAxiLiteWriteMasters(2),
+            axilWriteSlave  => sAxiLiteWriteSlaves(2),
             pins            => gpioPins
         );
 
@@ -120,10 +137,10 @@ BEGIN
         (
             clk             => clk,
             reset           => reset,
-            axilWriteMaster => sAxiLiteWriteMasters(2),
-            axilWriteSlave  => sAxiLiteWriteSlaves(2),
-            axilReadMaster  => sAxiLiteReadMasters(2),
-            axilReadSlave   => sAxiLiteReadSlaves(2),
+            axilWriteMaster => sAxiLiteWriteMasters(3),
+            axilWriteSlave  => sAxiLiteWriteSlaves(3),
+            axilReadMaster  => sAxiLiteReadMasters(3),
+            axilReadSlave   => sAxiLiteReadSlaves(3),
             uart_rxd_out    => uart_rxd_out,
             uart_txd_in     => uart_txd_in,
             int             => uartInt

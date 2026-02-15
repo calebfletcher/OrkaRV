@@ -100,6 +100,10 @@ def main():
         proj_path / "shared" / "axi" / "hdl" / "AxiPkg.vhd",
         proj_path / "shared" / "axi" / "hdl" / "AxiCrossbar.vhd",
         proj_path / "shared" / "axi" / "hdl" / "SlaveAxiIpIntegrator.vhd",
+
+        proj_path / "shared" / "peripherals" / "clint" / "hdl" / "ClintRegisters_pkg.vhd",
+        proj_path / "shared" / "peripherals" / "clint" / "hdl" / "ClintRegisters.vhd",
+        proj_path / "shared" / "peripherals" / "clint" / "hdl" / "Clint.vhd",
         
         proj_path / "shared" / "peripherals" / "gpio" / "hdl" / "GpioRegisters_pkg.vhd",
         proj_path / "shared" / "peripherals" / "gpio" / "hdl" / "GpioRegisters.vhd",

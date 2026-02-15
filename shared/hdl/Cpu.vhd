@@ -30,7 +30,9 @@ ENTITY Cpu IS
         dataAxiWriteSlave  : IN AxiWriteSlaveType   := AXI_WRITE_SLAVE_INIT_C;
 
         -- interrupts
-        mExtInt : IN STD_LOGIC
+        mExtInt  : IN STD_LOGIC;
+        mSoftInt : IN STD_LOGIC;
+        mTimInt  : IN STD_LOGIC
     );
 END ENTITY Cpu;
 
@@ -126,6 +128,12 @@ ARCHITECTURE rtl OF Cpu IS
     ),
     mip    => (
     meip   => (
+    next_q => '0'
+    ),
+    msip   => (
+    next_q => '0'
+    ),
+    mtip   => (
     next_q => '0'
     )
     )
@@ -234,8 +242,6 @@ ARCHITECTURE rtl OF Cpu IS
             v.instReady := '1';
             v.stage     := FETCH;
         END IF;
-        -- todo: check for msip
-        -- todo: check for mtip
     END PROCEDURE;
 
     -- take exception
@@ -299,6 +305,8 @@ BEGIN
         -- read interrupts
         -- todo: cdc?
         v.csrHwIn.mip.meip.next_q := mExtInt;
+        v.csrHwIn.mip.msip.next_q := mSoftInt;
+        v.csrHwIn.mip.mtip.next_q := mTimInt;
 
         v.regWrStrobe := '0';
 
@@ -347,6 +355,12 @@ BEGIN
                         v.stage := DECODE;
 
                         -- check for interrupts
+                        IF csrHwOut.mstatus.mie.value AND csrHwOut.mip.msip.value AND csrHwOut.mie.msie.value THEN
+                            interrupt(v, INTERRUPT_M_SOFT_C);
+                        END IF;
+                        IF csrHwOut.mstatus.mie.value AND csrHwOut.mip.mtip.value AND csrHwOut.mie.mtie.value THEN
+                            interrupt(v, INTERRUPT_M_TIM_C);
+                        END IF;
                         IF csrHwOut.mstatus.mie.value AND csrHwOut.mip.meip.value AND csrHwOut.mie.meie.value THEN
                             interrupt(v, INTERRUPT_M_EXT_C);
                         END IF;

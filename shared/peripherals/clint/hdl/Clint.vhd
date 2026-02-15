@@ -23,7 +23,7 @@ ENTITY Clint IS
 END ENTITY Clint;
 
 ARCHITECTURE rtl OF Clint IS
-    CONSTANT ADDR_BITS_C : POSITIVE := 4;
+    CONSTANT ADDR_BITS_C : POSITIVE := 16;
 
     SIGNAL s_axil_i : axi4lite_slave_in_intf(
     AWADDR(ADDR_BITS_C - 1 DOWNTO 0),

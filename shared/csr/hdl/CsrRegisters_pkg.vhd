@@ -65,11 +65,21 @@ package CsrRegisters_pkg is
         mtval : \CsrRegisters.mtval.mtval_in_t\;
     end record;
 
+    type \CsrRegisters.mip.msip_in_t\ is record
+        next_q : std_logic;
+    end record;
+
+    type \CsrRegisters.mip.mtip_in_t\ is record
+        next_q : std_logic;
+    end record;
+
     type \CsrRegisters.mip.meip_in_t\ is record
         next_q : std_logic;
     end record;
 
     type \CsrRegisters.mip_in_t\ is record
+        msip : \CsrRegisters.mip.msip_in_t\;
+        mtip : \CsrRegisters.mip.mtip_in_t\;
         meip : \CsrRegisters.mip.meip_in_t\;
     end record;
 

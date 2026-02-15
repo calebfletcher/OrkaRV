@@ -232,12 +232,24 @@ architecture rtl of CsrRegisters is
         mtval : \CsrRegisters.mtval.mtval_combo_t\;
     end record;
 
+    type \CsrRegisters.mip.msip_combo_t\ is record
+        next_q : std_logic;
+        load_next : std_logic;
+    end record;
+
+    type \CsrRegisters.mip.mtip_combo_t\ is record
+        next_q : std_logic;
+        load_next : std_logic;
+    end record;
+
     type \CsrRegisters.mip.meip_combo_t\ is record
         next_q : std_logic;
         load_next : std_logic;
     end record;
 
     type \CsrRegisters.mip_combo_t\ is record
+        msip : \CsrRegisters.mip.msip_combo_t\;
+        mtip : \CsrRegisters.mip.mtip_combo_t\;
         meip : \CsrRegisters.mip.meip_combo_t\;
     end record;
 
@@ -379,11 +391,21 @@ architecture rtl of CsrRegisters is
         mtval : \CsrRegisters.mtval.mtval_storage_t\;
     end record;
 
+    type \CsrRegisters.mip.msip_storage_t\ is record
+        value : std_logic;
+    end record;
+
+    type \CsrRegisters.mip.mtip_storage_t\ is record
+        value : std_logic;
+    end record;
+
     type \CsrRegisters.mip.meip_storage_t\ is record
         value : std_logic;
     end record;
 
     type \CsrRegisters.mip_storage_t\ is record
+        msip : \CsrRegisters.mip.msip_storage_t\;
+        mtip : \CsrRegisters.mip.mtip_storage_t\;
         meip : \CsrRegisters.mip.meip_storage_t\;
     end record;
 
@@ -1272,9 +1294,65 @@ begin
     end process;
     hwif_out.mtval.mtval.value <= field_storage.mtval.mtval.value;
     hwif_out.mip.ssip.value <= '0';
-    hwif_out.mip.msip.value <= '0';
+
+    -- Field: CsrRegisters.mip.msip
+    process(all)
+        variable next_c: std_logic;
+        variable load_next_c: std_logic;
+    begin
+        next_c := field_storage.mip.msip.value;
+        load_next_c := '0';
+        
+        -- HW Write
+        next_c := hwif_in.mip.msip.next_q;
+        load_next_c := '1';
+        field_combo.mip.msip.next_q <= next_c;
+        field_combo.mip.msip.load_next <= load_next_c;
+    end process;
+    process(clk) begin
+        if false then -- async reset
+            field_storage.mip.msip.value <= '0';
+        elsif rising_edge(clk) then
+            if rst then -- sync reset
+                field_storage.mip.msip.value <= '0';
+            else
+                if field_combo.mip.msip.load_next then
+                    field_storage.mip.msip.value <= field_combo.mip.msip.next_q;
+                end if;
+            end if;
+        end if;
+    end process;
+    hwif_out.mip.msip.value <= field_storage.mip.msip.value;
     hwif_out.mip.stip.value <= '0';
-    hwif_out.mip.mtip.value <= '0';
+
+    -- Field: CsrRegisters.mip.mtip
+    process(all)
+        variable next_c: std_logic;
+        variable load_next_c: std_logic;
+    begin
+        next_c := field_storage.mip.mtip.value;
+        load_next_c := '0';
+        
+        -- HW Write
+        next_c := hwif_in.mip.mtip.next_q;
+        load_next_c := '1';
+        field_combo.mip.mtip.next_q <= next_c;
+        field_combo.mip.mtip.load_next <= load_next_c;
+    end process;
+    process(clk) begin
+        if false then -- async reset
+            field_storage.mip.mtip.value <= '0';
+        elsif rising_edge(clk) then
+            if rst then -- sync reset
+                field_storage.mip.mtip.value <= '0';
+            else
+                if field_combo.mip.mtip.load_next then
+                    field_storage.mip.mtip.value <= field_combo.mip.mtip.next_q;
+                end if;
+            end if;
+        end if;
+    end process;
+    hwif_out.mip.mtip.value <= field_storage.mip.mtip.value;
     hwif_out.mip.seip.value <= '0';
 
     -- Field: CsrRegisters.mip.meip
@@ -1403,11 +1481,11 @@ begin
     readback_array(12)(0 downto 0) <= (others => '0');
     readback_array(12)(1 downto 1) <= 1x"0" when (decoded_reg_strb.mip and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
     readback_array(12)(2 downto 2) <= (others => '0');
-    readback_array(12)(3 downto 3) <= 1x"0" when (decoded_reg_strb.mip and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(12)(3 downto 3) <= to_std_logic_vector(field_storage.mip.msip.value) when (decoded_reg_strb.mip and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
     readback_array(12)(4 downto 4) <= (others => '0');
     readback_array(12)(5 downto 5) <= 1x"0" when (decoded_reg_strb.mip and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
     readback_array(12)(6 downto 6) <= (others => '0');
-    readback_array(12)(7 downto 7) <= 1x"0" when (decoded_reg_strb.mip and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(12)(7 downto 7) <= to_std_logic_vector(field_storage.mip.mtip.value) when (decoded_reg_strb.mip and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
     readback_array(12)(8 downto 8) <= (others => '0');
     readback_array(12)(9 downto 9) <= 1x"0" when (decoded_reg_strb.mip and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
     readback_array(12)(10 downto 10) <= (others => '0');
