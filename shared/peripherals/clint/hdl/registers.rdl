@@ -1,0 +1,32 @@
+addrmap ClintRegisters {
+    name = "CLINT Peripheral";
+    
+    default sw = rw;
+    default hw = r;
+
+    reg {
+        field {} msip = 0;
+    } msip @ 0x0;
+    
+    reg {
+        field {} mtimecmp[32] = 0;
+    } mtimecmp @ 0x4000;
+    
+    reg {
+        field {} mtimecmph[32] = 0;
+    } mtimecmph @ 0x4004;
+    
+    reg {
+        field {
+            hw = w;
+            sw = r;
+        } mtime[32];
+    } mtime @ 0xBFF8;
+    
+    reg {
+        field {
+            hw = w;
+            sw = r;
+        } mtimeh[32];
+    } mtimeh @ 0xBFFC;
+};
