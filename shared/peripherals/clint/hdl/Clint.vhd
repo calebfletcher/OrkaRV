@@ -52,7 +52,11 @@ BEGIN
         END IF;
     END PROCESS;
 
+    -- mtimecmp from upper and lower parts
     mtimecmp <= hwif_out.mtimecmph.mtimecmph.value & hwif_out.mtimecmp.mtimecmp.value;
+    -- mtime for sw to read
+    hwif_in.mtime.mtime.next_q   <= STD_LOGIC_VECTOR(mtime)(31 DOWNTO 0);
+    hwif_in.mtimeh.mtimeh.next_q <= STD_LOGIC_VECTOR(mtime)(63 DOWNTO 32);
 
     -- timer interrupt when mtime >= mtimecmp
     mTimInt <= '1' WHEN mtime >= UNSIGNED(mtimecmp) ELSE
