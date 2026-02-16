@@ -32,7 +32,10 @@ ENTITY Cpu IS
         -- interrupts
         mExtInt  : IN STD_LOGIC;
         mSoftInt : IN STD_LOGIC;
-        mTimInt  : IN STD_LOGIC
+        mTimInt  : IN STD_LOGIC;
+
+        -- timers/counters
+        mtime : IN STD_LOGIC_VECTOR(63 DOWNTO 0)
     );
 END ENTITY Cpu;
 
@@ -135,6 +138,26 @@ ARCHITECTURE rtl OF Cpu IS
     ),
     mtip   => (
     next_q => '0'
+    )
+    ),
+    TIME => (
+    TIME => (
+    next_q => (OTHERS => '0')
+    )
+    ),
+    TIMEh => (
+    TIMEh => (
+    next_q => (OTHERS => '0')
+    )
+    ),
+    mcycle => (
+    mcycle => (
+    next_q => (OTHERS => '0')
+    )
+    ),
+    mcycleh => (
+    mcycleh => (
+    next_q => (OTHERS => '0')
     )
     )
     );
@@ -289,8 +312,6 @@ ARCHITECTURE rtl OF Cpu IS
             v.instReady := '1';
             v.stage     := FETCH;
         END IF;
-        -- todo: check for msip
-        -- todo: check for mtip
     END PROCEDURE;
 BEGIN
     PROCESS (ALL)
@@ -307,6 +328,13 @@ BEGIN
         v.csrHwIn.mip.meip.next_q := mExtInt;
         v.csrHwIn.mip.msip.next_q := mSoftInt;
         v.csrHwIn.mip.mtip.next_q := mTimInt;
+
+        -- fixed-frequency clock, so use mtime for both registers
+        -- todo: this really shouldn't be here
+        v.csrHwIn.TIME.time.next_q       := mtime(31 DOWNTO 0);
+        v.csrHwIn.TIMEh.timeh.next_q     := mtime(63 DOWNTO 32);
+        v.csrHwIn.mcycle.mcycle.next_q   := mtime(31 DOWNTO 0);
+        v.csrHwIn.mcycleh.mcycleh.next_q := mtime(63 DOWNTO 32);
 
         v.regWrStrobe := '0';
 

@@ -71,6 +71,8 @@ ARCHITECTURE rtl OF Soc IS
     SIGNAL mTimInt  : STD_LOGIC;
     SIGNAL mSoftInt : STD_LOGIC;
     SIGNAL uartInt  : STD_LOGIC;
+
+    SIGNAL mtime : STD_LOGIC_VECTOR(63 DOWNTO 0);
 BEGIN
     Cpu_inst : ENTITY work.Cpu
         PORT MAP
@@ -89,7 +91,9 @@ BEGIN
 
             mExtInt  => mExtInt,
             mSoftInt => mSoftInt,
-            mTimInt  => mTimInt
+            mTimInt  => mTimInt,
+
+            mtime => mtime
         );
 
     Ram_inst : ENTITY work.Ram
@@ -117,7 +121,8 @@ BEGIN
             axilReadMaster  => sAxiLiteReadMasters(1),
             axilReadSlave   => sAxiLiteReadSlaves(1),
             mTimInt         => mTimInt,
-            mSoftInt        => mSoftInt
+            mSoftInt        => mSoftInt,
+            mtime           => mtime
         );
 
     Gpio_inst : ENTITY work.Gpio

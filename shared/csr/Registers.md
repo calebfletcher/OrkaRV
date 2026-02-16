@@ -26,6 +26,10 @@ Don't override. Generated from: CsrRegisters
 |0x0D08|  mcause  |  — |
 |0x0D0C|   mtval  |  — |
 |0x0D10|    mip   |  — |
+|0x2C00|  mcycle  |  — |
+|0x2E00|  mcycleh |  — |
+|0x3004|   time   |  — |
+|0x3204|   timeh  |  — |
 |0x3C44| mvendorid|  — |
 |0x3C48|  marchid |  — |
 |0x3C4C|  mimpid  |  — |
@@ -210,6 +214,46 @@ Don't override. Generated from: CsrRegisters
 |  7 |   mtip   |   r  | 0x0 |  — |
 |  9 |   seip   |   r  | 0x0 |  — |
 | 11 |   meip   |   r  | 0x0 |  — |
+
+### mcycle register
+
+- Absolute Address: 0x2C00
+- Base Offset: 0x2C00
+- Size: 0x4
+
+|Bits|Identifier|Access|Reset|Name|
+|----|----------|------|-----|----|
+|31:0|  mcycle  |   r  |  —  |  — |
+
+### mcycleh register
+
+- Absolute Address: 0x2E00
+- Base Offset: 0x2E00
+- Size: 0x4
+
+|Bits|Identifier|Access|Reset|Name|
+|----|----------|------|-----|----|
+|31:0|  mcycleh |   r  |  —  |  — |
+
+### time register
+
+- Absolute Address: 0x3004
+- Base Offset: 0x3004
+- Size: 0x4
+
+|Bits|Identifier|Access|Reset|Name|
+|----|----------|------|-----|----|
+|31:0|   time   |   r  |  —  |  — |
+
+### timeh register
+
+- Absolute Address: 0x3204
+- Base Offset: 0x3204
+- Size: 0x4
+
+|Bits|Identifier|Access|Reset|Name|
+|----|----------|------|-----|----|
+|31:0|   timeh  |   r  |  —  |  — |
 
 ### mvendorid register
 

@@ -83,12 +83,48 @@ package CsrRegisters_pkg is
         meip : \CsrRegisters.mip.meip_in_t\;
     end record;
 
+    type \CsrRegisters.mcycle.mcycle_in_t\ is record
+        next_q : std_logic_vector(31 downto 0);
+    end record;
+
+    type \CsrRegisters.mcycle_in_t\ is record
+        mcycle : \CsrRegisters.mcycle.mcycle_in_t\;
+    end record;
+
+    type \CsrRegisters.mcycleh.mcycleh_in_t\ is record
+        next_q : std_logic_vector(31 downto 0);
+    end record;
+
+    type \CsrRegisters.mcycleh_in_t\ is record
+        mcycleh : \CsrRegisters.mcycleh.mcycleh_in_t\;
+    end record;
+
+    type \CsrRegisters.time.time_in_t\ is record
+        next_q : std_logic_vector(31 downto 0);
+    end record;
+
+    type \CsrRegisters.time_in_t\ is record
+        time : \CsrRegisters.time.time_in_t\;
+    end record;
+
+    type \CsrRegisters.timeh.timeh_in_t\ is record
+        next_q : std_logic_vector(31 downto 0);
+    end record;
+
+    type \CsrRegisters.timeh_in_t\ is record
+        timeh : \CsrRegisters.timeh.timeh_in_t\;
+    end record;
+
     type CsrRegisters_in_t is record
         mstatus : \CsrRegisters.mstatus_in_t\;
         mepc : \CsrRegisters.mepc_in_t\;
         mcause : \CsrRegisters.mcause_in_t\;
         mtval : \CsrRegisters.mtval_in_t\;
         mip : \CsrRegisters.mip_in_t\;
+        mcycle : \CsrRegisters.mcycle_in_t\;
+        mcycleh : \CsrRegisters.mcycleh_in_t\;
+        time : \CsrRegisters.time_in_t\;
+        timeh : \CsrRegisters.timeh_in_t\;
     end record;
 
     type \CsrRegisters.mstatus.sie_out_t\ is record

@@ -18,7 +18,9 @@ ENTITY Clint IS
         axilReadSlave   : OUT AxiLiteReadSlaveType;
 
         mTimInt  : OUT STD_LOGIC;
-        mSoftInt : OUT STD_LOGIC
+        mSoftInt : OUT STD_LOGIC;
+
+        mtime : OUT STD_LOGIC_VECTOR(63 DOWNTO 0)
     );
 END ENTITY Clint;
 
@@ -38,7 +40,6 @@ ARCHITECTURE rtl OF Clint IS
     SIGNAL hwif_in  : ClintRegisters_in_t;
     SIGNAL hwif_out : ClintRegisters_out_t;
 
-    SIGNAL mtime    : UNSIGNED(63 DOWNTO 0) := (OTHERS => '0');
     SIGNAL mtimecmp : STD_LOGIC_VECTOR(63 DOWNTO 0);
 BEGIN
     PROCESS (clk)
@@ -47,7 +48,7 @@ BEGIN
             IF reset THEN
                 mtime <= (OTHERS => '0');
             ELSE
-                mtime <= mtime + 1;
+                mtime <= STD_LOGIC_VECTOR(unsigned(mtime) + 1);
             END IF;
         END IF;
     END PROCESS;
@@ -55,11 +56,11 @@ BEGIN
     -- mtimecmp from upper and lower parts
     mtimecmp <= hwif_out.mtimecmph.mtimecmph.value & hwif_out.mtimecmp.mtimecmp.value;
     -- mtime for sw to read
-    hwif_in.mtime.mtime.next_q   <= STD_LOGIC_VECTOR(mtime)(31 DOWNTO 0);
-    hwif_in.mtimeh.mtimeh.next_q <= STD_LOGIC_VECTOR(mtime)(63 DOWNTO 32);
+    hwif_in.mtime.mtime.next_q   <= STD_LOGIC_VECTOR(mtime(31 DOWNTO 0));
+    hwif_in.mtimeh.mtimeh.next_q <= STD_LOGIC_VECTOR(mtime(63 DOWNTO 32));
 
     -- timer interrupt when mtime >= mtimecmp
-    mTimInt <= '1' WHEN mtime >= UNSIGNED(mtimecmp) ELSE
+    mTimInt <= '1' WHEN unsigned(mtime) >= UNSIGNED(mtimecmp) ELSE
         '0';
     -- software interrupt when reg value set
     mSoftInt <= hwif_out.msip.msip.value;

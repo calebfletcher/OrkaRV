@@ -71,6 +71,10 @@ architecture rtl of CsrRegisters is
         mcause : std_logic;
         mtval : std_logic;
         mip : std_logic;
+        mcycle : std_logic;
+        mcycleh : std_logic;
+        time : std_logic;
+        timeh : std_logic;
         mvendorid : std_logic;
         marchid : std_logic;
         mimpid : std_logic;
@@ -428,7 +432,7 @@ architecture rtl of CsrRegisters is
     signal readback_err : std_logic;
     signal readback_done : std_logic;
     signal readback_data : std_logic_vector(31 downto 0);
-    signal readback_array : std_logic_vector_array1(0 to 17)(31 downto 0);
+    signal readback_array : std_logic_vector_array1(0 to 21)(31 downto 0);
 
 begin
 
@@ -508,6 +512,18 @@ begin
         decoded_reg_strb.mip <= cpuif_req_masked and (cpuif_addr = 16#D10#) and to_std_logic(cpuif_req_op = OP_READ);
         is_valid_addr := is_valid_addr or (cpuif_req_masked and (cpuif_addr = 16#D10#));
         is_invalid_rw := is_invalid_rw or (cpuif_req_masked and (cpuif_addr = 16#D10#) and to_std_logic(cpuif_req_op /= OP_READ));
+        decoded_reg_strb.mcycle <= cpuif_req_masked and (cpuif_addr = 16#2C00#) and to_std_logic(cpuif_req_op = OP_READ);
+        is_valid_addr := is_valid_addr or (cpuif_req_masked and (cpuif_addr = 16#2C00#));
+        is_invalid_rw := is_invalid_rw or (cpuif_req_masked and (cpuif_addr = 16#2C00#) and to_std_logic(cpuif_req_op /= OP_READ));
+        decoded_reg_strb.mcycleh <= cpuif_req_masked and (cpuif_addr = 16#2E00#) and to_std_logic(cpuif_req_op = OP_READ);
+        is_valid_addr := is_valid_addr or (cpuif_req_masked and (cpuif_addr = 16#2E00#));
+        is_invalid_rw := is_invalid_rw or (cpuif_req_masked and (cpuif_addr = 16#2E00#) and to_std_logic(cpuif_req_op /= OP_READ));
+        decoded_reg_strb.time <= cpuif_req_masked and (cpuif_addr = 16#3004#) and to_std_logic(cpuif_req_op = OP_READ);
+        is_valid_addr := is_valid_addr or (cpuif_req_masked and (cpuif_addr = 16#3004#));
+        is_invalid_rw := is_invalid_rw or (cpuif_req_masked and (cpuif_addr = 16#3004#) and to_std_logic(cpuif_req_op /= OP_READ));
+        decoded_reg_strb.timeh <= cpuif_req_masked and (cpuif_addr = 16#3204#) and to_std_logic(cpuif_req_op = OP_READ);
+        is_valid_addr := is_valid_addr or (cpuif_req_masked and (cpuif_addr = 16#3204#));
+        is_invalid_rw := is_invalid_rw or (cpuif_req_masked and (cpuif_addr = 16#3204#) and to_std_logic(cpuif_req_op /= OP_READ));
         decoded_reg_strb.mvendorid <= cpuif_req_masked and (cpuif_addr = 16#3C44#) and to_std_logic(cpuif_req_op = OP_READ);
         is_valid_addr := is_valid_addr or (cpuif_req_masked and (cpuif_addr = 16#3C44#));
         is_invalid_rw := is_invalid_rw or (cpuif_req_masked and (cpuif_addr = 16#3C44#) and to_std_logic(cpuif_req_op /= OP_READ));
@@ -1491,12 +1507,16 @@ begin
     readback_array(12)(10 downto 10) <= (others => '0');
     readback_array(12)(11 downto 11) <= to_std_logic_vector(field_storage.mip.meip.value) when (decoded_reg_strb.mip and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
     readback_array(12)(31 downto 12) <= (others => '0');
-    readback_array(13)(6 downto 0) <= 7x"0" when (decoded_reg_strb.mvendorid and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
-    readback_array(13)(31 downto 7) <= 25x"0" when (decoded_reg_strb.mvendorid and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
-    readback_array(14)(31 downto 0) <= 32x"0" when (decoded_reg_strb.marchid and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
-    readback_array(15)(31 downto 0) <= 32x"0" when (decoded_reg_strb.mimpid and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
-    readback_array(16)(31 downto 0) <= 32x"0" when (decoded_reg_strb.mhartid and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
-    readback_array(17)(31 downto 0) <= 32x"0" when (decoded_reg_strb.mconfigptr and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(13)(31 downto 0) <= hwif_in.mcycle.mcycle.next_q when (decoded_reg_strb.mcycle and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(14)(31 downto 0) <= hwif_in.mcycleh.mcycleh.next_q when (decoded_reg_strb.mcycleh and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(15)(31 downto 0) <= hwif_in.time.time.next_q when (decoded_reg_strb.time and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(16)(31 downto 0) <= hwif_in.timeh.timeh.next_q when (decoded_reg_strb.timeh and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(17)(6 downto 0) <= 7x"0" when (decoded_reg_strb.mvendorid and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(17)(31 downto 7) <= 25x"0" when (decoded_reg_strb.mvendorid and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(18)(31 downto 0) <= 32x"0" when (decoded_reg_strb.marchid and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(19)(31 downto 0) <= 32x"0" when (decoded_reg_strb.mimpid and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(20)(31 downto 0) <= 32x"0" when (decoded_reg_strb.mhartid and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
+    readback_array(21)(31 downto 0) <= 32x"0" when (decoded_reg_strb.mconfigptr and to_std_logic(decoded_req_op /= OP_WRITE)) else (others => '0');
 
     -- Reduce the array
     process(all)

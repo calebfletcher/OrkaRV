@@ -4,6 +4,8 @@ addrmap CsrRegisters {
     default sw = r;
     default hw = r;
     
+    // Machine Information Registers
+
     reg {
         field {} offset[7] = 0;
         field {} bank[25] = 0;
@@ -24,6 +26,8 @@ addrmap CsrRegisters {
     reg {
         field {} mconfigptr[32] = 0;
     } mconfigptr @ 0xF15 << 2;
+
+    // Machine Trap Setup
 
     reg {
         default sw = rw;
@@ -153,6 +157,8 @@ addrmap CsrRegisters {
     reg {
         field {} medelegh[32] = 0;
     } medelegh @ 0x312 << 2;
+
+    // Machine Trap Handling
     
     reg {
         field {
@@ -200,4 +206,33 @@ addrmap CsrRegisters {
             hw = rw;
         } meip[11:11] = 0;
     } mip @ 0x344 << 2;
+
+    // Machine Counters/Timers
+
+    reg {
+        field {
+            hw = w;
+        } mcycle[32];
+    } mcycle @ 0xB00 << 2;
+    
+    reg {
+        field {
+            hw = w;
+        } mcycleh[32];
+    } mcycleh @ 0xB80 << 2;
+
+    // Unprivileged Counter/Timers
+    // todo: treat these differently since they're user-mode?
+    
+    reg {
+        field {
+            hw = w;
+        } time[32];
+    } time @ 0xC01 << 2;
+    
+    reg {
+        field {
+            hw = w;
+        } timeh[32];
+    } timeh @ 0xC81 << 2;
 };
