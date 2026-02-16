@@ -84,8 +84,8 @@ BEGIN
             wrReady => hwif_in.status.txe.next_q,
             rdData  => hwif_in.rx.rx.next_q,
             rdValid => rdFifoValid,
-            -- ready for new data when currently empty
-            rdReady => NOT hwif_in.status.rxr.next_q,
+            -- accept data from uart on access from uart
+            rdReady => hwif_out.rx.rx.swacc AND rdFifoValid,
             tx      => uart_rxd_out,
             rx      => uart_txd_in
         );
@@ -94,24 +94,14 @@ BEGIN
     BEGIN
         IF rising_edge(clk) THEN
             IF reset = '1' THEN
-                wrDelayed                 <= '0';
-                hwif_in.status.rxr.next_q <= '0';
+                wrDelayed <= '0';
             ELSE
                 wrDelayed <= hwif_out.tx.tx.swacc;
-
-                IF rdFifoValid AND (hwif_out.rx.rx.swacc OR NOT hwif_out.status.rxr.value) THEN
-                    -- sw read data from rx buffer or was empty
-                    hwif_in.status.rxr.next_q <= '1';
-                ELSIF hwif_out.rx.rx.swacc THEN
-                    -- sw read data from rx buffer while already full
-                    hwif_in.status.rxr.next_q <= '0';
-                ELSE
-                    -- preserve current value
-                    hwif_in.status.rxr.next_q <= hwif_in.status.rxr.next_q;
-                END IF;
             END IF;
         END IF;
     END PROCESS;
+
+    hwif_in.status.rxr.next_q <= rdFifoValid;
 
     -- interrupt output
     int <= (hwif_out.ctrl.rxie.value AND hwif_out.status.rxr.value) OR (hwif_out.ctrl.txie.value AND hwif_out.status.txe.value);

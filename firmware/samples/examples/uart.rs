@@ -55,6 +55,9 @@ fn main() -> ! {
                     uart.tx(byte);
                 }
 
+                // flush uart
+                while !uart.status().read().txe() {}
+
                 debug::set_pass();
                 //unsafe { riscv::asm::ebreak() };
             }

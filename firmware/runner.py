@@ -1,5 +1,6 @@
 import asyncio
 import glob
+import logging
 from shutil import copyfile
 from pathlib import Path
 import subprocess
@@ -31,6 +32,19 @@ class DebugPeripheral:
     async def read(self, address: int, length: int):
         raise RuntimeError("attempt read from debug peripheral")
 
+async def print_uart_lines(sink: UartSink):
+    log = logging.getLogger("cocotb.uart")
+    while True:
+        line = ""
+        while True:
+            byte = await sink.read(count=1)
+            byte = byte.decode()[0]
+            if byte == '\n':
+                break
+            line += byte
+        log.info(line)
+
+
 @cocotb.test(timeout_time=2, timeout_unit="ms")
 async def run(dut):
     clock = Clock(dut.clk, 10, unit="ns")
@@ -40,6 +54,11 @@ async def run(dut):
 
     uart_sink = UartSink(dut.uart_rxd_out, baud=1000000)
     uart_source = UartSource(dut.uart_txd_in, baud=1000000)
+
+    uart_sink.log.setLevel(logging.WARNING)
+    uart_source.log.setLevel(logging.WARNING)
+
+    cocotb.start_soon(print_uart_lines(uart_sink))
 
     # Reset the CPU
     dut.reset.value = 1
@@ -63,19 +82,11 @@ async def run(dut):
     await Timer(50, 'us')
     expected_string = b"Hello World! This is a long test string from cocotb to the orkarv core.\n"
     await uart_source.write(expected_string)
-    
-    # # receive newline-terminated string
-    # received_buffer = bytearray()
-    # while True:
-    #     data = await uart_sink.read()
-    #     received_buffer.extend(data)
-    #     if received_buffer.endswith(b'\n'):
-    #         break
-
-    # assert received_buffer == expected_string
 
     # wait for pass
     await debug_peripheral.pass_event.wait()
+    # wait a little longer for any more uart messages to finish
+    await Timer(200, 'us')
 
 def main():
     proj_path = Path(__file__).resolve().parent.parent
