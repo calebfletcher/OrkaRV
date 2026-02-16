@@ -7,3 +7,6 @@
 [submodule "submodules/PeakRDL-regblock-vhdl"]
 	path = submodules/PeakRDL-regblock-vhdl
 	url = git@github.com:calebfletcher/PeakRDL-regblock-vhdl.git
+[submodule "submodules/coremark"]
+	path = submodules/coremark
+	url = https://github.com/eembc/coremark.git
