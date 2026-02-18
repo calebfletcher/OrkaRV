@@ -10,7 +10,8 @@ USE surf.AxiLitePkg.ALL;
 
 ENTITY Soc IS
     GENERIC (
-        RAM_FILE_PATH_G : STRING
+        RAM_FILE_PATH_G : STRING;
+        NUM_GPIO        : NATURAL RANGE 1 TO 32 := 32;
     );
     PORT (
         clk   : IN STD_LOGIC;
@@ -19,7 +20,7 @@ ENTITY Soc IS
         halt : OUT STD_LOGIC := '0';
         -- set high on illegal instruction/mem error/etc.
         trap     : OUT STD_LOGIC := '0';
-        gpioPins : INOUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+        gpioPins : INOUT STD_LOGIC_VECTOR(NUM_GPIO - 1 DOWNTO 0);
 
         uart_rxd_out : OUT STD_LOGIC;
         uart_txd_in  : IN STD_LOGIC;
@@ -126,6 +127,9 @@ BEGIN
         );
 
     Gpio_inst : ENTITY work.Gpio
+        GENERIC MAP(
+            NUM_GPIO => NUM_GPIO
+        )
         PORT MAP
         (
             clk             => clk,

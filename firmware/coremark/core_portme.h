@@ -22,7 +22,7 @@ Original Author: Shay Gal-on
 #ifndef CORE_PORTME_H
 #define CORE_PORTME_H
 
-#define ITERATIONS 1
+#define ITERATIONS 1000
 #define FLAGS_STR ""
 
 #include <stddef.h>

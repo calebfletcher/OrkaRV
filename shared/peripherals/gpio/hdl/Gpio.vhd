@@ -16,6 +16,9 @@ USE work.axi4lite_intf_pkg.ALL;
 USE work.GpioRegisters_pkg.ALL;
 
 ENTITY Gpio IS
+    GENERIC (
+        NUM_GPIO : NATURAL RANGE 1 TO 32 := 32
+    );
     PORT (
         clk   : IN STD_LOGIC;
         reset : IN STD_LOGIC;
@@ -25,7 +28,7 @@ ENTITY Gpio IS
         axilReadMaster  : IN AxiLiteReadMasterType;
         axilReadSlave   : OUT AxiLiteReadSlaveType;
 
-        pins : INOUT STD_LOGIC_VECTOR(31 DOWNTO 0)
+        pins : INOUT STD_LOGIC_VECTOR(NUM_GPIO - 1 DOWNTO 0)
     );
 END ENTITY Gpio;
 
@@ -85,7 +88,7 @@ BEGIN
         );
 
     -- bidirectional pins to input/output/direction
-    IoBufGen : FOR i IN 0 TO 31 GENERATE
+    IoBufGen : FOR i IN 0 TO NUM_GPIO - 1 GENERATE
         IoBufWrapper_inst : ENTITY surf.IoBufWrapper
             PORT MAP(
                 O  => pinsInput(i),

@@ -141,6 +141,8 @@ void portable_init(core_portable *p, int *argc, char *argv[])
     (void)argc; // prevent unused warning
     (void)argv; // prevent unused warning
 
+    ee_printf("coremark started\n");
+
     if (sizeof(ee_ptr_int) != sizeof(ee_u8 *))
     {
         ee_printf(
