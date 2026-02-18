@@ -594,7 +594,22 @@ BEGIN
                 ELSIF csrIllegalAccess THEN
                     exception(v, EXCEPTION_ILLEGAL_INST_C);
                 ELSE
-                    v.stage := WRITEBACK;
+                    -- attempt to skip writeback if we don't need it
+                    IF r.opRegWriteSource = NONE_SRC THEN
+                        -- update PC
+                        IF v.opPcFromAlu THEN
+                            v.pc := r.aluResult(31 DOWNTO 1) & "0";
+                        ELSIF v.opPcFromMepcCsr THEN
+                            v.pc := csrHwOut.mepc.mepc.value;
+                        ELSE
+                            v.pc := r.successivePc;
+                        END IF;
+                        v.pcValid   := '1';
+                        v.instReady := '1';
+                        v.stage     := FETCH;
+                    ELSE
+                        v.stage := WRITEBACK;
+                    END IF;
                 END IF;
 
                 -- prepare memory ops in advance due to the memory latency
@@ -647,7 +662,18 @@ BEGIN
                 -- once mem transaction completes
                 IF r.opMemWrite AND r.dataAxiWriteMaster.bready AND dataAxiWriteSlave.bvalid THEN
                     IF dataAxiWriteSlave.bresp = AXI_RESP_OK_C THEN
-                        v.stage := WRITEBACK;
+                        -- skip writeback
+                        -- update PC
+                        IF v.opPcFromAlu THEN
+                            v.pc := r.aluResult(31 DOWNTO 1) & "0";
+                        ELSIF v.opPcFromMepcCsr THEN
+                            v.pc := csrHwOut.mepc.mepc.value;
+                        ELSE
+                            v.pc := r.successivePc;
+                        END IF;
+                        v.pcValid   := '1';
+                        v.instReady := '1';
+                        v.stage     := FETCH;
                     ELSE
                         exception(v, EXCEPTION_STORE_ACCESS_FAULT_C);
                     END IF;
