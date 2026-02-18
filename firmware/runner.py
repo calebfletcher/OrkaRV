@@ -45,7 +45,7 @@ async def print_uart_lines(sink: UartSink):
         log.info(line)
 
 
-@cocotb.test(timeout_time=200, timeout_unit="ms")
+@cocotb.test(timeout_time=2, timeout_unit="ms")
 async def run(dut):
     clock = Clock(dut.clk, 10, unit="ns")
     clock.start()

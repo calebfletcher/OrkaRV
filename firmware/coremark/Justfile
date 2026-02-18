@@ -3,15 +3,15 @@ build:
     PATH=/opt/xpack/xpack-riscv-none-elf-gcc-15.2.0-1/bin:$PATH \
         riscv-none-elf-gcc \
         -mabi=ilp32 -march=rv32i_zicsr -nostdlib \
+        -O3 \
         -nostartfiles -T linker.ld \
         -o ../build/coremark.elf \
         -I ../../submodules/coremark \
         -I . \
         start.S \
         core_portme.c ee_printf.c cvt.c \
-        ../../submodules/coremark/core_main.c \
-        ../../submodules/coremark/core_matrix.c \
-        ../../submodules/coremark/core_state.c \
-        ../../submodules/coremark/core_util.c \
-        ../../submodules/coremark/core_list_join.c \
+        ../../submodules/coremark/*.c \
         -lc -lm -lgcc
+
+clean:
+    rm ../build/coremark.elf

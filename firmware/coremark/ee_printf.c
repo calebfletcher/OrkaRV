@@ -675,7 +675,7 @@ void uart_send_char(char c)
        documentation.
     */
 
-    volatile unsigned char *uart_data = (volatile unsigned char *)0x02010000;
+    volatile unsigned char *uart_data = (volatile unsigned char *)0x02010004;
     volatile unsigned int *uart_status = (volatile unsigned int *)0x0201000C;
 
     // Wait until TX buffer is empty

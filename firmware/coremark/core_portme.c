@@ -56,8 +56,7 @@ inline uint32_t __attribute__((always_inline)) csr_read(const int csr_id)
 CORETIMETYPE
 barebones_clock()
 {
-    // only read the bottom 32-bits
-    return csr_read(0x601);
+    return csr_read(0xC01);
 }
 /* Define : TIMER_RES_DIVIDER
         Divider to trade off timer resolution and total time that can be
@@ -160,4 +159,8 @@ void portable_init(core_portable *p, int *argc, char *argv[])
 void portable_fini(core_portable *p)
 {
     p->portable_id = 0;
+
+    // stop sim
+    volatile unsigned int *debug_ok = (volatile unsigned int *)0x03000000;
+    *debug_ok = 0x0;
 }
