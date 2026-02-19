@@ -11,7 +11,7 @@ USE surf.AxiLitePkg.ALL;
 ENTITY Soc IS
     GENERIC (
         RAM_FILE_PATH_G : STRING;
-        NUM_GPIO        : NATURAL RANGE 1 TO 32 := 32;
+        NUM_GPIO        : NATURAL RANGE 1 TO 32 := 32
     );
     PORT (
         clk   : IN STD_LOGIC;
@@ -41,7 +41,7 @@ END ENTITY Soc;
 
 ARCHITECTURE rtl OF Soc IS
     CONSTANT NUM_MASTERS_C       : NATURAL := 3;
-    CONSTANT NUM_MEM_SLAVES_C    : NATURAL := 1;
+    CONSTANT NUM_MEM_SLAVES_C    : NATURAL := 2;
     CONSTANT NUM_PERIPH_SLAVES_C : NATURAL := 4;
 
     SIGNAL mAxiWriteMasters : AxiWriteMasterArray(NUM_MASTERS_C - 1 DOWNTO 0) := (OTHERS => AXI_WRITE_MASTER_INIT_C);
@@ -61,11 +61,15 @@ ARCHITECTURE rtl OF Soc IS
     SIGNAL sAxiLiteReadSlaves   : AxiLiteReadSlaveArray(NUM_PERIPH_SLAVES_C - 1 DOWNTO 0) := (OTHERS => AXI_LITE_READ_SLAVE_INIT_C);
 
     CONSTANT AXI_XBAR_CFG_C : AxiLiteCrossbarMasterConfigArray(0 TO NUM_PERIPH_SLAVES_C + NUM_MEM_SLAVES_C - 1) := (
-    0 => (baseAddr => X"01000000", addrBits => 24, connectivity => X"FFFF"), -- ram
-    1 => (baseAddr => X"03000000", addrBits => 24, connectivity => X"FFFF"), -- debug
-    2 => (baseAddr => X"02020000", addrBits => 16, connectivity => X"FFFF"), -- clint
-    3 => (baseAddr => X"02000000", addrBits => 16, connectivity => X"FFFF"), -- gpio
-    4 => (baseAddr => X"02010000", addrBits => 16, connectivity => X"FFFF") -- uart
+    -- memory
+    0 => (baseAddr => X"01000000", addrBits => 24, connectivity => X"FFFF"), -- rom
+    1 => (baseAddr => X"02000000", addrBits => 24, connectivity => X"FFFF"), -- ram
+    -- debug
+    2 => (baseAddr => X"10000000", addrBits => 24, connectivity => X"FFFF"), -- debug
+    -- peripherals
+    3 => (baseAddr => X"20000000", addrBits => 16, connectivity => X"FFFF"), -- clint
+    4 => (baseAddr => X"20010000", addrBits => 16, connectivity => X"FFFF"), -- gpio
+    5 => (baseAddr => X"20020000", addrBits => 16, connectivity => X"FFFF") -- uart
     );
 
     SIGNAL mExtInt  : STD_LOGIC;
@@ -97,7 +101,7 @@ BEGIN
             mtime => mtime
         );
 
-    Ram_inst : ENTITY work.Ram
+    Rom_inst : ENTITY work.Ram
         GENERIC MAP(
             RAM_FILE_PATH_G => RAM_FILE_PATH_G,
             AXI_BASE_ADDR_G => X"01000000"
@@ -111,6 +115,21 @@ BEGIN
             axiReadSlave   => sAxiReadSlaves(0),
             axiWriteMaster => sAxiWriteMasters(0),
             axiWriteSlave  => sAxiWriteSlaves(0)
+        );
+
+    Ram_inst : ENTITY work.Ram
+        GENERIC MAP(
+            AXI_BASE_ADDR_G => X"02000000"
+        )
+        PORT MAP
+        (
+            clk   => clk,
+            reset => reset,
+
+            axiReadMaster  => sAxiReadMasters(1),
+            axiReadSlave   => sAxiReadSlaves(1),
+            axiWriteMaster => sAxiWriteMasters(1),
+            axiWriteSlave  => sAxiWriteSlaves(1)
         );
 
     Clint_inst : ENTITY work.Clint

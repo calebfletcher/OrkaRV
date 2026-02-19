@@ -12,7 +12,7 @@ USE surf.StdRtlPkg.ALL;
 
 ENTITY Ram IS
     GENERIC (
-        RAM_FILE_PATH_G : STRING;
+        RAM_FILE_PATH_G : STRING  := "";
         LENGTH_WORDS_G  : INTEGER := 16384;
         AXI_BASE_ADDR_G : UNSIGNED(31 DOWNTO 0)
     );
@@ -46,30 +46,32 @@ ARCHITECTURE rtl OF Ram IS
         VARIABLE line_count                          : NATURAL := 0;
         VARIABLE extra_lines                         : NATURAL := 0;
     BEGIN
-        FILE_OPEN(status, RamFile, RamFileName, READ_MODE);
-        IF status = OPEN_OK THEN
-            FOR I IN RamType'RANGE LOOP
-                IF endfile(RamFile) THEN
-                    EXIT;
-                END IF;
-                readline (RamFile, RamFileLine);
-                hex_read (RamFileLine, RamTemp(I));
-                line_count := line_count + 1;
-            END LOOP;
-            -- Check if file still has data after filling the RAM
-            IF NOT endfile(RamFile) THEN
-                WHILE NOT endfile(RamFile) LOOP
+        IF RamFileName'length /= 0 THEN
+            FILE_OPEN(status, RamFile, RamFileName, READ_MODE);
+            IF status = OPEN_OK THEN
+                FOR I IN RamType'RANGE LOOP
+                    IF endfile(RamFile) THEN
+                        EXIT;
+                    END IF;
                     readline (RamFile, RamFileLine);
-                    extra_lines := extra_lines + 1;
+                    hex_read (RamFileLine, RamTemp(I));
+                    line_count := line_count + 1;
                 END LOOP;
-                REPORT "RAM initialization file '" & RamFileName & "' is too big (" &
-                    INTEGER'image(line_count + extra_lines) & " lines, expected <= " &
-                    INTEGER'image(RamType'length) & ")"
-                    SEVERITY error;
+                -- Check if file still has data after filling the RAM
+                IF NOT endfile(RamFile) THEN
+                    WHILE NOT endfile(RamFile) LOOP
+                        readline (RamFile, RamFileLine);
+                        extra_lines := extra_lines + 1;
+                    END LOOP;
+                    REPORT "RAM initialization file '" & RamFileName & "' is too big (" &
+                        INTEGER'image(line_count + extra_lines) & " lines, expected <= " &
+                        INTEGER'image(RamType'length) & ")"
+                        SEVERITY error;
+                END IF;
+                FILE_CLOSE(RamFile);
+            ELSE
+                REPORT "RAM initialization file '" & RamFileName & "' does not exist!" SEVERITY error;
             END IF;
-            FILE_CLOSE(RamFile);
-        ELSE
-            REPORT "RAM initialization file '" & RamFileName & "' does not exist!" SEVERITY error;
         END IF;
         RETURN RamTemp;
     END FUNCTION;

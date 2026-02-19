@@ -8,7 +8,7 @@ use riscv_rt::entry;
 
 #[entry]
 fn main() -> ! {
-    let gpio = unsafe { Gpio::from_ptr(0x0200_0000 as *mut _) };
+    let gpio = unsafe { Gpio::from_ptr(0x2001_0000 as *mut _) };
 
     let mut delay = riscv::delay::McycleDelay::new(100_000_000);
 

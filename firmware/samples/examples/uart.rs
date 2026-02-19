@@ -11,7 +11,7 @@ use riscv_rt::entry;
 
 static UART_BUFFER: Mutex<RefCell<Deque<u8, 256>>> = Mutex::new(RefCell::new(Deque::new()));
 
-static UART: Mutex<Uart> = Mutex::new(unsafe { Uart::from_ptr(0x0201_0000 as *mut _) });
+static UART: Mutex<Uart> = Mutex::new(unsafe { Uart::from_ptr(0x2002_0000 as *mut _) });
 
 #[riscv_rt::core_interrupt(MachineExternal)]
 fn machine_external_interrupt() {

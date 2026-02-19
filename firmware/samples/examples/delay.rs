@@ -10,7 +10,7 @@ use riscv_rt::entry;
 
 #[entry]
 fn main() -> ! {
-    let uart = unsafe { Uart::from_ptr(0x0201_0000 as *mut _) };
+    let uart = unsafe { Uart::from_ptr(0x2002_0000 as *mut _) };
     let mut delay = riscv::delay::McycleDelay::new(100_000_000);
 
     // wait for 1ms, timing the delay duration

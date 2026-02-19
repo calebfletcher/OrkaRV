@@ -1,4 +1,4 @@
-const BASE_ADDR: *mut u32 = 0x0300_0000 as _;
+const BASE_ADDR: *mut u32 = 0x1000_0000 as _;
 
 const REG_PASS: usize = 0x0;
 const REG_FAIL: usize = 0x4;
