@@ -39,6 +39,20 @@ impl Uart {
     }
 }
 
+impl Uart {
+    /// Wait until a byte is ready, then read it
+    pub fn read(self) -> u8 {
+        while !self.status().read().rxr() {}
+        self.rx()
+    }
+
+    /// Wait until a byte can be written, then write it
+    pub fn write(self, byte: u8) {
+        while !self.status().read().txe() {}
+        self.tx(byte);
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct Ctrl(pub u32);
 
