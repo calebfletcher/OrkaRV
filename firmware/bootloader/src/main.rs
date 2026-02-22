@@ -27,6 +27,7 @@ fn main() -> ! {
 
     loop {
         // read line from uart
+        buffer.clear();
         loop {
             let byte: u8 = uart.read();
             if byte == b'\n' {
@@ -37,14 +38,19 @@ fn main() -> ! {
         let line = core::str::from_utf8(&buffer).unwrap().trim();
 
         handle_line(uart, &mut resp, line);
-
         println!(uart, &mut resp, "ok");
     }
 }
 
 fn handle_line(uart: Uart, resp: &mut String<64>, line: &str) {
     // split into parts
-    let parts = line.split(' ').collect::<heapless::Vec<_, 8>>();
+    let mut parts = heapless::Vec::<_, 8>::new();
+    for part in line.split(' ') {
+        if parts.push(part).is_err() {
+            println!(uart, resp, "too many parts, truncating");
+            break;
+        }
+    }
 
     match &*parts {
         ["ping"] => {
