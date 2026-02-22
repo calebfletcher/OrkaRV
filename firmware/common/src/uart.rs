@@ -1,6 +1,8 @@
 use crate::reg::{R, RW, Reg};
 use bit_field::BitField;
 
+pub const UART_ADDR: usize = 0x2002_0000;
+
 const REG_RX: usize = 0x0;
 const REG_TX: usize = 0x4;
 const REG_CTRL: usize = 0x8;

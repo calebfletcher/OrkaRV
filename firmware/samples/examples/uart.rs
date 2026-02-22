@@ -3,7 +3,10 @@
 
 use core::cell::RefCell;
 
-use common::{debug, uart::Uart};
+use common::{
+    debug,
+    uart::{UART_ADDR, Uart},
+};
 use critical_section::Mutex;
 use heapless::Deque;
 use riscv::interrupt::Interrupt::MachineExternal;
@@ -11,7 +14,7 @@ use riscv_rt::entry;
 
 static UART_BUFFER: Mutex<RefCell<Deque<u8, 256>>> = Mutex::new(RefCell::new(Deque::new()));
 
-static UART: Mutex<Uart> = Mutex::new(unsafe { Uart::from_ptr(0x2002_0000 as *mut _) });
+static UART: Mutex<Uart> = Mutex::new(unsafe { Uart::from_ptr(UART_ADDR as *mut _) });
 
 #[riscv_rt::core_interrupt(MachineExternal)]
 fn machine_external_interrupt() {

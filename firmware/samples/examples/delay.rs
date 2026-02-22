@@ -3,14 +3,17 @@
 
 use core::fmt::Write as _;
 
-use common::{debug, uart::Uart};
+use common::{
+    debug,
+    uart::{UART_ADDR, Uart},
+};
 use embedded_hal::delay::DelayNs as _;
 use heapless::String;
 use riscv_rt::entry;
 
 #[entry]
 fn main() -> ! {
-    let uart = unsafe { Uart::from_ptr(0x2002_0000 as *mut _) };
+    let uart = unsafe { Uart::from_ptr(UART_ADDR as *mut _) };
     let mut delay = riscv::delay::McycleDelay::new(100_000_000);
 
     // wait for 1ms, timing the delay duration

@@ -1,5 +1,12 @@
 # OrkaRV
 
+# Building on Hardware
+Go into `targets` and then into the target platform you want, and run `make`
+
+# Simulation Environment
+Go into one of the rust crates and run `cargo r -r`
+
+
 ## References
 RISC-V ISA Specifications = https://riscv.atlassian.net/wiki/spaces/HOME/pages/16154769/RISC-V+Technical+Specifications#ISA-Specifications
 

@@ -3,7 +3,7 @@
 
 use core::fmt::Write as _;
 
-use common::uart::Uart;
+use common::uart::{UART_ADDR, Uart};
 use heapless::{String, Vec};
 use riscv_rt::entry;
 
@@ -19,11 +19,13 @@ macro_rules! println {
 
 #[entry]
 fn main() -> ! {
-    let uart = unsafe { Uart::from_ptr(0x2002_0000 as *mut _) };
+    let uart = unsafe { Uart::from_ptr(UART_ADDR as *mut _) };
 
     // print results to uart
     let mut buffer = Vec::<u8, 64>::new();
     let mut resp = String::<64>::new();
+
+    println!(uart, resp, "bootloader running");
 
     loop {
         // read line from uart
