@@ -19,7 +19,8 @@ unsafe extern "C" {
 
 macro_rules! println {
     ($uart:expr, $dst:expr, $($arg:tt)*) => {
-        writeln!($dst, $($arg)*).unwrap();
+        write!($dst, $($arg)*).unwrap();
+        $dst.push_str("\r\n").unwrap();
         for byte in $dst.as_bytes() {
             $uart.write(*byte);
         }
@@ -42,7 +43,7 @@ fn main() -> ! {
         buffer.clear();
         loop {
             let byte: u8 = uart.read();
-            if byte == b'\n' {
+            if byte == b'\r' || byte == b'\n' {
                 break;
             }
             let _ = buffer.push(byte);
