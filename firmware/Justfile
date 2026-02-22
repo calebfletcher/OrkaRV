@@ -3,18 +3,21 @@ _default:
 
 clean:
     rm -rf build sim_build
+    cargo clean -r
+    cargo clean -r --target riscv32i-unknown-none-elf
 
-simulate: && gui
+simulate elf: && gui
     mkdir -p build/sim
-    riscv32-unknown-elf-objcopy -O binary build/program.elf build/program.bin
+    riscv32-unknown-elf-objcopy -O binary {{elf}} build/program.bin
     hexdump -v -e '1/4 "%08x\n"' build/program.bin > build/program.hex
     uv run runner.py build/program.hex
 
 gui:       
     surfer -s cpu.surf.ron build/sim/out.ghw
 
-[no-cd]
-rust path: && simulate
-    mkdir -p ../build
-    riscv32-unknown-elf-objdump -d -h {{path}} | head -n 100
-    cp {{path}} ../build/program.elf
+rust elf: && (simulate elf)
+    mkdir -p build
+    cp {{elf}} build/program.elf
+
+decomp:
+    cutter -A 1 build/program.elf
