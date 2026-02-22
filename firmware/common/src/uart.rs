@@ -55,6 +55,51 @@ impl Uart {
     }
 }
 
+impl xmodem::io::Read for Uart {
+    fn read(&mut self, buf: &mut [u8]) -> xmodem::io::Result<usize> {
+        for (i, byte) in buf.iter_mut().enumerate() {
+            if !self.status().read().rxr() {
+                return Ok(i);
+            }
+            *byte = self.rx();
+        }
+        Ok(0)
+    }
+
+    fn read_exact(&mut self, buf: &mut [u8]) -> xmodem::io::Result<()> {
+        for byte in buf.iter_mut() {
+            while !self.status().read().rxr() {}
+            *byte = self.rx();
+        }
+        Ok(())
+    }
+}
+
+impl xmodem::io::Write for Uart {
+    fn flush(&mut self) -> xmodem::io::Result<()> {
+        while !self.status().read().txe() {}
+        Ok(())
+    }
+
+    fn write(&mut self, buf: &[u8]) -> xmodem::io::Result<usize> {
+        for (i, byte) in buf.iter().enumerate() {
+            if !self.status().read().txe() {
+                return Ok(i);
+            }
+            self.tx(*byte);
+        }
+        Ok(buf.len())
+    }
+
+    fn write_all(&mut self, buf: &[u8]) -> xmodem::io::Result<()> {
+        for byte in buf.iter() {
+            while !self.status().read().txe() {}
+            self.tx(*byte);
+        }
+        Ok(())
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct Ctrl(pub u32);
 

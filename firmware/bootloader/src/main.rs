@@ -6,6 +6,8 @@ use core::fmt::Write as _;
 use common::uart::{UART_ADDR, Uart};
 use heapless::{String, Vec};
 use riscv_rt::entry;
+use xmodem::Xmodem;
+
 use crate::memio::MemIo;
 
 mod memio;
@@ -52,7 +54,7 @@ fn main() -> ! {
     }
 }
 
-fn handle_line(uart: Uart, resp: &mut String<64>, line: &str) {
+fn handle_line(mut uart: Uart, resp: &mut String<64>, line: &str) {
     // split into parts
     let mut parts = heapless::Vec::<_, 8>::new();
     for part in line.split(' ') {
@@ -94,6 +96,19 @@ fn handle_line(uart: Uart, resp: &mut String<64>, line: &str) {
                 uart,
                 resp, "App Region - {app_start:#08X} with length {app_size:#08X}"
             );
+        }
+        ["upload"] => {
+            let mut xmodem = Xmodem::new();
+
+            let app_start = &raw mut _app_start as *mut u8;
+            let app_size = &raw const _app_size as usize;
+            let mut app_mem = unsafe { MemIo::from_raw_parts(app_start, app_size) };
+
+            let size = xmodem
+                .recv(&mut uart, &mut app_mem, xmodem::Checksum::CRC16)
+                .unwrap();
+
+            println!(uart, resp, "received file of {size} bytes");
         }
         [] => {}
         _ => {
