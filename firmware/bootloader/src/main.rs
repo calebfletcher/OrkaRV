@@ -6,6 +6,14 @@ use core::fmt::Write as _;
 use common::uart::{UART_ADDR, Uart};
 use heapless::{String, Vec};
 use riscv_rt::entry;
+use crate::memio::MemIo;
+
+mod memio;
+
+unsafe extern "C" {
+    static mut _app_start: u32;
+    static _app_size: u32;
+}
 
 macro_rules! println {
     ($uart:expr, $dst:expr, $($arg:tt)*) => {
@@ -76,6 +84,18 @@ fn handle_line(uart: Uart, resp: &mut String<64>, line: &str) {
             unsafe { ptr.write_volatile(value) };
             println!(uart, resp, "wrote to {addr:#010x}");
         }
+        ["mem"] => {
+            println!(uart, resp, "Memory Stats");
+
+            let app_start = &raw mut _app_start as usize;
+            let app_size = &raw const _app_size as usize;
+
+            println!(
+                uart,
+                resp, "App Region - {app_start:#08X} with length {app_size:#08X}"
+            );
+        }
+        [] => {}
         _ => {
             println!(uart, resp, "unknown command");
         }
